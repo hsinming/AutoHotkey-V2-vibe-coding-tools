@@ -1,8 +1,8 @@
 ﻿# Module_DllCallAndMemory.md
 <!-- DOMAIN: DLL Calls and Memory Management -->
 <!-- SCOPE: IStream COM interface, async I/O, and GDI/DirectX memory-mapped objects are not covered — see Module_SystemAndCOM.md -->
-<!-- TRIGGERS: DllCall, Buffer, NumPut, NumGet, StrPut, StrGet, CallbackCreate, CallbackFree, OnMessage, SendMessage, PostMessage, A_LastError, VarSetCapacity, "call Windows API", "raw memory", "memory allocation", "struct simulation", "Win32 API", "low-level hook", "HANDLE", "HWND", "pointer arithmetic", "enumerate windows" -->
-<!-- CONSTRAINTS: Buffer(size, fill) is the only valid memory allocator in AHK v2 — VarSetCapacity is removed and causes NameError at runtime. Every HANDLE, HWND, HMODULE, LPVOID, or pointer-sized DllCall argument and return value must use "Ptr", never "Int" — "Int" silently truncates the upper 32 bits of any address on 64-bit Windows. -->
+<!-- TRIGGERS: DllCall, Buffer, NumPut, NumGet, StrPut, StrGet, CallbackCreate, CallbackFree, OnMessage, SendMessage, PostMessage, A_LastError, VarSetCapacity, RtlMoveMemory, RtlZeroMemory, RtlFillMemory, RtlCompareMemory, VirtualAlloc, VirtualFree, HeapAlloc, HeapFree, GlobalAlloc, GlobalFree, FormatMessageW, GetSystemInfo, WideCharToMultiByte, MultiByteToWideChar, CreateMutexW, WaitForSingleObject, "call Windows API", "raw memory", "memory allocation", "memory copy", "struct simulation", "Win32 API", "low-level hook", "HANDLE", "HWND", "pointer arithmetic", "enumerate windows", "virtual memory", "process heap", "clipboard memory", "error code to string" -->
+<!-- CONSTRAINTS: Buffer(size, fill) is the only valid memory allocator in AHK v2 — VarSetCapacity is removed and causes NameError at runtime. Every HANDLE, HWND, HMODULE, LPVOID, or pointer-sized DllCall argument and return value must use "Ptr", never "Int" — "Int" silently truncates the upper 32 bits of any address on 64-bit Windows. SIZE_T parameters (RtlMoveMemory, VirtualAlloc, HeapAlloc length fields) require "UPtr", not "UInt" — "UInt" silently clips lengths above 4 GB and produces wrong results on 64-bit. -->
 <!-- CROSS-REF: Module_Errors.md, Module_Classes.md, Module_SystemAndCOM.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -17,6 +17,9 @@
 | `DllCall("Kernel32\GetModuleHandleW", "Str", name)` — no return type | `DllCall("...", "Str", name, "Ptr")` | Default "Int" return type truncates 64-bit handle addresses on x64, causing silent NULL misreads |
 | `"Int", hWnd` for HANDLE or HWND arguments | `"Ptr", hWnd` | "Int" is 32-bit; upper 32 bits of 64-bit handles are silently discarded, causing intermittent failures |
 | `(n, w, l) => { stmt1; stmt2 }` passed to CallbackCreate | Define a named function, pass its reference | Multi-statement fat-arrow functions are not supported in AHK v2; callback receives corrupted stack frame |
+| `"Int"` for SIZE_T/ULONG_PTR (RtlMoveMemory, VirtualAlloc, HeapAlloc length) | `"UPtr"` | "Int" is signed 32-bit; sizes above 2 GB are misrepresented on x64, and negative or zero-length copies result |
+| `DllCall("ntdll\RtlMoveMemory", ...)` return checked for 0 | No return check needed — function is void | RtlMoveMemory/RtlZeroMemory/RtlFillMemory are void; checking return value reads garbage or an unrelated prior value |
+| `VirtualAlloc(...)` return type default "Int" | `VirtualAlloc(...)` return type `"Ptr"` | VirtualAlloc returns LPVOID — a pointer; "Int" truncates the base address on x64, making the allocation appear to fail |
 
 ## API QUICK-REFERENCE
 
@@ -75,6 +78,68 @@
 - Use `"Fast"` for synchronous callbacks (EnumWindows, LL hooks) — correct and lower overhead
 - Omit `"Fast"` for callbacks invoked on a foreign thread or calling AHK built-ins with side effects
 
+### ntdll Memory Operations
+These functions are exported from both `ntdll.dll` and `kernel32.dll`; the `ntdll\` prefix is preferred for raw memory operations. All length parameters are `SIZE_T` → `"UPtr"`.
+
+| Function | Signature (C) | AHK DllCall types | Notes |
+|----------|---------------|-------------------|-------|
+| `RtlMoveMemory` | `VOID RtlMoveMemory(PVOID dst, const VOID* src, SIZE_T len)` | `"Ptr", dst, "Ptr", src, "UPtr", len` | Safe for overlapping regions; equivalent to C `memmove`. No return value. |
+| `RtlCopyMemory` | `VOID RtlCopyMemory(PVOID dst, const VOID* src, SIZE_T len)` | `"Ptr", dst, "Ptr", src, "UPtr", len` | Non-overlapping only; equivalent to C `memcpy`. No return value. |
+| `RtlFillMemory` | `VOID RtlFillMemory(PVOID dst, SIZE_T len, UCHAR fill)` | `"Ptr", dst, "UPtr", len, "UChar", fill` | Fills `len` bytes with `fill`. Equivalent to C `memset`. No return value. |
+| `RtlZeroMemory` | `VOID RtlZeroMemory(PVOID dst, SIZE_T len)` | `"Ptr", dst, "UPtr", len` | Zero-fills `len` bytes. Equivalent to `RtlFillMemory(dst, len, 0)`. No return value. |
+| `RtlCompareMemory` | `SIZE_T RtlCompareMemory(const VOID* s1, const VOID* s2, SIZE_T len)` | `"Ptr", s1, "Ptr", s2, "UPtr", len, "UPtr"` | Returns **count of matching bytes** from the start. Equal iff result = len. |
+
+> **Common mistake:** `RtlCompareMemory` returns a match *count*, not a boolean — testing `if !result` only detects a mismatch on the first byte.
+
+### Virtual Memory (kernel32)
+| Function | C signature summary | AHK return type | Notes |
+|----------|--------------------|-----------------|----|
+| `VirtualAlloc` | `LPVOID VirtualAlloc(LPVOID lpAddr, SIZE_T dwSize, DWORD flAllocType, DWORD flProtect)` | `"Ptr"` | Returns base address or 0 on failure; `MEM_COMMIT|MEM_RESERVE = 0x3000` |
+| `VirtualFree` | `BOOL VirtualFree(LPVOID lpAddr, SIZE_T dwSize, DWORD dwFreeType)` | `"Int"` | `MEM_RELEASE = 0x8000` requires `dwSize = 0` |
+| `VirtualProtect` | `BOOL VirtualProtect(LPVOID lpAddr, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpOldProtect)` | `"Int"` | Changes page protection; pass a 4-byte Buffer for lpOldProtect |
+| `VirtualQuery` | `SIZE_T VirtualQuery(LPCVOID lpAddr, PMEMORY_BASIC_INFORMATION lpBuf, SIZE_T dwLen)` | `"UPtr"` | Returns number of bytes written; MEMORY_BASIC_INFORMATION is 48 bytes on x64 |
+
+### Heap Management (kernel32)
+| Function | C signature summary | AHK return type | Notes |
+|----------|--------------------|-----------------|----|
+| `GetProcessHeap` | `HANDLE GetProcessHeap()` | `"Ptr"` | Returns handle to the default process heap; do not call `HeapFree` on objects you did not allocate |
+| `HeapAlloc` | `LPVOID HeapAlloc(HANDLE hHeap, DWORD dwFlags, SIZE_T dwBytes)` | `"Ptr"` | Returns address or 0; `HEAP_ZERO_MEMORY = 8` fills with zero |
+| `HeapFree` | `BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem)` | `"Int"` | dwFlags must be 0; do not call on a Buffer — Buffer has its own allocator |
+| `HeapSize` | `SIZE_T HeapSize(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem)` | `"UPtr"` | Returns allocation size; `(SIZE_T)-1` on failure |
+| `GlobalAlloc` | `HGLOBAL GlobalAlloc(UINT uFlags, SIZE_T dwBytes)` | `"Ptr"` | Required for clipboard data; `GMEM_MOVEABLE = 2`, `GMEM_ZEROINIT = 0x40` |
+| `GlobalFree` | `HGLOBAL GlobalFree(HGLOBAL hMem)` | `"Ptr"` | Returns NULL on success; non-NULL indicates failure |
+| `GlobalLock` | `LPVOID GlobalLock(HGLOBAL hMem)` | `"Ptr"` | Locks a moveable block; returns usable pointer; must be paired with `GlobalUnlock` |
+| `GlobalUnlock` | `BOOL GlobalUnlock(HGLOBAL hMem)` | `"Int"` | Call after every `GlobalLock` — lock count is reference-counted |
+| `GlobalSize` | `SIZE_T GlobalSize(HGLOBAL hMem)` | `"UPtr"` | Returns allocation size in bytes |
+
+### Encoding Conversion (kernel32)
+| Function | C signature summary | AHK return type | Notes |
+|----------|--------------------|-----------------|----|
+| `WideCharToMultiByte` | `int WideCharToMultiByte(UINT cp, DWORD flags, LPCWSTR src, int srcLen, LPSTR dst, int dstLen, LPCSTR defChar, LPBOOL usedDefault)` | `"Int"` | Returns bytes written; cp = `65001` for UTF-8, `0` for system ANSI; pass 0 for dstLen to compute required size |
+| `MultiByteToWideChar` | `int MultiByteToWideChar(UINT cp, DWORD flags, LPCSTR src, int srcLen, LPWSTR dst, int dstLen)` | `"Int"` | Returns wide chars written; pass 0 for dstLen to compute required size |
+
+### Error Reporting (kernel32)
+| Function | C signature summary | AHK return type | Notes |
+|----------|--------------------|-----------------|----|
+| `GetLastError` | `DWORD GetLastError()` | `"UInt"` | Same value as `A_LastError`; use `A_LastError` directly in AHK v2 instead |
+| `FormatMessageW` | `DWORD FormatMessageW(DWORD flags, LPCVOID src, DWORD msgId, DWORD langId, LPWSTR buf, DWORD size, va_list* args)` | `"UInt"` | `FORMAT_MESSAGE_FROM_SYSTEM|ALLOCATE_BUFFER = 0x1300` returns a self-allocated buffer pointer |
+
+### System Information (kernel32)
+| Function | C signature summary | AHK return type | Notes |
+|----------|--------------------|-----------------|----|
+| `GetSystemInfo` | `VOID GetSystemInfo(LPSYSTEM_INFO lpSystemInfo)` | (void) | SYSTEM_INFO is 48 bytes; wProcessorArchitecture at offset 0 (UShort), dwNumberOfProcessors at offset 20 (UInt), dwPageSize at offset 4 (UInt) |
+| `GetComputerNameW` | `BOOL GetComputerNameW(LPWSTR lpBuf, LPDWORD nSize)` | `"Int"` | lpBuf = Buffer(MAX_COMPUTERNAME_LENGTH*2+2); pass nSize as `"UIntP"` |
+| `GetUserNameW` | `BOOL GetUserNameW(LPWSTR lpBuf, LPDWORD pcbBuf)` | `"Int"` | Same pattern as GetComputerNameW; requires `advapi32\GetUserNameW` |
+
+### Synchronization (kernel32)
+| Function | C signature summary | AHK return type | Notes |
+|----------|--------------------|-----------------|----|
+| `CreateMutexW` | `HANDLE CreateMutexW(LPSECURITY_ATTRIBUTES lpAttr, BOOL bInitialOwner, LPCWSTR lpName)` | `"Ptr"` | Named mutex for cross-process; unnamed for in-process |
+| `OpenMutexW` | `HANDLE OpenMutexW(DWORD dwAccess, BOOL bInherit, LPCWSTR lpName)` | `"Ptr"` | Opens existing named mutex; `MUTEX_ALL_ACCESS = 0x1F0001` |
+| `WaitForSingleObject` | `DWORD WaitForSingleObject(HANDLE hObj, DWORD dwMs)` | `"UInt"` | `WAIT_OBJECT_0 = 0`, `WAIT_TIMEOUT = 0x102`, `INFINITE = 0xFFFFFFFF` |
+| `ReleaseMutex` | `BOOL ReleaseMutex(HANDLE hMutex)` | `"Int"` | Must be called by the owning thread to release |
+| `CloseHandle` | `BOOL CloseHandle(HANDLE hObj)` | `"Int"` | Required for every HANDLE returned by Create*/Open* — omitting leaks kernel objects |
+
 ### Win32 Type Mapping
 Reference this table when reading Windows API documentation to select the correct DllCall type string for each parameter or return value.
 
@@ -121,6 +186,10 @@ Reference this table when reading Windows API documentation to select the correc
 - `EnumWindows` and `EnumChildWindows` callbacks must return a non-zero value (typically `1`) to continue enumeration — returning `0` terminates iteration after the first window.
 - String encoding must be explicit: Windows Unicode APIs require `"UTF-16"` for `StrPut`/`StrGet`; ANSI APIs require `"AStr"` in DllCall, or `"CP0"` (system ANSI codepage) for `StrPut`/`StrGet` — mixing encodings silently corrupts multi-byte string content.
 - Struct field byte offsets must be derived from official Windows API documentation — even a one-byte error in offset produces silently wrong values or a crash; never estimate offsets.
+- `SIZE_T` parameters (`RtlMoveMemory`, `RtlFillMemory`, `RtlZeroMemory`, `RtlCompareMemory`, `VirtualAlloc`, `HeapAlloc`, `GlobalAlloc` length fields) **must** use `"UPtr"`, not `"UInt"` — `"UInt"` clips the value to 32 bits on a 64-bit process, silently truncating lengths above 4 GB and misrepresenting pointer-arithmetic results.
+- `RtlMoveMemory`, `RtlZeroMemory`, `RtlFillMemory` are void functions — do not specify or check a return type; specifying a return type reads an undefined register value.
+- Every `HANDLE` obtained via `CreateMutexW`, `OpenMutexW`, `VirtualAlloc`, `HeapAlloc`, or `GlobalAlloc` must be released via the corresponding close/free function — Windows kernel objects are not reference-counted; omitting the close leaks the handle for the lifetime of the process.
+- `HeapFree` must not be called on a Buffer object's `.Ptr` — Buffer has its own internal allocator; mixing allocators causes heap corruption and a crash.
 
 Safe-access priority order for DllCall and memory operations:
   1. `DllCall("DLL\Func", types..., "ReturnType")` with explicit return type — prevents silent truncation on first call
@@ -137,6 +206,12 @@ Paired prohibition/alternative examples:
 
 - ✗ `(n, w, l) => { stmts }` passed to CallbackCreate — multi-statement fat-arrow not supported
 - ✓ Define a named function and pass its reference to CallbackCreate
+
+- ✗ `DllCall("ntdll\RtlMoveMemory", "Ptr", dst, "Ptr", src, "UInt", size)` — "UInt" clips SIZE_T
+- ✓ `DllCall("ntdll\RtlMoveMemory", "Ptr", dst, "Ptr", src, "UPtr", size)` — SIZE_T is pointer-width
+
+- ✗ `addr := DllCall("Kernel32\VirtualAlloc", ..., "Int")` — "Int" truncates the returned LPVOID
+- ✓ `addr := DllCall("Kernel32\VirtualAlloc", ..., "Ptr")` — preserves full 64-bit base address
 
 ## TIER 1 — Buffer Object Fundamentals
 > METHODS COVERED: Buffer() · .Ptr · .Size · A_PtrSize
@@ -190,10 +265,10 @@ buf3 := Buffer(32, 0)
 ptrBuf := Buffer(A_PtrSize, 0)
 ```
 
-## TIER 2 — Memory Read and Write
-> METHODS COVERED: NumPut() · NumGet() · StrPut() · StrGet()
+## TIER 2 — Memory Read, Write, and Block Operations
+> METHODS COVERED: NumPut() · NumGet() · StrPut() · StrGet() · RtlMoveMemory · RtlCopyMemory · RtlFillMemory · RtlZeroMemory · RtlCompareMemory
 
-`NumPut` writes typed integer values into a Buffer at a byte offset; `NumGet` reads them back. `StrPut` encodes an AHK string into a Buffer using an explicit encoding, and `StrGet` decodes a Buffer or raw pointer back to an AHK string. Type and encoding specification is mandatory in every call — mismatches silently produce wrong values or corrupt multi-byte string content without throwing any error.
+`NumPut` writes typed integer values into a Buffer at a byte offset; `NumGet` reads them back. `StrPut` encodes an AHK string into a Buffer using an explicit encoding, and `StrGet` decodes a Buffer or raw pointer back to an AHK string. Type and encoding specification is mandatory in every call — mismatches silently produce wrong values or corrupt multi-byte string content without throwing any error. The `ntdll` block-operation functions (`RtlMoveMemory`, `RtlFillMemory`, `RtlZeroMemory`, `RtlCompareMemory`) provide efficient byte-level operations on entire Buffer regions and are preferred over manual `NumPut`/`NumGet` loops for large-scale memory manipulation.
 ```ahk
 ; ── NumPut / NumGet — integer field I/O ──────────────────────────────────────────
 ; ✓ NumPut(Type, Value, Target, Offset) — type string is FIRST argument
@@ -215,8 +290,8 @@ v5 := NumGet(buf, 12, "Int64")  ; → 9007199254
 ; ── Always specify type in NumGet to document intent clearly ─────────────────────
 ; ✓ Explicit type — correct and self-documenting on both x86 and x64
 ptrVal := NumGet(buf, 0, "UPtr")
-; ✗ NumGet(buf, 0) — throws ValueError in v2; Type is mandatory and has no default;
-;     always specify the type explicitly
+; ✗ NumGet(buf, 0) — Type silently defaults to "UPtr"; specify type explicitly
+;     to document intent and avoid silently reading at the wrong width
 
 ; ── StrPut / StrGet — encoding-safe string I/O ───────────────────────────────────
 ; ✓ Call StrPut with no Target first to get the required byte count, then allocate
@@ -251,10 +326,105 @@ inner := Buffer(8, 0xAB)
 NumPut("Ptr", inner.Ptr, pBuf, 0)                       ; store inner.Ptr at slot 0
 readBack := NumGet(pBuf, 0, "Ptr")                       ; retrieve the stored address
 MsgBox(readBack = inner.Ptr ? "Ptr match" : "Mismatch") ; → "Ptr match"
+
+; ════════════════════════════════════════════════════════════════════════════════════
+; ── ntdll BLOCK OPERATIONS — efficient byte-level memory manipulation ────────────
+; ════════════════════════════════════════════════════════════════════════════════════
+
+; ── RtlMoveMemory — copy bytes between two Buffer objects (overlap-safe) ─────────
+; VOID RtlMoveMemory(PVOID dst, const VOID* src, SIZE_T len)
+; ✓ "UPtr" for SIZE_T — "UInt" clips to 32 bits on x64 and corrupts copies above 4 GB
+srcBuf := Buffer(16, 0)
+dstBuf := Buffer(16, 0)
+NumPut("Int64", 0x0102030405060708, srcBuf, 0)
+NumPut("Int64", 0x090A0B0C0D0E0F10, srcBuf, 8)
+
+DllCall("ntdll\RtlMoveMemory",
+    "Ptr",  dstBuf,       ; Destination (PVOID)
+    "Ptr",  srcBuf,       ; Source      (const VOID*)
+    "UPtr", srcBuf.Size)  ; Length      (SIZE_T) — UPtr, not UInt
+
+; ✓ RtlMoveMemory returns void — no return type argument needed
+MsgBox(NumGet(dstBuf, 0, "Int64") = 0x0102030405060708 ? "Copy OK" : "Mismatch")
+
+; ── Overlap-safe in-place shift (memmove semantics) ──────────────────────────────
+; ✓ RtlMoveMemory handles src/dst overlap correctly — use when regions may overlap
+overlapBuf := Buffer(32, 0)
+NumPut("Int", 1, overlapBuf, 0)
+NumPut("Int", 2, overlapBuf, 4)
+NumPut("Int", 3, overlapBuf, 8)
+
+; Shift data from offset 0 to offset 4 (overlapping 8-byte copy)
+DllCall("ntdll\RtlMoveMemory",
+    "Ptr",  overlapBuf.Ptr + 4,   ; dst = 4 bytes into the same buffer
+    "Ptr",  overlapBuf,            ; src = start of buffer
+    "UPtr", 12)                    ; copy 12 bytes — overlaps safely
+; → overlapBuf[4..15] now contains the original [0..11]
+
+; ── RtlCopyMemory — fast non-overlapping copy (memcpy semantics) ─────────────────
+; ✓ Use only when src and dst regions are guaranteed non-overlapping
+buf_a := Buffer(64, 0xAA)
+buf_b := Buffer(64, 0)
+DllCall("ntdll\RtlCopyMemory",
+    "Ptr",  buf_b,
+    "Ptr",  buf_a,
+    "UPtr", 64)
+MsgBox(NumGet(buf_b, 0, "UChar") = 0xAA ? "RtlCopyMemory OK" : "Fail")
+
+; ── RtlFillMemory — fill a region with a repeating byte value ────────────────────
+; VOID RtlFillMemory(PVOID dst, SIZE_T len, UCHAR fill)
+; ✓ Preferred over a NumPut loop for initialization of large buffers
+fillBuf := Buffer(256)
+DllCall("ntdll\RtlFillMemory",
+    "Ptr",   fillBuf,       ; Destination
+    "UPtr",  fillBuf.Size,  ; Length (SIZE_T)
+    "UChar", 0xFF)          ; Fill byte
+MsgBox(NumGet(fillBuf, 0,   "UChar") = 0xFF   ; → true
+    && NumGet(fillBuf, 255, "UChar") = 0xFF ? "Fill OK" : "Fail")
+
+; ✗ NumPut loop for large-buffer init — O(n) individual calls vs one C-speed fill
+; Loop fillBuf.Size
+;     NumPut("UChar", 0xFF, fillBuf, A_Index-1)  ; → very slow at scale
+
+; ── RtlZeroMemory — zero-fill a region (reset a reused Buffer) ───────────────────
+; VOID RtlZeroMemory(PVOID dst, SIZE_T len)
+; ✓ Re-initializes a reused Buffer to a known-zero state without re-allocating
+reuse := Buffer(128, 0xFF)    ; pre-filled for demonstration
+MsgBox(NumGet(reuse, 0, "UChar"))   ; → 255
+
+DllCall("ntdll\RtlZeroMemory",
+    "Ptr",  reuse,
+    "UPtr", reuse.Size)
+MsgBox(NumGet(reuse, 0, "UChar"))   ; → 0  (re-zeroed in-place, no reallocation)
+
+; ── RtlCompareMemory — compare two regions, get count of matching bytes ───────────
+; SIZE_T RtlCompareMemory(const VOID* s1, const VOID* s2, SIZE_T len) → "UPtr"
+; ✓ Returns the number of identical bytes from the start; equal iff result = len
+cmp_a := Buffer(8, 0xAB)
+cmp_b := Buffer(8, 0xAB)
+NumPut("UChar", 0xFF, cmp_b, 4)   ; difference at byte 4
+
+matchCount := DllCall("ntdll\RtlCompareMemory",
+    "Ptr",  cmp_a,
+    "Ptr",  cmp_b,
+    "UPtr", cmp_a.Size,
+    "UPtr")                         ; ✓ return "UPtr" — SIZE_T is pointer-width
+
+MsgBox("First " matchCount " bytes match (expected 4)")
+
+; ✓ Full equality test: match count must equal the requested length
+if matchCount = cmp_a.Size
+    MsgBox("Buffers are identical")
+else
+    MsgBox("First difference at byte " matchCount)
+
+; ✗ Wrong: testing !matchCount as "not equal" — returns 0 only if the first byte differs
+; if !matchCount          ; → only fires when byte[0] differs; misses all other cases
+;     MsgBox("Not equal") ; → silent false-positive when byte[0] matches but later bytes differ
 ```
 
-## TIER 3 — Simple DllCall
-> METHODS COVERED: DllCall() · A_LastError · A_PtrSize · GetModuleHandleW · LoadLibraryW · GetProcAddress · FreeLibrary · GetCursorPos · GetForegroundWindow · SetWindowTextW · GetTickCount · MessageBoxW
+## TIER 3 — Simple DllCall and Core Win32 Utilities
+> METHODS COVERED: DllCall() · A_LastError · A_PtrSize · GetModuleHandleW · LoadLibraryW · GetProcAddress · FreeLibrary · GetCursorPos · GetForegroundWindow · SetWindowTextW · GetTickCount · MessageBoxW · VirtualAlloc · VirtualFree · GetSystemInfo · GetComputerNameW · FormatMessageW · WideCharToMultiByte · MultiByteToWideChar
 
 `DllCall("DLL\FunctionName", Type1, Arg1, ..., ReturnType)` is the gateway to any Windows API. The DLL name may be omitted for functions exported from the four auto-searched system libraries (`user32`, `kernel32`, `comctl32`, `gdi32`). Every argument requires an explicit type string, and the return type must be specified whenever it differs from the default `"Int"` to prevent silent truncation of pointer-sized or unsigned return values.
 ```ahk
@@ -325,6 +495,222 @@ SafeDllCall() {
         return 0
     }
 }
+
+; ════════════════════════════════════════════════════════════════════════════════════
+; ── VIRTUAL MEMORY — VirtualAlloc / VirtualFree ───────────────────────────────────
+; VirtualAlloc allocates memory at page granularity (typically 4 KB).
+; Use when you need executable memory, large scratch space, or controlled protection.
+; ════════════════════════════════════════════════════════════════════════════════════
+
+; LPVOID VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocType, DWORD flProtect)
+; ✓ Return type "Ptr" — LPVOID is pointer-sized; "Int" truncates the address on x64
+MEM_COMMIT_RESERVE := 0x3000   ; MEM_COMMIT (0x1000) | MEM_RESERVE (0x2000)
+PAGE_READWRITE     := 0x04
+
+addr := DllCall("Kernel32\VirtualAlloc",
+    "Ptr",  0,                    ; lpAddress = NULL (let OS choose)
+    "UPtr", 4096,                 ; dwSize = one page (SIZE_T → UPtr)
+    "UInt", MEM_COMMIT_RESERVE,   ; flAllocType
+    "UInt", PAGE_READWRITE,       ; flProtect
+    "Ptr")                        ; ✓ LPVOID return
+
+if addr = 0
+    MsgBox("VirtualAlloc failed: " A_LastError)
+else {
+    ; ✓ Write and read back using NumPut/NumGet on the raw address
+    NumPut("UInt", 0xDEADBEEF, addr, 0)
+    val := NumGet(addr, 0, "UInt")
+    MsgBox(Format("VirtualAlloc: wrote 0x{:X} at 0x{:X}", val, addr))
+
+    ; BOOL VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType)
+    ; ✓ MEM_RELEASE (0x8000) requires dwSize = 0 — any non-zero size causes ERROR_INVALID_PARAMETER
+    ok := DllCall("Kernel32\VirtualFree",
+        "Ptr",  addr,
+        "UPtr", 0,         ; dwSize must be 0 for MEM_RELEASE
+        "UInt", 0x8000,    ; MEM_RELEASE
+        "Int")
+    if !ok
+        MsgBox("VirtualFree failed: " A_LastError)
+}
+
+; ── VirtualProtect — change protection on an already-committed page ───────────────
+; ✓ Pass a 4-byte Buffer for lpflOldProtect (output DWORD)
+VirtualAllocAndProtect() {
+    local addr := DllCall("Kernel32\VirtualAlloc",
+        "Ptr", 0, "UPtr", 4096, "UInt", 0x3000, "UInt", 0x04, "Ptr")
+    if !addr
+        return
+
+    local oldProt := Buffer(4, 0)    ; PDWORD lpflOldProtect output slot
+    ; Change to PAGE_READONLY (0x02)
+    DllCall("Kernel32\VirtualProtect",
+        "Ptr",  addr,
+        "UPtr", 4096,
+        "UInt", 0x02,      ; PAGE_READONLY
+        "Ptr",  oldProt,   ; receives the previous protection value
+        "Int")
+    MsgBox("Old protection: 0x" Format("{:X}", NumGet(oldProt, 0, "UInt")))  ; → 0x4
+
+    DllCall("Kernel32\VirtualFree", "Ptr", addr, "UPtr", 0, "UInt", 0x8000, "Int")
+}
+VirtualAllocAndProtect()
+
+; ════════════════════════════════════════════════════════════════════════════════════
+; ── SYSTEM INFORMATION — GetSystemInfo / GetComputerNameW ─────────────────────────
+; ════════════════════════════════════════════════════════════════════════════════════
+
+; typedef struct _SYSTEM_INFO {
+;   WORD  wProcessorArchitecture;  // offset 0  (UShort)
+;   WORD  wReserved;               // offset 2
+;   DWORD dwPageSize;              // offset 4  (UInt)
+;   LPVOID lpMinimumApplicationAddress; // offset 8  (Ptr)
+;   LPVOID lpMaximumApplicationAddress; // offset 8+A_PtrSize (Ptr)
+;   DWORD_PTR dwActiveProcessorMask;    // offset 8+A_PtrSize*2 (UPtr)
+;   DWORD dwNumberOfProcessors;    // offset 8+A_PtrSize*3 (UInt)
+;   DWORD dwProcessorType;         // offset 12+A_PtrSize*3 (UInt)
+;   DWORD dwAllocationGranularity; // offset 16+A_PtrSize*3 (UInt)
+;   WORD  wProcessorLevel;         // offset 20+A_PtrSize*3 (UShort)
+;   WORD  wProcessorRevision;      // offset 22+A_PtrSize*3 (UShort)
+; }  SYSTEM_INFO; (total 48 bytes on x64)
+
+; ✓ GetSystemInfo is void — no return type needed; allocate at least 48 bytes
+sysInfo := Buffer(48, 0)
+DllCall("Kernel32\GetSystemInfo", "Ptr", sysInfo)
+
+; Architecture constants: 0=x86, 9=x64/AMD64, 12=ARM64
+arch        := NumGet(sysInfo, 0,                "UShort")
+pageSize    := NumGet(sysInfo, 4,                "UInt")
+numCPUs     := NumGet(sysInfo, 8 + A_PtrSize*3,  "UInt")   ; dwNumberOfProcessors
+granularity := NumGet(sysInfo, 16 + A_PtrSize*3, "UInt")   ; dwAllocationGranularity
+
+archName := (arch = 9) ? "x64" : (arch = 12) ? "ARM64" : (arch = 0) ? "x86" : "Unknown"
+MsgBox("Architecture: "  archName
+    "`nPage size: "      pageSize    " bytes"
+    "`nLogical CPUs: "   numCPUs
+    "`nAlloc granularity: " granularity " bytes")
+
+; ── GetComputerNameW — retrieve this machine's NetBIOS name ──────────────────────
+; BOOL GetComputerNameW(LPWSTR lpBuffer, LPDWORD nSize)
+; MAX_COMPUTERNAME_LENGTH = 15 characters; buffer = (15+1) * 2 bytes for wide chars
+MAX_COMPUTERNAME := 16
+nameBuf  := Buffer(MAX_COMPUTERNAME * 2, 0)   ; wide-char buffer
+nameSize := MAX_COMPUTERNAME                   ; character count (not bytes)
+
+; ✓ "UIntP" passes the address of nameSize (LPDWORD); API writes the actual char count back
+ok := DllCall("Kernel32\GetComputerNameW",
+    "Ptr",   nameBuf,
+    "UIntP", nameSize,    ; IN/OUT: pass count, receive actual length
+    "Int")
+if ok
+    MsgBox("Computer name: " StrGet(nameBuf, "UTF-16"))
+
+; ════════════════════════════════════════════════════════════════════════════════════
+; ── FormatMessageW — convert Win32 error code to human-readable string ────────────
+; Eliminates the need for a lookup table of error code descriptions.
+; ════════════════════════════════════════════════════════════════════════════════════
+
+; FORMAT_MESSAGE_FROM_SYSTEM  = 0x00001000
+; FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
+; Combined flag               = 0x00001200
+FormatWin32Error(errCode) {
+    local msgBuf := Buffer(512 * 2, 0)   ; 512 wide chars
+    local len := DllCall("Kernel32\FormatMessageW",
+        "UInt", 0x1200,   ; FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+        "Ptr",  0,         ; lpSource = NULL (use system message table)
+        "UInt", errCode,
+        "UInt", 0x0400,   ; MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT) = 0x0400
+        "Ptr",  msgBuf,
+        "UInt", 256,       ; nSize in wide chars
+        "Ptr",  0,         ; va_list = NULL
+        "UInt")
+    if len = 0
+        return "Unknown error 0x" Format("{:08X}", errCode)
+    ; Strip trailing \r\n that FormatMessage appends
+    local msg := StrGet(msgBuf, "UTF-16")
+    return RTrim(msg, "`r`n ")
+}
+
+; ✓ Any A_LastError value can be converted to a readable description
+result := DllCall("User32\GetForegroundWindow", "Ptr")
+if result = 0
+    MsgBox("Error: " FormatWin32Error(A_LastError))
+else
+    MsgBox(FormatWin32Error(0))   ; → "The operation completed successfully."
+
+; ════════════════════════════════════════════════════════════════════════════════════
+; ── WideCharToMultiByte / MultiByteToWideChar — explicit encoding conversion ───────
+; Use when StrPut/StrGet encoding support is insufficient (e.g., GB2312, Shift-JIS,
+; or when you need the Windows codepage flags for best-fit mapping control).
+; ════════════════════════════════════════════════════════════════════════════════════
+
+; ── Wide (UTF-16) → UTF-8 using WideCharToMultiByte ──────────────────────────────
+; ✓ Two-call pattern: first call with dstLen=0 to get required byte count, then convert
+WideToUTF8(wideStr) {
+    ; Step 1: compute required byte count (including null terminator)
+    local byteCount := DllCall("Kernel32\WideCharToMultiByte",
+        "UInt", 65001,      ; CP_UTF8
+        "UInt", 0,          ; dwFlags = 0
+        "Str",  wideStr,    ; lpWideCharStr (AHK "Str" passes UTF-16 buffer)
+        "Int",  -1,         ; cchWideChar = -1 → null-terminated
+        "Ptr",  0,          ; lpMultiByteStr = NULL (compute only)
+        "Int",  0,          ; cbMultiByte = 0
+        "Ptr",  0,          ; lpDefaultChar = NULL
+        "Ptr",  0,          ; lpUsedDefaultChar = NULL
+        "Int")
+    if byteCount = 0
+        return ""
+
+    ; Step 2: allocate and convert
+    local utf8Buf := Buffer(byteCount, 0)
+    DllCall("Kernel32\WideCharToMultiByte",
+        "UInt", 65001,
+        "UInt", 0,
+        "Str",  wideStr,
+        "Int",  -1,
+        "Ptr",  utf8Buf,
+        "Int",  byteCount,
+        "Ptr",  0,
+        "Ptr",  0,
+        "Int")
+    ; ✓ StrGet with "UTF-8" recovers the string; byteCount-1 excludes the null
+    return StrGet(utf8Buf, byteCount - 1, "UTF-8")
+}
+
+; ── UTF-8 bytes → Wide (UTF-16) using MultiByteToWideChar ─────────────────────────
+; ✓ Two-call pattern: first call with cchWideChar=0 to get required wide-char count
+UTF8ToWide(utf8Buf, byteCount) {
+    ; Step 1: compute wide char count
+    local wcharCount := DllCall("Kernel32\MultiByteToWideChar",
+        "UInt", 65001,      ; CP_UTF8
+        "UInt", 0,          ; dwFlags
+        "Ptr",  utf8Buf,    ; lpMultiByteStr
+        "Int",  byteCount,  ; cbMultiByte
+        "Ptr",  0,          ; lpWideCharStr = NULL (compute only)
+        "Int",  0,          ; cchWideChar = 0
+        "Int")
+    if wcharCount = 0
+        return ""
+
+    ; Step 2: allocate wide buffer and convert
+    local wideBuf := Buffer(wcharCount * 2, 0)   ; 2 bytes per UTF-16 code unit
+    DllCall("Kernel32\MultiByteToWideChar",
+        "UInt", 65001,
+        "UInt", 0,
+        "Ptr",  utf8Buf,
+        "Int",  byteCount,
+        "Ptr",  wideBuf,
+        "Int",  wcharCount,
+        "Int")
+    return StrGet(wideBuf, "UTF-16")
+}
+
+; ✓ Round-trip test: AHK string → UTF-8 bytes → AHK string
+original   := "Hello, 世界"
+asUTF8     := WideToUTF8(original)           ; → byte string
+utf8Bytes  := Buffer(StrPut(original, "UTF-8") - 1, 0)
+StrPut(original, utf8Bytes, "UTF-8")
+recovered  := UTF8ToWide(utf8Bytes, utf8Bytes.Size)
+MsgBox(recovered = original ? "Round-trip OK" : "Mismatch")
 ```
 
 ## TIER 4 — System Message Passing and Interception
@@ -408,10 +794,10 @@ OnMouseMove(wParam, lParam, msg, hwnd) {
 }
 ```
 
-## TIER 5 — Struct Simulation with DllCall
-> METHODS COVERED: Buffer() · NumPut() · NumGet() · DllCall() · WinStruct (base class) · RECT (extends WinStruct) · SYSTEMTIME_Struct (extends WinStruct) · GetWindowRect · GetLocalTime · GetWindowPlacement · SetWindowPlacement · GetModuleHandleW · GetProcAddress
+## TIER 5 — Struct Simulation, Heap and Global Memory
+> METHODS COVERED: Buffer() · NumPut() · NumGet() · DllCall() · WinStruct (base class) · RECT (extends WinStruct) · SYSTEMTIME_Struct (extends WinStruct) · GetWindowRect · GetLocalTime · GetWindowPlacement · SetWindowPlacement · GetModuleHandleW · GetProcAddress · GetProcessHeap · HeapAlloc · HeapFree · HeapSize · GlobalAlloc · GlobalFree · GlobalLock · GlobalUnlock · GlobalSize · CreateMutexW · WaitForSingleObject · ReleaseMutex · CloseHandle
 
-Windows APIs that accept or return structs require a correctly-sized, correctly-aligned Buffer with fields accessed at documented byte offsets. AHK v2 has no native struct type, so structs are simulated by computing offsets from the official Windows API documentation and using `NumPut`/`NumGet` with the correct type strings. Wrapping a struct in a class (extending `WinStruct`) centralizes offset knowledge and exposes safe named accessors — eliminating raw magic-number offsets at every call site.
+Windows APIs that accept or return structs require a correctly-sized, correctly-aligned Buffer with fields accessed at documented byte offsets. AHK v2 has no native struct type, so structs are simulated by computing offsets from the official Windows API documentation and using `NumPut`/`NumGet` with the correct type strings. Wrapping a struct in a class (extending `WinStruct`) centralizes offset knowledge and exposes safe named accessors — eliminating raw magic-number offsets at every call site. This tier also covers the process heap and global memory APIs, which are required for COM interop (clipboard, shell), and synchronization primitives for guarding shared state accessed from multiple AHK threads.
 ```ahk
 ; ── WinStruct — base class for all C-struct simulations ──────────────────────────
 ; ✓ Subclasses set a static ByteSize, call super.__New(), and expose field offsets
@@ -560,11 +946,163 @@ if hwnd := WinExist("A") {
     MsgBox("showCmd=" saved.showCmd)
     RestoreWindowPlacement(hwnd, saved)
 }
+
+; ════════════════════════════════════════════════════════════════════════════════════
+; ── PROCESS HEAP — HeapAlloc / HeapFree ──────────────────────────────────────────
+; Use the process heap when interoperating with COM components or Win32 APIs that
+; expect HeapFree-compatible allocations, or when you need raw heap memory whose
+; lifetime you control manually (without AHK's Buffer reference counting).
+; ════════════════════════════════════════════════════════════════════════════════════
+
+; ✓ GetProcessHeap() returns the default process heap handle — reuse across calls
+hHeap := DllCall("Kernel32\GetProcessHeap", "Ptr")
+MsgBox("Process heap handle: 0x" Format("{:X}", hHeap))
+
+; HEAP_ZERO_MEMORY = 8 — fills allocated bytes with zero (equivalent to Buffer(n, 0))
+; ✓ "Ptr" return for HeapAlloc — LPVOID is pointer-sized
+heapPtr := DllCall("Kernel32\HeapAlloc",
+    "Ptr",  hHeap,
+    "UInt", 8,        ; HEAP_ZERO_MEMORY
+    "UPtr", 128,      ; dwBytes (SIZE_T → UPtr)
+    "Ptr")
+
+if heapPtr = 0
+    MsgBox("HeapAlloc failed: " A_LastError)
+else {
+    ; Write data into the heap block using NumPut with the raw address
+    NumPut("UInt", 0xCAFEBABE, heapPtr, 0)
+    val := NumGet(heapPtr, 0, "UInt")
+    MsgBox(Format("HeapAlloc: wrote 0x{:X}", val))
+
+    ; Confirm allocation size via HeapSize
+    allocSz := DllCall("Kernel32\HeapSize",
+        "Ptr",  hHeap,
+        "UInt", 0,
+        "Ptr",  heapPtr,
+        "UPtr")                    ; SIZE_T return
+    MsgBox("HeapSize: " allocSz " bytes (requested 128)")
+
+    ; ✓ Always free with the same heap handle used at allocation
+    DllCall("Kernel32\HeapFree", "Ptr", hHeap, "UInt", 0, "Ptr", heapPtr, "Int")
+    ; ✗ DO NOT call HeapFree on a Buffer's .Ptr — Buffer uses its own allocator
+}
+
+; ════════════════════════════════════════════════════════════════════════════════════
+; ── GLOBAL MEMORY — GlobalAlloc / GlobalLock / GlobalUnlock / GlobalFree ─────────
+; Required for clipboard operations (CF_UNICODETEXT, CF_HDROP) and some shell APIs
+; that document "pass an HGLOBAL" — these expect GlobalAlloc/GlobalFree lifecycle.
+; ════════════════════════════════════════════════════════════════════════════════════
+
+; GMEM_MOVEABLE = 0x0002 — required for clipboard; OS may move the block
+; GMEM_ZEROINIT = 0x0040 — zero-fills on allocation
+; Combined:        0x0042
+CopyTextToClipboard(text) {
+    local byteSize := StrPut(text, "UTF-16")   ; includes null terminator
+    local hGlobal  := DllCall("Kernel32\GlobalAlloc",
+        "UInt", 0x0042,       ; GMEM_MOVEABLE | GMEM_ZEROINIT
+        "UPtr", byteSize,     ; SIZE_T → UPtr
+        "Ptr")                ; HGLOBAL return → Ptr
+
+    if hGlobal = 0
+        throw Error("GlobalAlloc failed: " A_LastError, -1)
+
+    ; ✓ Lock the moveable block to get a usable pointer
+    local pData := DllCall("Kernel32\GlobalLock", "Ptr", hGlobal, "Ptr")
+    if pData = 0 {
+        DllCall("Kernel32\GlobalFree", "Ptr", hGlobal, "Ptr")
+        throw Error("GlobalLock failed: " A_LastError, -1)
+    }
+
+    StrPut(text, pData, "UTF-16")
+
+    ; ✓ Must unlock before passing to clipboard — GlobalUnlock decrements lock count
+    DllCall("Kernel32\GlobalUnlock", "Ptr", hGlobal, "Int")
+
+    ; Open clipboard, set data, close (OS takes ownership of hGlobal on SetClipboardData)
+    if DllCall("User32\OpenClipboard", "Ptr", 0, "Int") {
+        DllCall("User32\EmptyClipboard", "Int")
+        DllCall("User32\SetClipboardData",
+            "UInt", 13,        ; CF_UNICODETEXT = 13
+            "Ptr",  hGlobal,   ; hGlobal ownership transferred to OS — do NOT free
+            "Ptr")
+        DllCall("User32\CloseClipboard", "Int")
+    } else {
+        ; ✓ Free only if we did not transfer ownership to the clipboard
+        DllCall("Kernel32\GlobalFree", "Ptr", hGlobal, "Ptr")
+        throw Error("OpenClipboard failed: " A_LastError, -1)
+    }
+}
+
+; ✓ Check GlobalSize before writing to verify allocation succeeded
+VerifyGlobalAlloc(hGlobal, expected) {
+    local sz := DllCall("Kernel32\GlobalSize", "Ptr", hGlobal, "UPtr")
+    return sz >= expected
+}
+
+CopyTextToClipboard("Hello from AHK v2 via GlobalAlloc!")
+MsgBox("Clipboard set — Ctrl+V to paste")
+
+; ════════════════════════════════════════════════════════════════════════════════════
+; ── SYNCHRONIZATION — CreateMutexW / WaitForSingleObject / ReleaseMutex ──────────
+; Use named mutexes to enforce single-instance execution or to protect shared state
+; accessed from multiple SetTimer callbacks or threads.
+; ════════════════════════════════════════════════════════════════════════════════════
+
+; MUTEX_ALL_ACCESS  = 0x1F0001
+; WAIT_OBJECT_0     = 0x00000000  (mutex acquired successfully)
+; WAIT_TIMEOUT      = 0x00000102  (timeout elapsed before acquisition)
+; INFINITE          = 0xFFFFFFFF  (wait forever)
+
+; ── Named mutex — single-instance guard ──────────────────────────────────────────
+; ✓ "Ptr" return for HANDLE — CreateMutexW returns a HANDLE (pointer-sized)
+hMutex := DllCall("Kernel32\CreateMutexW",
+    "Ptr",  0,                    ; lpMutexAttributes = NULL (no security descriptor)
+    "Int",  0,                    ; bInitialOwner = FALSE
+    "Str",  "MyApp_SingleInst",   ; lpName — unique per-app string
+    "Ptr")                        ; HANDLE return
+
+if hMutex = 0
+    throw Error("CreateMutexW failed: " A_LastError, -1)
+
+; ERROR_ALREADY_EXISTS = 183 — another instance created this mutex before us
+if A_LastError = 183 {
+    MsgBox("Another instance is already running.")
+    DllCall("Kernel32\CloseHandle", "Ptr", hMutex, "Int")
+    ExitApp
+}
+
+; ── Timed wait before acquiring mutex ownership ───────────────────────────────────
+; ✓ 1000 ms timeout — avoids indefinite blocking if the mutex owner hangs
+waitResult := DllCall("Kernel32\WaitForSingleObject",
+    "Ptr",  hMutex,
+    "UInt", 1000,    ; dwMilliseconds — INFINITE (0xFFFFFFFF) waits forever
+    "UInt")
+
+if waitResult = 0x00000000 {        ; WAIT_OBJECT_0 — mutex acquired
+    ; ── critical section ──
+    MsgBox("Mutex acquired. Running exclusive code.")
+    ; ── release after critical section ──
+    ; ✓ ReleaseMutex must be called by the same thread that called WaitForSingleObject
+    DllCall("Kernel32\ReleaseMutex", "Ptr", hMutex, "Int")
+} else if waitResult = 0x00000102 { ; WAIT_TIMEOUT
+    MsgBox("Mutex wait timed out — another instance holds the lock.")
+} else {
+    MsgBox("WaitForSingleObject failed: " A_LastError)
+}
+
+; ✓ Always close the handle when done — kernel object leak if omitted
+DllCall("Kernel32\CloseHandle", "Ptr", hMutex, "Int")
 ```
 
 ### Performance Notes
 
 DllCall incurs per-call overhead from type marshalling and AHK's internal name-resolution dispatch. For hot loops calling the same function repeatedly, resolve the function address once via `GetProcAddress` and call by numeric address — this eliminates a `GetProcAddress` lookup on every iteration. Buffer allocation is not free: creating a new `Buffer` inside a loop forces an alloc/free cycle on every iteration; allocate once outside the loop and reuse. Callback stubs are expensive: `CallbackCreate` inside a loop creates a new native stub on every iteration; create once at initialization and store the address. String argument choice matters: use `"Str"` for one-shot arguments (AHK passes the string's own UTF-16 buffer directly); use explicit `Buffer + StrPut` only when the API retains the string pointer beyond the call frame or in async flows.
+
+For block memory operations: `RtlMoveMemory`/`RtlZeroMemory`/`RtlFillMemory` are implemented in C-speed native code and are dramatically faster than equivalent `NumPut` loops — prefer them for any buffer larger than ~32 bytes. `RtlCompareMemory` short-circuits on the first mismatch, making it O(1) in the common cache-hit case; however it always scans the full `len` bytes in the worst case, so minimize `len` to the meaningful region. `VirtualAlloc` and `HeapAlloc` both add per-call overhead well beyond `Buffer` creation; use them only when the calling convention requires it (clipboard, COM, executable memory), not as a general-purpose replacement for `Buffer`.
+
+`WideCharToMultiByte` and `MultiByteToWideChar` are O(n) in the string length; cache the result when the same string is converted repeatedly in a tight loop. `FormatMessageW` with `FORMAT_MESSAGE_FROM_SYSTEM` performs a message table lookup on every call — cache error strings at the call site rather than calling `FormatMessageW` inside a retry loop.
+
+Mutex acquisition (`WaitForSingleObject`) is a kernel-mode transition costing several microseconds even in the uncontested case; use it to guard shared state across timer callbacks or `OnMessage` handlers, but do not acquire a mutex on every key press in a `#HotIf`-guarded hotkey if the critical section is trivially short.
 ```ahk
 ; ── Cache function address for high-frequency DllCall invocations ─────────────────
 ; ✓ Resolve name once — subsequent calls use the cached Ptr with no lookup overhead
@@ -624,6 +1162,16 @@ DllCall("User32\MessageBoxW", "Ptr", 0, "Str", "Fast", "Str", "Title", "UInt", 0
 
 ; ✓ Use explicit Buffer+StrPut only when the API retains the pointer after the call
 ; (e.g., async operations or OUT parameter buffers that must outlive the DllCall frame)
+
+; ── Prefer RtlMoveMemory over NumPut loop for bulk copy ───────────────────────────
+; ✓ Single ntdll call — C-speed; no AHK dispatch overhead per byte
+src := Buffer(4096, 0xCC)
+dst := Buffer(4096, 0)
+DllCall("ntdll\RtlMoveMemory", "Ptr", dst, "Ptr", src, "UPtr", src.Size)
+
+; ✗ Avoid: NumPut loop for large copies — 4096 individual AHK dispatch calls
+; Loop 4096
+;     NumPut("UChar", NumGet(src, A_Index-1, "UChar"), dst, A_Index-1)
 
 ; ── NumGet on raw address vs Buffer — equivalent speed; Buffer adds bounds safety ──
 ; ✓ Both forms are accepted; prefer the Buffer form in non-performance-critical paths
@@ -769,6 +1317,12 @@ AppCallbacks.Cleanup()
 | Omit CallbackFree | `CallbackCreate(...)` with no paired free | Store address; call `CallbackFree(addr)` in `__Delete()` | AHK v1 had no CallbackCreate API; the create/free contract has no v1 analogue to anchor it |
 | Leak .Ptr across scope | `dangerPtr := buf.Ptr` then use after `buf` goes out of scope | Pass the `Buffer` object itself across function boundaries | C/C++ pointer semantics — raw address appears stable; AHK's reference-count lifetime is invisible |
 | Buffer inside loop | `Loop n { local pt := Buffer(8, 0); DllCall(...) }` | Allocate `pt` once before the loop and reuse | Defensive initialization habit; allocation cost is invisible in small loops but compounds at scale |
+| SIZE_T as "UInt" | `DllCall("ntdll\RtlMoveMemory", "Ptr", dst, "Ptr", src, "UInt", size)` | `DllCall("ntdll\RtlMoveMemory", "Ptr", dst, "Ptr", src, "UPtr", size)` | "UInt" used for all unsigned integers in C-habit training data; SIZE_T is pointer-width, not fixed 32-bit |
+| RtlCompareMemory as boolean | `if !DllCall("ntdll\RtlCompareMemory", ...)` | `if DllCall(..., "UPtr") = bufSize` | memcmp() in C returns 0/non-zero; RtlCompareMemory returns match *count*, not a difference value |
+| VirtualAlloc return as "Int" | `addr := DllCall("Kernel32\VirtualAlloc", ..., "Int")` | `addr := DllCall("Kernel32\VirtualAlloc", ..., "Ptr")` | LPVOID looks like a "pointer" but LLMs map it to "Int" by habit from 32-bit API examples |
+| HeapFree on Buffer.Ptr | `DllCall("Kernel32\HeapFree", "Ptr", hHeap, "UInt", 0, "Ptr", buf.Ptr)` | Never call HeapFree on a Buffer — Buffer uses its own allocator | C habit: "free everything you no longer need"; AHK Buffer and Win32 heap are independent allocators |
+| GlobalFree after SetClipboardData | `DllCall("Kernel32\GlobalFree", "Ptr", hGlobal)` after a successful `SetClipboardData` | Do NOT free — ownership transfers to OS on successful `SetClipboardData` | COM/RAII training data pattern: "caller frees what caller allocates"; clipboard API violates this |
+| Unclosed HANDLE | `hMutex := DllCall("Kernel32\CreateMutexW", ...)` with no `CloseHandle` | Always call `DllCall("Kernel32\CloseHandle", "Ptr", hMutex)` in cleanup | AHK variables freed by GC; kernel HANDLEs are not — no analogue in most scripting language training data |
 
 ## SEE ALSO
 
