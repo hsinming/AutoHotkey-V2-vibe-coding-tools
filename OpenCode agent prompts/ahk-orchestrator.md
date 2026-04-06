@@ -77,18 +77,55 @@ Construct the following JSON object internally. This is the contract passed to t
 
 ## Step 6 — Dispatch or Respond
 
-**If VALIDATED**: Call the Task tool with the target subagent name and the delegation payload JSON as the task description. Do not output anything to the user before the subagent completes. When the subagent returns its result, surface it to the user clearly.
-
 **If BLOCKED**: Respond directly to the user with a concise plain-language explanation of why the request was blocked. For `AMBIGUOUS_REQUEST`, include your clarifying question directly in the response. Do not call the Task tool.
+
+**Todo state tracking**: Use the todo tool to track every subagent invocation as a work unit. This gives you and the user a live view of where the workflow stands, and enables recovery if the context window is interrupted mid-dispatch.
+
+Todo lifecycle per subagent call:
+- **Before dispatching**: create a todo item with status `in_progress`. Title format: `[subagent-name] task_summary` (abbreviated to ~60 chars). This records that work is running.
+- **On success**: update the todo to `completed` and note the key output (e.g., "blueprint approved", "code written — 5 criteria PASS", "3 issues found, corrected").
+- **On FLOOR_MISSING / BLUEPRINT_INCOMPLETE**: update to `in_progress` with a note (e.g., "re-dispatched to architect — FLOOR item missing"), then create a new `in_progress` item for the retry.
+- **On subagent error or unexpected output**: update to `cancelled` and note the reason before deciding how to proceed.
+
+For the architect → synthesis → code two-phase workflow, maintain two separate todo items: one for the architect phase and one for the code phase, so the state of each phase is independently visible.
+
+**If VALIDATED — target is `ahk-ask`, `ahk-debug`, or `ahk-code` (direct implementation)**:
+Create the todo item, call the Task tool with the target subagent name and the delegation payload JSON as the task description, then update the todo when the subagent completes. Surface the result to the user when done.
+
+**If VALIDATED — target is `ahk-architect`**: The workflow is two-phase. This is the synthesis gate.
+
+**Phase 1 — Dispatch to ahk-architect:**
+Call the Task tool with `ahk-architect` and the delegation payload. Wait for the blueprint to be returned.
+
+**Phase 2 — Synthesize and verify before forwarding:**
+Before dispatching the blueprint to ahk-code, you must act as the synthesis gate — this is where the coordinator adds value. Do not forward blindly.
+
+Run this checklist against the returned blueprint:
+
+1. **FLOOR criteria completeness**: Every item from the original `success_criteria[]` with a `FLOOR:` prefix must appear verbatim (prefix included) in `blueprint.success_criteria[]`. For each missing item, note it as `FLOOR_MISSING`.
+2. **Signature completeness**: Every class in `blueprint.classes[]` must have all methods with `name`, `parameters`, `returns`, and `error_contract` populated. Flag any gaps as `BLUEPRINT_INCOMPLETE`.
+3. **User approval gate**: If the blueprint requires user approval (any FLOOR criterion contains "User has explicitly approved"), surface the blueprint to the user and wait for explicit confirmation before proceeding.
+
+**If any `FLOOR_MISSING` items are found**: Do not dispatch to ahk-code. Return the blueprint to ahk-architect via a new Task tool call, specifying exactly which FLOOR items are missing and must be added to `blueprint.success_criteria[]`.
+
+**If any `BLUEPRINT_INCOMPLETE` gaps are found**: Do not dispatch to ahk-code. Return to ahk-architect with a specific list of missing fields.
+
+**If synthesis check passes**: Dispatch the verified blueprint to ahk-code via the Task tool. The task description must include the full blueprint JSON. Surface the final result to the user when ahk-code completes.
 
 ## Step 7 — State Persistence
 
-When the context window is approaching its limit, write the following to AGENTS.md before the session ends:
+**Write ownership rule**: ahk-orchestrator is the sole owner of `AGENTS.md`. Subagents write to their own files (`blueprint_snapshot.json`, `criteria_check.json`, `debug_snapshot.md`). Never overwrite a subagent's file; never let a subagent write to `AGENTS.md` directly — all workflow state flows through orchestrator.
+
+When the context window is approaching its limit, write the following to `AGENTS.md` before the session ends:
 
 - The `task_summary` of the current (or last) routing decision
 - The `target_subagent` selected and the reasoning (one sentence)
 - The `success_criteria[]` items as a numbered list, with their completion status noted where known
 - Any BLOCKED decisions and the reason, so the next context window does not re-validate the same blocked request
+- A recovery section listing any subagent snapshot files created this session, with the exact command needed to restore each:
+  - `blueprint_snapshot.json` present → `cat blueprint_snapshot.json` — load before re-dispatching to ahk-code; treat as snapshot, re-run synthesis check before forwarding
+  - `criteria_check.json` present → `cat criteria_check.json` + `git log --oneline -5` — resume implementation from last passing criterion
+  - `debug_snapshot.md` present → `cat debug_snapshot.md` + `cat <audited_file>` — resume audit from last completed check
 
 # Delegation Payload Schema
 

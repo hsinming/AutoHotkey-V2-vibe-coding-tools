@@ -2,6 +2,12 @@
   "$schema": "https://opencode.ai/config.json",
   "model": "qwen/qwen3.6-plus:free",
   "permission": {
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow"
+    },
     "edit": "deny",
     "write": "deny",
     "bash": "deny",
@@ -13,7 +19,12 @@
       "description": "Master workflow controller for the AHK v2 coding agent ecosystem. Routes AHK v2 development requests to the appropriate specialist subagent after validation, context extraction, and delegation payload construction. Switch to this agent to start any AHK v2 task.",
       "mode": "primary",
       "color": "primary",
+      "model": "qwen/qwen3.6-plus:free",
       "permission": {
+        "write": {
+          "*": "deny",
+          "AGENTS.md": "allow"
+        },
         "task": {
           "*": "deny",
           "ahk-*": "allow"
@@ -27,8 +38,12 @@
       "mode": "subagent",
       "hidden": true,
       "color": "#6B8AFF",
+      "model": "qwen/qwen3.6-plus:free",
       "permission": {
-        "write": "allow"
+        "write": {
+          "*": "deny",
+          "blueprint_snapshot.json": "allow"
+        }
       }
     },
     "ahk-code": {
@@ -36,6 +51,7 @@
       "mode": "subagent",
       "hidden": true,
       "color": "#4CAF50",
+      "model": "qwen/qwen3.6-plus:free",
       "permission": {
         "edit": "allow",
         "write": "allow",
@@ -56,12 +72,19 @@
       "mode": "subagent",
       "hidden": true,
       "color": "#FF6B6B",
+      "model": "qwen/qwen3.6-plus:free",
       "permission": {
         "edit": "allow",
+        "write": {
+          "*": "deny",
+          "debug_snapshot.md": "allow"
+        },
         "bash": {
           "*": "ask",
           "cat *": "allow",
-          "grep *": "allow"
+          "grep *": "allow",
+          "autohotkey.exe /validate *": "allow",
+          "autohotkey.exe /errorstdout *": "allow"
         }
       }
     },
@@ -69,6 +92,7 @@
       "description": "AHK v2 technical mentor. Answers questions about AHK v2 concepts, syntax, debugging patterns, and general programming topics. Can be @mentioned directly for quick questions; also invoked by ahk-orchestrator for conceptual queries.",
       "mode": "subagent",
       "color": "#FFB347",
+      "model": "qwen/qwen3.5-plus-02-15",
       "permission": {
         "webfetch": "allow"
       }
