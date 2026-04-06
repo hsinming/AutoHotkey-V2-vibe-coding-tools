@@ -1,1 +1,5 @@
 ﻿.DS_Store
+.roo/
+.opencode/
+.roomodes
+opencode.json
