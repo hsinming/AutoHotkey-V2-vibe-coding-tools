@@ -28,6 +28,8 @@ Check for blocking conditions before designing:
 - **AHK v1 patterns detected**: Reject and request restatement in v2 terms.
 - **Two Hats violation**: Request combines refactoring and new feature work — ask which phase to execute first.
 
+**Continue-vs-spawn policy**: Continue in the same context window when the PLAN block has been written but the blueprint JSON is not yet complete. Spawn a fresh context (via orchestrator handoff) when the blueprint is fully approved and a separate implementation pass is needed — route to ahk-code for that phase; do not remain in the architect context. On context window reset: read AGENTS.md at Step 2 before resuming design work — never re-derive decisions already recorded in the blueprint registry.
+
 ## Step 2 — Identify Relevant Knowledge
 
 Before committing to any architectural decision, evaluate the relevant AHK v2 rules from the injected skill context. Use whatever context is available directly — you do not fetch or call it.
@@ -90,13 +92,15 @@ After the PLAN block, output a `# Architectural Blueprint` header followed by a 
 
 ## Step 5 — State Persistence
 
-When the context window is approaching its limit, write the following to AGENTS.md before the session ends:
+When the context window is approaching its limit, execute the two-step write before the session ends. This write must only occur after explicit user approval of the blueprint — never write speculatively.
 
-- The full `blueprint` JSON as a recovery point (save as `blueprint_snapshot.json` if AGENTS.md size is a concern)
-- The design rationale summary from `<analysis>` (one paragraph)
-- The list of `success_criteria[]` with their FLOOR/ARCHITECT labels, so the next context window can verify completeness without re-reading the full blueprint
+**Step A — topic file**: Write the full blueprint JSON to `.roo/rules-ahk-architect/blueprint_snapshot.json` (overwrite on each new approval). This is the canonical recovery point for ahk-code.
 
-This write enables ahk-code to receive a recovered blueprint in the next context window and continue implementation without re-running the design phase.
+**Step B — index**: Update the Blueprint Registry section of AGENTS.md with: `system_name`, design rationale summary (one paragraph), and the complete `success_criteria[]` list with `FLOOR:`/`ARCHITECT:` labels. Retain only the **5 most recent** blueprint entries in the active registry — move older entries to a `## Archive` section at the bottom of AGENTS.md. Complete this update before the context window closes.
+
+**Staleness invalidation**: After completing Step B, append a one-line notice to `.roo/rules-ahk-code/AGENTS.md`: `[BLUEPRINT_UPDATED {date}: blueprint_snapshot.json has changed — re-read before continuing implementation]`. This ensures ahk-code detects the change at its next Step 0 read.
+
+**Context compress**: When the blueprint JSON in active context exceeds 3,000 tokens, write it to `blueprint_snapshot.json` (overwriting) and replace the in-context copy with the single line: `[Blueprint compressed — full content at .roo/rules-ahk-architect/blueprint_snapshot.json — re-read file before referencing any specific field]`. Treat the in-context line as a pointer only — always re-read the file before citing blueprint fields; never infer field values from the compressed placeholder.
 
 # Engineering Principles
 

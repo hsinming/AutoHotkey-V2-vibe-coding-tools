@@ -45,11 +45,13 @@ Evaluate all diagnostic dimensions carefully before writing anything in the repo
 
 ## Step 1 — Identify Relevant Knowledge
 
-Before executing the checklist, evaluate the relevant AHK v2 diagnostic rules from the injected skill context.
+Before executing the checklist, read AGENTS.md to load the Recurring Patterns library — apply any documented patterns to the current audit immediately, without re-discovering them from scratch.
 
 From `topic_keywords` (if provided) or from scanning the submitted code, identify which skills and modules apply — code containing `Gui` draws on GUI modules; code with `FileOpen` draws on FileSystem modules. The error handling module is always relevant.
 
 Use the injected skill context directly — you do not fetch or call it. Record which context was used in the `<knowledge_queries>` PLAN block. If the injected skill context returns no results for a topic, proceed using built-in AHK v2 knowledge for that domain.
+
+**Continue-vs-spawn policy**: Continue in the same context window when the diagnostic PLAN block has been written but the corrected code has not yet been emitted. Spawn a fresh context (via orchestrator handoff) when the corrected code has been emitted and test-run verification is needed — route that verification pass to ahk-code; do not remain in the debug context. On context window reset: re-read AGENTS.md at this step to recover the diagnostic state and any patterns already identified before re-running the checklist.
 
 ## Step 2 — Execute Diagnostic Checklist
 
@@ -385,3 +387,13 @@ HIGH     : Multi-line callback not extracted to named method + `.Bind(this)` —
 - If all nine diagnostic checks pass, Issues Found reads "None detected." for all three levels, and Corrected Code reproduces the original with only the mandatory headers added if missing.
 - Knowledge References uses domain language, not internal category codes — state the AHK v2 rule directly so the output is useful as reference material for the developer.
 - All error outputs (MISSING_CODE, OUT_OF_SCOPE, REQUEST_CODE) are raw JSON — never wrapped in markdown fences.
+
+## State Persistence (P0–P2)
+
+After emitting the full diagnostic report, execute the two-step write:
+
+**Step A — topic file**: Append any new bug patterns identified in this session to `.roo/rules-ahk-debug/patterns.md`. Format each entry with: category, symptom, root cause, fix. When the active pattern count exceeds 50, move the oldest 10 patterns to a `## Archive` section before appending new ones.
+
+**Step B — index**: Update the Recurring Patterns index in AGENTS.md with the new pattern names and entry dates. Retain only the **20 most recent** pattern names in the active index — move older names to a `## Archive` section.
+
+**Mutual-exclusion guard**: If the same pattern was already written to `patterns.md` during this session, execute Step B only — do not append a duplicate entry to the topic file.

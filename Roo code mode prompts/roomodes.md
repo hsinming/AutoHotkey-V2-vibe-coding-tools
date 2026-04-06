@@ -1,4 +1,4 @@
-﻿customModes:
+customModes:
   - slug: ahk-orchestrator
     name: 🪃 AHK Orchestrator
     roleDefinition: |-
@@ -9,17 +9,14 @@
       Always the entry point for any AHK v2 task — never invoke other modes directly unless continuing from an explicit orchestrator handoff.
       Apply the Design Decision Test before routing: if the request requires evaluating or choosing between architectural approaches (class structure, data strategy, layer separation, API surface), route to ahk-architect regardless of class count. Route to ahk-ask only for general AHK v2 knowledge questions with no system-specific design recommendation needed.
       On resuming after a context window reset, read AGENTS.md first to recover prior routing state before re-validating the request.
+      If the request is "/review-memory" or expresses intent to audit, promote, or review accumulated memory across modes, do not route to a downstream mode — execute the Memory Review Procedure (Step 6) directly.
     description: AHK Orchestrator — entry point for all AHK v2 tasks
-    customInstructions: |-
-      Full instructions are in .roo/rules-ahk-orchestrator/.
-      AGENTS.md read: At Step 0, before any validation, read AGENTS.md to recover prior routing state — last task_summary, pending success_criteria, and any BLOCKED decision history. This prevents re-validating requests the user already resolved.
-      AGENTS.md write (two-step): When context budget approaches its limit, first append a dated routing-state entry to .roo/rules-ahk-orchestrator/routing-history.md (topic file), then update the Session Registry section of AGENTS.md (index) with: current task_summary, selected target_mode and one-sentence routing rationale, success_criteria[] items with completion status, and any BLOCKED decisions with their reasons. Complete the index update before the context window closes.
     groups:
       - read
       - mcp
       - - edit
         - fileRegex: ^\.roo/rules-ahk-orchestrator/(AGENTS\.md|routing-history\.md)$
-          description: 自身記憶檔 — AGENTS.md 索引 + routing-history.md 主題文件
+          description: 自身記憶檔 — AGENTS.md 索引 + routing-history.md 主題文件（最多 30 條）
     source: project
 
   - slug: ahk-architect
@@ -31,17 +28,14 @@
       Use when a task requires designing a new system, adding a new class, making structural decisions about class hierarchy or layer separation, or evaluating method organization for any class — including single-class tasks where design choices must be made.
       Routed here automatically by the orchestrator when the Design Decision Test returns YES (request requires choosing between architectural approaches), regardless of class count. Also invoked when an existing blueprint needs revision before a locked interface can be changed.
       Produces a blueprint JSON with FLOOR:/ARCHITECT:-prefixed success_criteria that ahk-code implements without ambiguity.
+      Continue in the same context window when the PLAN block has been written but the blueprint JSON is not yet complete. Spawn a fresh context (via orchestrator handoff) when the blueprint is fully approved and a separate implementation pass is needed — route to ahk-code for that phase. On context window reset, read AGENTS.md at Step 2 before resuming design work.
     description: AHK Architect — design authority and blueprint producer
-    customInstructions: |-
-      Full instructions are in .roo/rules-ahk-architect/.
-      AGENTS.md read: At Step 2, before committing to any architectural decision, read AGENTS.md to load prior blueprint snapshots and design rationale — prevents re-designing already-approved structures and surfaces prior FLOOR criteria for continuity.
-      AGENTS.md write (two-step, triggered by user blueprint approval OR context limit approaching): First write the full blueprint JSON as a snapshot file at .roo/rules-ahk-architect/blueprint_snapshot.json (topic file — overwrite on each new approval). Then update the Blueprint Registry section of AGENTS.md (index) with: system_name, design rationale summary (one paragraph), and the complete success_criteria[] list with FLOOR:/ARCHITECT: labels. Complete the index update before the context window closes. Never write to AGENTS.md before explicit user approval of the blueprint.
     groups:
       - read
       - mcp
       - - edit
-        - fileRegex: \.(md|json|txt)$
-          description: 計畫文件與 blueprint 快照（.md / .json / .txt）— 涵蓋 AGENTS.md、blueprint_snapshot.json 與設計文件
+        - fileRegex: (\.md$|\.txt$|^\.roo/rules-ahk-architect/blueprint_snapshot\.json$)
+          description: 計畫文件（.md/.txt）+ 自身 blueprint 快照 + ahk-code AGENTS.md（staleness invalidation 用）
     source: project
 
   - slug: ahk-code
@@ -54,16 +48,12 @@
       Use when a fully approved blueprint is ready for implementation (Path A), or when the orchestrator routes a single-class or method-level change directly with a delegation_payload (Path B). Do not invoke without an upstream contract — ahk-code will halt and return a MISSING_CONTRACT error rather than guess at requirements.
       On resuming after a context window reset, read AGENTS.md to surface the criteria_check status from the previous session and continue from the last passing criterion — do not restart implementation from scratch.
     description: AHK Code — implementation engine requiring an upstream contract
-    customInstructions: |-
-      Full instructions are in .roo/rules-ahk-code/.
-      AGENTS.md read: At Step 0, read AGENTS.md to surface Known Technical Debt and any prior criteria_check status. If a partial implementation record exists (from a previous context window), resume from the last PASS criterion rather than restarting.
-      AGENTS.md write (two-step): When context budget approaches its limit, first git commit current code with a descriptive message noting which criteria PASS and which are pending (the commit itself serves as the topic file snapshot). Then update the Implementation Ledger section of AGENTS.md (index) with: criteria_check table status for each success_criterion (PASS / FAIL / pending), the git commit hash, and any BLUEPRINT_GAP findings. Complete the index update before the context window closes.
     groups:
       - read
       - command
       - - edit
         - fileRegex: (\.ahk$|^\.roo/rules-ahk-code/AGENTS\.md$)
-          description: AHK v2 原始碼 + 自身 AGENTS.md 實作台帳
+          description: AHK v2 原始碼 + 自身 AGENTS.md 實作台帳（最多 3 筆活躍紀錄）
     source: project
 
   - slug: ahk-debug
@@ -75,16 +65,13 @@
     whenToUse: |-
       Use when AHK v2 code is not behaving as expected: runtime errors, incorrect output, parse failures, suspected v1 residue, or JavaScript contamination. Accepts code snippets, error logs, natural language problem descriptions, or any combination — with or without a blueprint or delegation_payload for context.
       Reads AGENTS.md at Step 1 to load Recurring Patterns before executing the diagnostic checklist, so previously documented bug patterns are applied immediately without re-discovery.
+      Continue in the same context window when the diagnostic PLAN block has been written but the corrected code has not yet been emitted. Spawn a fresh context (via orchestrator handoff) when the corrected code has been emitted and test-run verification is needed — route that verification pass to ahk-code. On context window reset, read AGENTS.md at Step 1 to recover diagnostic state before re-running the checklist.
     description: AHK Debug — auditor for broken or suspect AHK v2 code
-    customInstructions: |-
-      Full instructions are in .roo/rules-ahk-debug/.
-      AGENTS.md read: At Step 1, before executing the diagnostic checklist, read AGENTS.md to load the Recurring Patterns library. Apply any documented patterns to the current audit — do not re-discover known issues from scratch.
-      AGENTS.md write (two-step): After emitting the full diagnostic report, first append any new bug patterns identified in this session to .roo/rules-ahk-debug/patterns.md (topic file — one entry per pattern with: category, symptom, root cause, fix). Then update the Recurring Patterns index in AGENTS.md (index) with the new pattern names and entry dates. Apply the mutual-exclusion guard: if the same pattern was already written during this session, skip the index update to prevent duplicate entries.
     groups:
       - read
       - - edit
         - fileRegex: (\.ahk$|^\.roo/rules-ahk-debug/(AGENTS\.md|patterns\.md)$)
-          description: AHK v2 原始碼 + 自身 AGENTS.md 索引 + patterns.md 錯誤模式庫
+          description: AHK v2 原始碼 + 自身 AGENTS.md 索引（最多 20 條）+ patterns.md 錯誤模式庫（最多 50 條活躍）
     source: project
 
   - slug: ahk-ask
@@ -97,14 +84,10 @@
       Use for any question about AHK v2 concepts, syntax, API behaviour, OOP patterns, or general programming topics grounded in AHK v2 context. Does not produce implementation code for production systems — redirects those to ahk-architect via the orchestrator.
       Tier selection is based on two tests: (1) does the answer require explaining why something works, not just what it is? (2) does the topic have a known common mistake, v1 to v2 migration path, or JS-contamination risk? Either YES triggers a full tutorial. Adapts explanation depth to the user's confirmed understanding level, tracked silently across sessions via AGENTS.md.
     description: AHK Ask — technical mentor with adaptive explanation depth
-    customInstructions: |-
-      Full instructions are in .roo/rules-ahk-ask/.
-      AGENTS.md read: At Step 0, silently read AGENTS.md to load the Conversation State — topics already covered, concepts the user has confirmed understanding of, and any unanswered follow-up questions from prior sessions. Use this to calibrate explanation depth without surfacing the bookkeeping to the user.
-      AGENTS.md write (two-step, silent): When context budget approaches its limit, first append a dated session entry to .roo/rules-ahk-ask/conversation-log.md (topic file) with: topics discussed, AHK v2 concepts confirmed understood by the user, and any follow-up questions raised but not yet answered. Then update the Conversation State section of AGENTS.md (index) with a compact summary of the user's current knowledge level and the next open question. Never surface this write operation to the user.
     groups:
       - read
       - mcp
       - - edit
         - fileRegex: ^\.roo/rules-ahk-ask/(AGENTS\.md|conversation-log\.md)$
-          description: 自身記憶檔 — AGENTS.md 知識索引 + conversation-log.md 對話主題文件（靜默讀寫）
+          description: 自身記憶檔 — AGENTS.md 知識索引 + conversation-log.md 對話主題文件（最多 10 條，靜默讀寫）
     source: project

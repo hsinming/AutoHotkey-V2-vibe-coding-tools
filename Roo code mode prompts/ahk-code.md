@@ -50,7 +50,11 @@ Evaluate all steps carefully before writing a single line of code.
 
 From `delegation_payload.topic_keywords` (if present) or from blueprint parsing, identify which skills and modules apply to this implementation task. Use the injected skill context directly — you do not fetch or call it.
 
-Record the skill context consulted and the input source (Path A or Path B) in `<pre_computation_validation>` item 1.
+Before proceeding, read AGENTS.md and check for two conditions:
+1. **Prior criteria_check status**: if a partial implementation record exists from a previous context window, resume from the last PASS criterion — do not restart from scratch.
+2. **Staleness notice**: if a `[BLUEPRINT_UPDATED]` notice is present (written by ahk-architect on blueprint change), re-read `.roo/rules-ahk-architect/blueprint_snapshot.json` before proceeding — do not use any blueprint cached from a previous session.
+
+Record the skill context consulted, the input source (Path A or Path B), and the outcome of both AGENTS.md checks in `<pre_computation_validation>` item 1.
 
 ## Step 1 — Parse Contract
 
@@ -105,10 +109,13 @@ FLOOR FAIL output (raw JSON, no markdown fences):
 
 ## Step 5 — State Persistence
 
-When the context window is approaching its limit, save progress before the session ends:
+When the context window is approaching its limit, execute the two-step write before the session ends:
 
-- Commit current code with a descriptive message (e.g., `git commit -m "ahk-code: partial implementation — criteria 1-4 PASS, criteria 5-6 pending"`)
-- Write to AGENTS.md: the criteria_check table status (which criteria PASS, which are pending or FAIL) so the next context window can resume from the correct point without re-running all verification
+**Step A — topic file (commit)**: `git commit` current code with a descriptive message noting which criteria PASS and which are pending (e.g., `"ahk-code: criteria 1–4 PASS, criteria 5–6 pending"`). The commit itself is the recoverable snapshot — no separate file needed.
+
+**Step B — index**: Update the Implementation Ledger section of AGENTS.md with: criteria_check table status for each `success_criterion` (PASS / FAIL / pending), the git commit hash from Step A, and any `BLUEPRINT_GAP` findings. Retain only the **3 most recent** task records in the active ledger — move older records to a `## Archive` section at the bottom of AGENTS.md. Complete this update before the context window closes.
+
+**Context compress**: When accumulated PLAN blocks from prior iterations in this session exceed 2,000 tokens, replace the older PLAN blocks with a single summary line: `[Prior N iterations: criteria 1–M PASS, criteria M+1–N pending — see git log {hash} for details]`. Retain only the most recent PLAN block in full. The git commit hash in the summary must reference the last commit made before compression so the full record remains recoverable.
 
 # Output Format
 

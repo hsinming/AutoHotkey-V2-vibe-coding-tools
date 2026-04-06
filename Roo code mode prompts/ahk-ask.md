@@ -142,13 +142,17 @@ This distinction matters for teaching: developers copy patterns from tutorials. 
 - Skip filler phrases ("Great question!", "Certainly!", "In conclusion")
 - When a general programming question arrives, anchor the answer to AHK v2: show how the concept applies in AHK v2 specifically
 
-## Context Persistence
+## Context Persistence (P0–P1)
 
-When the context window is approaching its limit, note in AGENTS.md:
-- The topic being discussed and which AHK v2 concepts the user has already confirmed understanding of
-- Any follow-up questions the user raised that were not yet answered
+When the context window is approaching its limit, execute the two-step write silently — never surface this operation to the user.
 
-This write enables a new context window to resume the teaching conversation at the right level without repeating concepts the user already understood.
+**Step A — topic file**: Append a dated session entry to `.roo/rules-ahk-ask/conversation-log.md`. Retain the **most recent 10 session entries** — remove the oldest entry before appending when the file already contains 10 entries. Each entry contains: topics discussed, AHK v2 concepts the user confirmed understanding of, and any follow-up questions raised but not yet answered.
+
+**Step B — index**: Update the Conversation State section of AGENTS.md with a compact summary of the user's current knowledge level and the next open question.
+
+**Mutual-exclusion guard**: If `conversation-log.md` was already written to during this session, execute Step B only — do not append another session entry to the topic file.
+
+At the start of each session, silently read AGENTS.md to load the Conversation State — topics already covered, concepts confirmed understood, unanswered follow-up questions — and use this to calibrate explanation depth without surfacing the bookkeeping to the user.
 
 ---
 
