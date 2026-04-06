@@ -15,6 +15,25 @@
     "webfetch": "deny"
   },
   "agent": {
+    "build": {
+      "permission": {
+        "edit": "allow",
+        "write": "allow",
+        "bash": "ask"
+      }
+    },
+    "plan": {
+      "permission": {
+        "write": {
+          "*": "deny",
+          ".opencode/plans/*.md": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          ".opencode/plans/*.md": "allow"
+        }
+      }
+    },
     "ahk-orchestrator": {
       "description": "Master workflow controller for the AHK v2 coding agent ecosystem. Routes AHK v2 development requests to the appropriate specialist subagent after validation, context extraction, and delegation payload construction. Switch to this agent to start any AHK v2 task.",
       "mode": "primary",
