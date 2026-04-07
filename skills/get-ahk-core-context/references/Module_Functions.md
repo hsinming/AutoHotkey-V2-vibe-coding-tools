@@ -114,6 +114,13 @@ Paired prohibitions and their positive alternatives:
 - ✗ `return` on one line, computed value on the next — bare return exits; value is dead code
 - ✓ `return computedValue` — return and value on the same line
 
+**Function naming contracts — enforced at review time:**
+- **`Get*` / `Fetch*` / `Read*` prefix → side-effect-free** — any function carrying one of these prefixes must not write to global state, call `FileAppend()`, `RegWrite()`, `Send()`, or any other mutating operation. Callers rely on these prefixes to know the call is safe to repeat, safe to cache, and safe to invoke in a conditional without observable side effects. Violation severity: **Major** — callers cannot reason about safety without reading the entire implementation.
+- **`Check*` / `Is*` / `Has*` prefix → pure boolean predicate** — must return `true`/`false` (or `1`/`0`) and must not mutate any variable in the enclosing or global scope. A `Check*` that zeroes a counter or appends a log entry has contradictory semantics: callers treat it as a query but it silently acts as a command. Violation severity: **Major**.
+- **`Set*` / `Reset*` / `Clear*` / `Log*` / `Write*` / `Update*` prefix → mutation explicit** — any function that modifies external state must carry one of these verb prefixes so that mutation sites are identifiable during review without reading the body.
+- ✗ `GetUser(id)` that calls `FileAppend(id, "log.txt")` inside — `Get*` with side effect; rename to `LogAndGetUser()` or split into `GetUser()` + `LogAccess()`
+- ✓ `GetUser(id)` that returns `users.Get(id, "")` — pure read, no external interaction; safe to call in any context
+
 ## TIER 1 — Basic Declaration and Calling
 > METHODS COVERED: named function definition · `return` · `MsgBox()` · `StrSplit()` · `IsSet()`
 
@@ -711,6 +718,9 @@ MsgBox("modified=" wasChanged " status=" info["status"])
 | `return` split across lines | `return` on one line, value expression on next | `return computedValue` on one line | C/Python training — both allow expression continuation after `return`; AHK v2 bare `return` exits immediately |
 | Unguarded `?` parameter access | `return name " " age` when `age?` may be unset | `if !IsSet(age)` guard before first use of `age` | v1 had no `?` unset syntax; LLMs default to treating optional as "may be empty string" rather than "genuinely absent" |
 | `static` for per-call reset values | `static result := ""` that must clear each invocation | `local result := ""` — regular local variable | Confusion between static (persists) and local (resets); both look like `var := init` on paper, only semantics differ |
+| `Get*` function with side effect | `GetUser(id)` that calls `FileAppend()` inside | Split into `GetUser()` (pure read) + `LogAccess()` (mutation verb) | Cross-language training (Python, JS) routinely mixes logging into retrieval functions; the naming contract is absent in most training examples |
+| `Check*` / `Is*` function that mutates state | `CheckThreshold()` that resets `Session.hitCount := 0` before returning | `IsThresholdExceeded()` (pure predicate) + `ResetSession()` (explicit mutation verb) | "Defensive" training data conflates checking and resetting as one atomic operation; AHK v2 review requires them to be separate named functions |
+| `Set*` / mutation verb omitted | `ProcessData()` that writes to a global Map and appends a file | `UpdateDataCache()` + `WriteDataLog()` — each mutation has an explicit verb prefix | LLMs default to neutral or process-describing names; mutation verb discipline is underrepresented in scripting-language training data |
 
 ## SEE ALSO
 

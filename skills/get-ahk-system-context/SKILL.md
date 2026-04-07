@@ -27,6 +27,52 @@ with the operating system, external resources, and the script's own lifecycle.
 
 ---
 
+## How to Use This Skill
+
+Follow this decision flow every time a task triggers this skill.
+
+**Step 1 — Map the task to primary module(s)**
+
+| Task involves… | Load this module |
+|----------------|-----------------|
+| DllCall, Buffer, Win32 API, raw memory, native callbacks | `references/Module_DllCallAndMemory.md` |
+| Run, processes, clipboard, registry, COM, Excel, WMI | `references/Module_SystemAndCOM.md` |
+| FileOpen, FileRead, file write, directory traversal, paths | `references/Module_FileSystem.md` |
+| HTTP requests, WinHttp, JSON, REST, file downloads | `references/Module_NetworkAndHTTP.md` |
+| `#Requires`, `#SingleInstance`, tray menu, OnExit, Ahk2Exe | `references/Module_ScriptEnvironment.md` |
+
+Multiple rows may match — load all that apply. Do not generate code from memory without loading the relevant module first.
+
+**Step 2 — Load cross-skill dependencies in order**
+
+1. **Always** load `Module_Instructions` from the core-context skill first — it is the v1→v2 regression gate that all other modules assume has been read:
+   `../get-ahk-core-context/references/Module_Instructions.md`
+2. Load the primary module(s) identified in Step 1.
+3. *If file I/O, COM, registry, or network operations are present* — also load `Module_Errors` from the logic-context skill:
+   `../get-ahk-logic-context/references/Module_Errors.md`
+
+**Step 3 — Apply Universal Critical Rules**
+
+Read the **Universal Critical Rules** section below and confirm each subsection applies to the loaded domain(s). The rules in that section are non-negotiable minimums; domain-specific constraints inside each module take precedence when they are stricter.
+
+**Step 4 — Generate code against the appropriate TIER**
+
+Write code at the complexity tier that matches the task (TIER 1 = basic creation/access → TIER 6 = advanced patterns). Read the loaded module's `## TIER N` section for the target tier before writing the first line. Every method you call must appear in that module's `## API QUICK-REFERENCE` table first.
+
+**Step 5 — Pre-output self-check**
+
+Before returning code to the user, confirm every applicable item:
+
+- [ ] `Buffer()` used for all raw memory — no raw numeric pointer allocations
+- [ ] Every `CallbackCreate()` call is paired with a `CallbackFree()` on cleanup
+- [ ] All `FileOpen()` / `FileRead()` calls specify an explicit encoding argument
+- [ ] All `FileOpen()` handles are closed in a `finally` block via `.Close()`
+- [ ] All COM objects are released (assigned `""` or allowed to fall out of scope)
+- [ ] All `WinWait` / `ProcessWait` calls have an explicit timeout argument
+- [ ] All network and registry calls are wrapped in `try/catch`
+
+---
+
 ## Module Index
 
 ### Primary Modules (owned by this skill)
@@ -45,8 +91,8 @@ Load these from other skills when the task requires them:
 
 | Module | Reason to load | Path |
 |--------|---------------|------|
-| `Module_Instructions` | Core validation checklist — **always load first** | `.roo/skills/get-ahk-core-context/references/Module_Instructions.md` |
-| `Module_Errors` | Error handling for file I/O, COM, registry, and network operations | `.roo/skills/get-ahk-logic-context/references/Module_Errors.md` |
+| `Module_Instructions` | Core validation checklist — **always load first** | `../get-ahk-core-context/references/Module_Instructions.md` |
+| `Module_Errors` | Error handling for file I/O, COM, registry, and network operations | `../get-ahk-logic-context/references/Module_Errors.md` |
 
 ---
 
@@ -89,21 +135,21 @@ Load these from other skills when the task requires them:
 ## Loading Order
 
 1. **Load `Module_Instructions`** from `get-ahk-core-context` first
-   → `.roo/skills/get-ahk-core-context/references/Module_Instructions.md`
+   → `../get-ahk-core-context/references/Module_Instructions.md`
 2. **Load the relevant primary module(s)** from this skill (see Module Index above)
 3. **Load `Module_Errors`** from `get-ahk-logic-context` for any operation involving
    file I/O, COM, registry, or network
-   → `.roo/skills/get-ahk-logic-context/references/Module_Errors.md`
+   → `../get-ahk-logic-context/references/Module_Errors.md`
 4. Apply all critical rules before generating code
 
 ---
 
 ## Reference Files Location
 
-Primary modules in `.roo/skills/get-ahk-system-context/references/`:
+Primary modules live in `references/` alongside this SKILL.md:
 
-- `.roo/skills/get-ahk-system-context/references/Module_DllCallAndMemory.md`
-- `.roo/skills/get-ahk-system-context/references/Module_SystemAndCOM.md`
-- `.roo/skills/get-ahk-system-context/references/Module_FileSystem.md`
-- `.roo/skills/get-ahk-system-context/references/Module_NetworkAndHTTP.md`
-- `.roo/skills/get-ahk-system-context/references/Module_ScriptEnvironment.md`
+- `references/Module_DllCallAndMemory.md`
+- `references/Module_SystemAndCOM.md`
+- `references/Module_FileSystem.md`
+- `references/Module_NetworkAndHTTP.md`
+- `references/Module_ScriptEnvironment.md`

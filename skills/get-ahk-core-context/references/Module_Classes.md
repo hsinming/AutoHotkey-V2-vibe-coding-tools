@@ -2,7 +2,7 @@
 <!-- DOMAIN: Classes -->
 <!-- SCOPE: Prototype chain manipulation, raw ObjPtr arithmetic, and GUI control subclassing belong in Module_ClassPrototyping.md and Module_GUI.md — this module covers class definition, inheritance, meta-functions, factory patterns, resource lifecycle, and observer patterns only. -->
 <!-- TRIGGERS: class, extends, __New, __Delete, __Get, __Set, __Call, __Enum, super, static, inheritance, "create object", "object-oriented", "instantiate", "constructor", "destructor", "method chaining", "factory pattern", "observer pattern", "resource cleanup", "weak reference" -->
-<!-- CONSTRAINTS: Instantiate classes with ClassName() — never `new ClassName()` (TypeError in v2). Always call .Bind(this) on event/timer callbacks — raw method references lose `this` context. Use super.__New(args*) not super() in derived constructors. Never rely on __Delete() timing — always provide an explicit dispose() method for deterministic cleanup. -->
+<!-- CONSTRAINTS: Instantiate classes with ClassName() — never `new ClassName()` (NameError in v2). Always call .Bind(this) on event/timer callbacks — raw method references lose `this` context. Use super.__New(args*) not super() in derived constructors. Never rely on __Delete() timing — always provide an explicit dispose() method for deterministic cleanup. -->
 <!-- CROSS-REF: Module_ClassPrototyping.md, Module_GUI.md, Module_Errors.md, Module_Arrays.md, Module_Objects.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -10,7 +10,7 @@
 
 | v1 pattern (LLM commonly writes) | v2 correct form | Consequence |
 |----------------------------------|-----------------|-------------|
-| `new ClassName()` | `ClassName()` | TypeError — `new` is not a keyword in AHK v2; bare instantiation is the only form |
+| `new ClassName()` | `ClassName()` | NameError at runtime — `new` is parsed as a call to an undefined function; use `ClassName()` directly |
 | `super()` in derived `__New` | `super.__New(args*)` | Parent constructor never runs; instance fields from base class are uninitialised |
 | Raw method reference as callback: `SetTimer(this.Update, 1000)` | `SetTimer(this.Update.Bind(this), 1000)` | `this` inside the callback resolves to the wrong object or throws |
 | `__Get(name)` / `__Set(name, val)` (two-param v1 signatures) | `__Get(name, params)` / `__Set(name, params, value)` (three-param v2) | Meta-function never fires — wrong arity silently skips the intercept |
@@ -61,7 +61,7 @@
 
 ## AHK V2 CONSTRAINTS
 
-- ✗ `new ClassName()` — TypeError; `new` is not a keyword in AHK v2
+- ✗ `new ClassName()` — NameError at runtime; `new` is not a keyword in AHK v2
 - ✓ `ClassName(args*)` — bare call is the only valid instantiation form
 
 - ✗ `SetTimer(this.Method, 1000)` — `this` is wrong or missing inside the callback
@@ -81,6 +81,14 @@
 
 - ✗ `Map.Get(key, unset)` as a "safe optional return" — passing `unset` removes the default, making Get throw on absent keys
 - ✓ `if map.Has(key) { return map[key] }` — use an explicit `.Has()` guard when the absent case should return unset
+
+**Method naming contracts — enforced at review time:**
+- **`Get*` / `Fetch*` / `Read*` method prefix → side-effect-free** — a class method with one of these prefixes must not mutate `this.*` properties, write to global state, or trigger I/O. Callers depend on these prefixes to identify safe-to-repeat, safe-to-cache, and log-free reads. Violation severity: **Major** — the method's signature contradicts its implementation; every caller is a latent bug.
+- **`Check*` / `Is*` / `Has*` method prefix → pure boolean predicate on instance state** — must return `true`/`false` without modifying any `this.*` property or external state. A `Check*` that resets a counter or clears a flag is a command masquerading as a query; the caller's mental model of the object's state is immediately invalidated. Violation severity: **Major**.
+- **`Set*` / `Reset*` / `Clear*` / `Update*` / `Flush*` prefix → mutation declared** — any method that changes `this.*` properties or external state must carry one of these verb prefixes. This makes mutation sites searchable in a review without reading every method body.
+- ✗ `GetStatus()` that also calls `this.lastChecked := A_Now` inside — `Get*` with `this.*` mutation; split into `GetStatus()` (pure read) + `RecordCheckTime()` (mutation verb)
+- ✓ `GetStatus()` that returns `this.status` — reads instance state only; safe to call in any context, including loops and conditionals
+- ✗ `CheckSession()` that sets `this.hitCount := 0` before returning — `Check*` that resets state; rename to `IsSessionExpired()` (predicate) and `ResetSession()` (mutation) as separate methods
 
 Safe-access priority order for class state Maps:
   1. `.Get(key, default)` — optional key, one-line resolution, never throws when default is a concrete value
@@ -131,8 +139,8 @@ animal  := Animal("Buddy", 5)
 area    := MathUtils.calculateArea(10)
 version := MathUtils.getVersion()
 
-; ✗ "new" keyword is not valid in AHK v2 — TypeError at runtime
-; animal := new Animal("Buddy", 5)    ; → TypeError
+; ✗ "new" keyword is not valid in AHK v2 — NameError at runtime
+; animal := new Animal("Buddy", 5)    ; → NameError
 
 ; ✓ Properties with full get/set accessor blocks — setter enforces invariants at assignment time
 class Person {
@@ -1026,6 +1034,9 @@ view  := unset              ; View is GC'd; emitter cleans up dead listener on n
 | Static access via `this` | `this.StaticProp := val` | `ClassName.StaticProp := val` | Python (`cls.prop`) / Java (`this.field` for both) training data conflation |
 | Multi-line fat-arrow callback | `(x) => { return x * 2 }` | Named top-level function | JavaScript training data — JS allows block bodies after `=>`; AHK v2 requires single expression |
 | `Map.Get(key, unset)` as safe optional return | `return map.Get(k, unset)` | `if map.Has(k) { return map[k] }` | Mistaken belief that `unset` is a valid default sentinel — it removes the default argument instead |
+| `Get*` method mutating `this.*` | `GetStatus()` that also sets `this.lastChecked := A_Now` | Split into `GetStatus()` (pure read) + `RecordCheckTime()` (mutation) | OOP training data routinely co-locates reads and audit logging in one method; the naming contract is absent in most class-design training examples |
+| `Check*` / `Is*` method that modifies instance state | `CheckSession()` that resets `this.hitCount := 0` | `IsSessionExpired()` (predicate only) + `ResetSession()` (explicit reset) | Command-query confusion is common in training data; "check and reset atomically" is a known OOP anti-pattern but LLMs reproduce it without flagging it |
+| Mutation method with neutral or descriptive name | `ProcessItem()` that updates `this.cache` and writes a file | `UpdateItemCache()` + `WriteItemLog()` — each mutation carries an explicit verb prefix | LLMs favour process-describing names over mutation-signalling verbs; the naming contract is enforced by convention, not by AHK v2 grammar |
 
 ## SEE ALSO
 

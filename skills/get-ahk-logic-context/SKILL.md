@@ -27,6 +27,47 @@ and text processing.
 
 ---
 
+## How to Use This Skill
+
+### Step 1 — Select modules based on the task
+
+| If the task involves… | Load this module |
+|-----------------------|-----------------|
+| `SetTimer`, one-off timers, background tasks, delayed execution, non-blocking loops | `references/Module_AsyncAndTimers.md` |
+| `try/catch`, error classes, crash diagnosis, v1→v2 error migration | `references/Module_Errors.md` |
+| Input validation, guard clauses, type/constraint checking, defensive programming | `references/Module_Validation.md` |
+| Strings, regex, escape sequences, text parsing, concatenation, quote selection | `references/Module_TextProcessing.md` |
+
+Load **all** rows that match — tasks often span multiple modules simultaneously.
+
+### Step 2 — Load cross-skill dependencies in order
+
+1. **Always load first:** `../get-ahk-core-context/references/Module_Instructions.md` — core v2 validation checklist; must be present before any other module.
+2. **Load matching primary modules** identified in Step 1.
+3. **Conditional:** `../get-ahk-core-context/references/Module_DynamicProperties.md` — *load if timer callbacks, async patterns, or any fat-arrow / closure code is present.*
+
+### Step 3 — Apply Universal Critical Rules
+
+Read every rule in the **Universal Critical Rules** section below and confirm it applies to the code you are about to generate before proceeding.
+
+### Step 4 — Generate code
+
+Produce AHK v2 code that follows the TIER progression defined in the loaded module(s) — start from the lowest TIER that covers the required functionality and work upward only as complexity demands.
+
+### Step 5 — Pre-output self-check
+
+Verify each item before delivering output:
+
+- [ ] Class methods passed to `SetTimer` use `.Bind(this)` or `ObjBindMethod` — never a bare method reference
+- [ ] No blocking `Sleep` inside GUI event handlers or critical sections
+- [ ] Assignment uses `:=` — never bare `=` (v1 legacy)
+- [ ] No `%variable%` percent-sign syntax inside expressions
+- [ ] Error class matches the failure domain: `TypeError`, `ValueError`, `OSError`, or `TargetError`
+- [ ] Guard clauses are at the very top of every function that accepts external input — before any logic
+- [ ] All escape sequences use backtick `` ` `` — never backslash `\`
+
+---
+
 ## Module Index
 
 ### Primary Modules (owned by this skill)
@@ -44,8 +85,8 @@ Load these from `get-ahk-core-context` when the task requires them:
 
 | Module | Reason to load | Path |
 |--------|---------------|------|
-| `Module_Instructions` | Core validation checklist — **always load first** | `.roo/skills/get-ahk-core-context/references/Module_Instructions.md` |
-| `Module_DynamicProperties` | Fat arrow callbacks and closures — essential for timer and async callback patterns | `.roo/skills/get-ahk-core-context/references/Module_DynamicProperties.md` |
+| `Module_Instructions` | Core validation checklist — **always load first** | `../get-ahk-core-context/references/Module_Instructions.md` |
+| `Module_DynamicProperties` | Fat arrow callbacks and closures — essential for timer and async callback patterns | `../get-ahk-core-context/references/Module_DynamicProperties.md` |
 
 ---
 
@@ -83,20 +124,20 @@ Load these from `get-ahk-core-context` when the task requires them:
 ## Loading Order
 
 1. **Load `Module_Instructions`** from `get-ahk-core-context` first
-   → `.roo/skills/get-ahk-core-context/references/Module_Instructions.md`
+   → `../get-ahk-core-context/references/Module_Instructions.md`
 2. **Load the relevant primary module(s)** from this skill (see Module Index above)
 3. **Load `Module_DynamicProperties`** from `get-ahk-core-context` when writing
    timer callbacks, async patterns, or any closure/fat-arrow code
-   → `.roo/skills/get-ahk-core-context/references/Module_DynamicProperties.md`
+   → `../get-ahk-core-context/references/Module_DynamicProperties.md`
 4. Apply all critical rules before generating code
 
 ---
 
 ## Reference Files Location
 
-Primary modules in `.roo/skills/get-ahk-logic-context/references/`:
+Primary modules in `references/` (same directory as this SKILL.md):
 
-- `.roo/skills/get-ahk-logic-context/references/Module_AsyncAndTimers.md`
-- `.roo/skills/get-ahk-logic-context/references/Module_Errors.md`
-- `.roo/skills/get-ahk-logic-context/references/Module_Validation.md`
-- `.roo/skills/get-ahk-logic-context/references/Module_TextProcessing.md`
+- `references/Module_AsyncAndTimers.md`
+- `references/Module_Errors.md`
+- `references/Module_Validation.md`
+- `references/Module_TextProcessing.md`

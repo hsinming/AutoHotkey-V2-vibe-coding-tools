@@ -1,8 +1,8 @@
 ﻿# Module_CodeReview.md
 <!-- DOMAIN: Code Review -->
 <!-- SCOPE: AHK v2 syntax rules, API semantics, and domain-specific patterns are not defined here — they are enforced by Module_Instructions.md and the domain modules; this module provides only the six-dimension evaluation framework and severity-graded output format for reviewing submitted scripts. -->
-<!-- TRIGGERS: review, audit, "code review", "check my script", "find bugs", "quality check", "what's wrong with", "is this v2 compliant", "best practices check", "is my error handling correct", "why does my script crash", "refactor review", MsgBox(), SetTimer(), ComObject(), .Bind(), .OnEvent() -->
-<!-- CONSTRAINTS: `=` used as assignment is always Critical — it is comparison in v2 and silently leaves the variable as ""; never flag MsgBox(), ToolTip(), or Sleep() as needing try/catch — they do not throw; every catch block must surface e.Message or e.Extra — an empty catch body is always Critical. -->
+<!-- TRIGGERS: review, audit, "code review", "check my script", "find bugs", "quality check", "what's wrong with", "is this v2 compliant", "best practices check", "is my error handling correct", "why does my script crash", "refactor review", "clean code", "over-engineering", "YAGNI", "too complex", "refactor", "naming convention", "comment quality", "abstraction", "design pattern", MsgBox(), SetTimer(), ComObject(), .Bind(), .OnEvent() -->
+<!-- CONSTRAINTS: `=` used as assignment is always Critical — it is comparison in v2 and silently leaves the variable as ""; never flag MsgBox(), ToolTip(), or Sleep() as needing try/catch — they do not throw; every catch block must surface e.Message or e.Extra — an empty catch body is always Critical. Clean Code violations (comments that restate code, negative naming, side-effecting Get* functions) are always Major — they signal systemic maintenance debt, not style preference. Over-Engineering is always Major when an abstraction layer has no current caller or when a design pattern appears in a script under 300 lines without documented justification — flag these before architectural concerns. -->
 <!-- CROSS-REF: Module_Instructions.md, Module_Errors.md, Module_GUI.md, Module_Classes.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -36,10 +36,10 @@
 |-----------|------|---------------|---------------|
 | 1 | Modern Syntax & v2 Compliance | `= vs :=`, `#Requires`, `%Var%`, MsgBox form, label hotkeys | Always — syntax errors invalidate all other analysis |
 | 2 | Error Handling & Type Safety | try/catch on throwing ops, catch surfacing, type guards | Script uses FileRead, ComObject, RegRead, DllCall |
-| 3 | Variable Scope & Architecture | globals, data structures, single-responsibility | Script has globals, pseudo-arrays, or long functions |
+| 3 | Variable Scope & Architecture | globals, data structures, single-responsibility, function length, parameter count, cyclomatic complexity | Script has globals, pseudo-arrays, long functions, or deep nesting |
 | 4 | GUI & Event Binding | `.Bind(this)`, `.OnEvent()`, g-labels, SetTimer | Script uses `Gui()`, `SetTimer()`, or class method callbacks |
-| 5 | Performance & Resource Management | loop invariants, O(n²) string concat, COM lifecycle | Script has loops with I/O or COM; uses `.=` inside loops |
-| 6 | Readability & Composite | naming conventions, docs, duplicate hotkeys, dead code | Script > 50 lines or > 1 hotkey; explicit full-review request |
+| 5 | Performance, Security & Resource Management | loop invariants, O(n²) string concat, COM lifecycle, input validation, DllCall injection | Script has loops with I/O or COM; uses `.=` inside loops; passes user input to DllCall/RegWrite/RegExMatch |
+| 6 | **Clean Code, Over-Engineering & Composite** | **comment quality, naming contracts, YAGNI, over-abstraction, over-defensive guards, duplicate hotkeys, dead code** | **Always run last — synthesises all dimensions; flag OE and Clean Code violations even in short scripts** |
 
 ### Throwing Operations Reference
 
@@ -112,11 +112,25 @@ Priority Action List
 - Evaluate only what is present in the submitted script — never flag absent features that were not requested (e.g., no GUI cleanup when there is no GUI); mark those dimensions `✅ Not applicable`.
 - Code fragments must be noted at the top of the report; limit Dimension 1 checks to visible code and apply Dimensions 2–6 only to constructs present in the fragment.
 
+**Clean Code — mandatory constraints:**
+- `Get*` / `Fetch*` / `Read*` prefixed functions must be side-effect-free — any function with one of these prefixes that mutates state or triggers I/O is **Major**: callers cannot reason about safety of repeated calls.
+- `Check*` / `Is*` / `Has*` prefixed functions must return a boolean and must not mutate state — a `Check*` that modifies a variable is **Major**: it violates the Principle of Least Surprise.
+- Comments must explain *why*, not *what* — a comment that merely restates the code in English (e.g., `; add 1 to counter` above `counter += 1`) is always **Minor**; it adds noise without information.
+- Negative boolean naming is always **Minor** at minimum: `isNotReady`, `!isDisabled`, `notFound` force double-negation reasoning — always rename to the affirmative form.
+- Magic strings (literal registry paths, repeated window class names, status codes) carry the same severity as magic numbers — **Minor** when appearing once, **Major** when the same literal appears in 3+ locations; use named constants.
+
+**Over-Engineering — mandatory constraints:**
+- An abstraction layer (class, factory, wrapper function) with exactly zero callers other than its own test is always **Major** — flag as YAGNI; the correct action is deletion, not refactoring.
+- Design patterns (Strategy, Observer, Factory, Decorator) in scripts under 300 lines require a documented justification comment; absence of justification is **Major** — the pattern is presumed over-engineered until proven otherwise.
+- Defensive type guards inside internal helper functions (functions called only from within the same script, never exposed as a public API) are **Minor** over-engineering when the calling context already guarantees the type — every validation layer adds cognitive load without safety benefit.
+- A class with a single method that could be a standalone function is always **Minor** over-engineering; a class with a single method that wraps one AHK built-in call is **Major** — flag both for simplification.
+
 Safe-access priority order for review triage:
   1. Dimension 1 (`= vs :=`, `#Requires`) — syntax errors invalidate all other analysis; always start here
   2. Dimension 2 (try/catch on throwing operations) — correctness before architecture
   3. Dimension 4 (`.Bind(this)`, `.OnEvent()`) — Critical runtime failures from missing context binding
-  4. Dimensions 3, 5, 6 — architecture, performance, and readability in decreasing urgency
+  4. Dimension 6 Clean Code + Over-Engineering checks — run before Dims 3 and 5 when the script shows naming confusion or pattern overuse, because OE findings change the scope of architectural review
+  5. Dimensions 3, 5 — architecture, performance in decreasing urgency
 
 Pair every Critical finding with a concrete resolution path:
 - ✗ `global counter = 0` — `=` is comparison; `counter` is never assigned — **Critical**
@@ -281,10 +295,10 @@ if IsObject(obj) {
 }
 ```
 
-## TIER 3 — Variable Scope & Architecture
-> METHODS COVERED: `Map()` · `Array()` · `class static` · `FileAppend()` · `for` enumeration
+## TIER 3 — Variable Scope, Architecture & SE Design Principles
+> METHODS COVERED: `Map()` · `Array()` · `class static` · `FileAppend()` · `for` enumeration · `StrSplit()` · `RegExMatch()`
 
-Dimension 3 evaluates whether the script uses appropriate data structures, avoids implicit global coupling, and applies single-responsibility decomposition. The most common Major issues are pseudo-arrays (sequentially named variables used as lists) and functions that both mutate shared state and trigger UI feedback. Cross-reference `Module_Classes.md` for class static property encapsulation patterns.
+Dimension 3 evaluates data structures, implicit global coupling, single-responsibility decomposition, function length, parameter count, and cyclomatic complexity. The most common Major issues are pseudo-arrays and functions that violate the 40-line / 4-nesting-depth boundaries. Cross-reference `Module_Classes.md` for class static property encapsulation patterns.
 ```ahk
 ; ================================================================
 ; TIER 3 REVIEW: Variable Scope & Architecture Checklist
@@ -387,6 +401,92 @@ RETRY_DELAY_MS := 5000
 
 if (retryCount > MAX_RETRIES)
     Sleep(RETRY_DELAY_MS)
+
+; ----------------------------------------------------------------
+; CHECK 5: Function length — single-responsibility upper bound
+; ✗ Wrong — function exceeds 40 lines and mixes I/O, logic, and UI
+ProcessEverything(path) {       ; 🟠 Major: > 40 lines, 3+ responsibilities
+    ; ... reads file, parses content, updates GUI, logs result ...
+}
+
+; ✓ Correct — each function ≤ 40 lines with one clearly named responsibility
+ReadConfig(path) {              ; I/O only — throws on failure, caller handles
+    try {
+        return FileRead(path, "UTF-8")
+    } catch (e) {
+        throw Error("ReadConfig failed: " e.Message)
+    }
+}
+
+ParseConfigLines(raw) {         ; parsing only — pure function, no I/O
+    result := Map()
+    for line in StrSplit(raw, "`n") {
+        if RegExMatch(line, "^(\w+)=(.+)$", &m)
+            result[m[1]] := m[2]
+    }
+    return result
+}
+
+ApplyConfig(cfg) {              ; UI only — reads Map, updates controls
+    MyEdit.Value := cfg.Get("host", "localhost")
+}
+
+; Agent rule: function body > 40 lines → 🟠 Major; > 80 lines → 🔴 Critical
+;             (exception: pure data tables / lookup Maps with no logic)
+
+; ----------------------------------------------------------------
+; CHECK 6: Parameter count — more than 4 signals missing abstraction
+; ✗ Wrong — positional parameters force callers to remember argument order
+SendNotification(to, from, subject, body, cc, bcc) {   ; 🟠 Major: 6 params
+    ; caller must know: SendNotification("a","b","c","d","","f")
+}
+
+; ✓ Correct — group into a Map parameter object; callers use named keys
+SendNotification(params) {
+    ; params := Map("to","...","subject","...","body","...")
+    to      := params.Get("to", "")
+    subject := params.Get("subject", "(no subject)")
+    body    := params.Get("body", "")
+    ; optional keys absent = safe defaults via .Get()
+}
+
+; Agent rule: > 4 parameters → 🟠 Major — suggest Map parameter object
+;             > 6 parameters → 🔴 Critical — caller API is unmaintainable
+
+; ----------------------------------------------------------------
+; CHECK 7: Cognitive complexity — nesting depth and early-return opportunities
+; ✗ Wrong — 4 levels of nesting; reader must hold all conditions simultaneously
+ProcessItems(items) {
+    for item in items {                     ; depth 1
+        if (item.type = "A") {             ; depth 2   🟠 Major: nesting ≥ 4
+            if (item.active) {             ; depth 3
+                Loop item.count {          ; depth 4
+                    if (A_Index > 5) {     ; depth 5 → Critical
+                        HandleItem(item)
+                    }
+                }
+            }
+        }
+    }
+}
+
+; ✓ Correct — early return flattens logic; each condition is independently readable
+ProcessItems(items) {
+    for item in items
+        ProcessSingleItem(item)
+}
+
+ProcessSingleItem(item) {
+    if (item.type != "A" || !item.active)   ; guard: skip ineligible items
+        return
+    Loop item.count {
+        if (A_Index > 5)
+            HandleItem(item)
+    }
+}
+
+; Agent rule: nesting depth > 3 → 🟠 Major — apply early-return flattening
+;             nesting depth > 4 → 🔴 Critical — extract inner block to named function
 ```
 
 ## TIER 4 — GUI & Event Binding
@@ -485,10 +585,10 @@ MyGui.OnEvent("Close", (*) => ExitApp())    ; 🟠 Major if other cleanup requir
 MyGui.OnEvent("Close", (*) => (MyGui.Destroy(), ExitApp()))
 ```
 
-## TIER 5 — Performance & Resource Management
-> METHODS COVERED: `FileRead()` · `FileOpen()` · `.WriteLine()` · `.Close()` · `ComObject()` · `ObjRelease()` · `ComObjQuery()` · `CoordMode()` · `A_CoordModeMouse` · `Map.Has()`
+## TIER 5 — Performance, Security & Resource Management
+> METHODS COVERED: `FileRead()` · `FileOpen()` · `.WriteLine()` · `.Close()` · `ComObject()` · `ObjRelease()` · `ComObjQuery()` · `CoordMode()` · `A_CoordModeMouse` · `Map.Has()` · `DllCall()` · `RegExMatch()` · `RegWrite()` · `InputBox()`
 
-Dimension 5 evaluates loop efficiency, string construction patterns, COM object lifecycle, and the correct restoration of global interpreter state. The most common Critical issue is `FileRead()` or COM object creation inside a tight loop when the result is loop-invariant. String concatenation with `.=` inside loops is O(n²) and must be replaced with Array accumulation or direct `FileAppend()` per item.
+Dimension 5 evaluates loop efficiency, string construction patterns, COM object lifecycle, restoration of global interpreter state, and input sanitisation before external API calls. The most common Critical issues are `FileRead()` or COM object creation inside a tight loop and unvalidated user input passed directly to `DllCall()`, `RegWrite()`, or dynamic `RegExMatch()`.
 ```ahk
 ; ================================================================
 ; TIER 5 REVIEW: Performance & Resource Management Checklist
@@ -628,6 +728,65 @@ class PatternCache {
 ValidateEmail(addr) {
     return RegExMatch(addr, PatternCache.GetEmailPattern())
 }
+
+; ----------------------------------------------------------------
+; CHECK 7: User input passed to DllCall / file path construction — path traversal
+; ✗ Wrong — user-supplied string injected directly into a DllCall path argument
+userPath := InputBox("Enter path:").Value
+DllCall("DeleteFileW", "Str", userPath)   ; 🔴 Critical: path traversal risk
+; → attacker enters "..\..\Windows\System32\kernel32.dll"
+
+; ✓ Correct — validate path before use: regex whitelist + existence check
+userPath := InputBox("Enter path:").Value
+if !RegExMatch(userPath, "^[A-Za-z]:\\[\w\\.\-]+$") {
+    MsgBox("Invalid path format.", "Security Error", 0x10)
+    return
+}
+if !FileExist(userPath) {
+    MsgBox("File not found.", "Error", 0x10)
+    return
+}
+DllCall("DeleteFileW", "Str", userPath)   ; ✓ validated before use
+
+; Agent rule: any DllCall/FileRead/FileOpen/FileAppend/FileDelete whose path
+;             argument originates from InputBox, RegRead, or IniRead →
+;             🔴 Critical if no prior regex whitelist or existence check
+
+; ----------------------------------------------------------------
+; CHECK 8: Dynamic RegEx pattern from user input — malformed pattern throws
+; ✗ Wrong — user-supplied pattern without try/catch; malformed input crashes
+userPattern := InputBox("Enter search pattern:").Value
+if RegExMatch(data, userPattern)      ; 🔴 Critical: unhandled throw on bad pattern
+    MsgBox("Found")
+
+; ✓ Correct — always wrap dynamic RegExMatch/RegExReplace in try/catch
+userPattern := InputBox("Enter search pattern:").Value
+try {
+    matched := RegExMatch(data, userPattern)
+} catch (e) {
+    MsgBox("Invalid pattern: " e.Message, "Regex Error", 0x10)
+    return
+}
+if matched
+    MsgBox("Found")
+
+; Agent rule: RegExMatch/RegExReplace where the pattern variable was not a
+;             compile-time literal string → 🔴 Critical if not in try/catch
+
+; ----------------------------------------------------------------
+; CHECK 9: Registry key built from external input — injection risk
+; ✗ Wrong — registry subkey path constructed from unvalidated user input
+userKey := InputBox("Enter setting name:").Value
+RegWrite("value", "REG_SZ", "HKCU\MyApp\" userKey, "Data")   ; 🔴 Critical
+
+; ✓ Correct — whitelist allowed key names before constructing path
+ALLOWED_SETTINGS := Map("theme", true, "lang", true, "timeout", true)
+userKey := InputBox("Enter setting name:").Value
+if !ALLOWED_SETTINGS.Has(userKey) {
+    MsgBox("Unknown setting: " userKey, "Error", 0x10)
+    return
+}
+RegWrite("value", "REG_SZ", "HKCU\MyApp\" userKey, "Data")   ; ✓ whitelisted
 ```
 
 ### Performance Notes
@@ -642,10 +801,14 @@ ValidateEmail(addr) {
 
 **COM creation cost:** `ComObject()` construction involves COM marshalling overhead — never call it inside a frequently-executed loop or hotkey handler body; hoist to module-level or class static property initialized once.
 
-## TIER 6 — Readability, Maintainability & Composite Review
+**Over-Engineering review depth:** OE findings in Dimension 6 reduce the scope of architectural review in Dimension 3. If Dim 6 flags a class as YAGNI, do not generate Dim 3 refactoring suggestions for that class — flag it once for deletion and move on. This prevents Priority Action List inflation from reviewing code that should not exist.
+
+**Clean Code review depth:** When a script has more than 5 comment-restates-code violations, do not list each individually — report "pervasive comment noise throughout; see lines X, Y, Z for representative examples" as a single Major finding. Listing all 20 occurrences inflates the report without adding actionable value.
+
+## TIER 6 — Clean Code, Over-Engineering & Composite Review
 > METHODS COVERED: `WinGetTitle()` · `WinGetPID()` · `OutputDebug()` · `RegExMatch()` · `WinActive()`
 
-Dimension 6 evaluates naming conventions, documentation quality, file structure, dead code, and duplicate hotkey registrations. The Critical issue unique to this tier is duplicate hotkey definitions: AHK v2 silently uses only the last definition, making the conflict completely invisible. Composite review at this tier synthesizes findings from all five previous dimensions into a prioritized action list.
+Dimension 6 is the highest-priority readability tier. It evaluates Clean Code principles (comment quality, naming contracts, magic strings, negative naming) and Over-Engineering signals (YAGNI, unnecessary abstraction, over-defensive guards, inappropriate design patterns), then synthesises all five prior dimensions into a prioritised action list. Clean Code and Over-Engineering findings are **Major** by default — they signal systemic maintenance debt, not style preference. The Critical issue unique to this tier is duplicate hotkey definitions: AHK v2 silently uses only the last definition.
 ```ahk
 ; ================================================================
 ; TIER 6 REVIEW: Readability, Maintainability & Composite Checklist
@@ -728,6 +891,246 @@ DebugLog(msg) {
         HandleDefaultF1()
 }
 
+; ================================================================
+; CLEAN CODE CHECKS (always Major unless stated otherwise)
+; ================================================================
+
+; ----------------------------------------------------------------
+; CHECK 6: Comment quality — explain WHY, not WHAT
+; ✗ Wrong — comment restates the code; adds noise, no information
+counter := counter + 1          ; 🟡 Minor: "add 1 to counter" says nothing new
+items.Push(newItem)             ; 🟡 Minor: "push newItem to items" is redundant
+
+; ✗ Wrong — block comment explains the obvious algorithm step
+; Loop through each item in the list and check if it matches
+for item in items {
+    if (item = target)
+        return true
+}
+
+; ✓ Correct — comment explains non-obvious intent, constraint, or trade-off
+counter := counter + 1          ; debounce: first event always accepted; rest throttled
+items.Push(newItem)             ; deferred: actual DB write happens in FlushQueue()
+
+; ✓ Correct — comment explains WHY this approach was chosen over the obvious one
+; Linear scan intentional: list always < 10 items; Map overhead not justified here
+for item in items {
+    if (item = target)
+        return true
+}
+
+; Agent rule: comment that can be deleted without losing any information →
+;             🟡 Minor; comment that actively misleads (stale, wrong) → 🟠 Major
+
+; ----------------------------------------------------------------
+; CHECK 7: Naming contracts — Get*/Check*/Is* prefix semantics
+; ✗ Wrong — GetUser() writes to a log file; callers cannot safely call it twice
+GetUser(id) {
+    FileAppend(id "`n", "access.log")   ; 🟠 Major: side effect in a Get* function
+    return users.Get(id, "")
+}
+
+; ✗ Wrong — CheckThreshold() modifies state; callers expect a pure predicate
+CheckThreshold() {
+    result := Session.hitCount > MAX_RETRIES
+    Session.hitCount := 0           ; 🟠 Major: Check* must not mutate state
+    return result
+}
+
+; ✓ Correct — Get* reads only; side-effecting operation gets a verb that signals mutation
+GetUser(id) {
+    return users.Get(id, "")        ; pure read — safe to call multiple times
+}
+
+LogAccess(id) {
+    FileAppend(id "`n", "access.log")   ; verb "Log" signals mutation
+}
+
+IsThresholdExceeded() {
+    return Session.hitCount > MAX_RETRIES   ; pure predicate — no state change
+}
+
+ResetSession() {
+    Session.hitCount := 0           ; verb "Reset" signals mutation explicitly
+}
+
+; ----------------------------------------------------------------
+; CHECK 8: Negative boolean naming — always rename to affirmative form
+; ✗ Wrong — double negation forces mental inversion on every read
+if !isNotReady              ; 🟡 Minor: reader must compute "not (not ready)"
+    StartProcess()
+
+isDisabled := true
+if !isDisabled              ; 🟡 Minor: "not disabled" = "enabled" — use isEnabled
+
+; ✓ Correct — affirmative names read as plain English
+if isReady
+    StartProcess()
+
+isEnabled := true
+if isEnabled
+    DoWork()
+
+; ----------------------------------------------------------------
+; CHECK 9: Magic strings — same severity as magic numbers
+; ✗ Wrong — registry path and window class name appear inline 3+ times
+RegWrite("1", "REG_SZ", "HKCU\Software\MyApp", "Enabled")
+RegRead("HKCU\Software\MyApp", "Timeout")          ; 🟠 Major: duplicated path
+WinActivate("ahk_class Notepad")
+WinWait("ahk_class Notepad", , 3)                  ; 🟠 Major: duplicated class
+
+; ✓ Correct — named constants at script top; one authoritative definition
+APP_REGISTRY_KEY := "HKCU\Software\MyApp"
+NOTEPAD_CLASS    := "ahk_class Notepad"
+
+RegWrite("1", "REG_SZ", APP_REGISTRY_KEY, "Enabled")
+RegRead(APP_REGISTRY_KEY, "Timeout")
+WinActivate(NOTEPAD_CLASS)
+WinWait(NOTEPAD_CLASS, , 3)
+
+; Agent rule: string literal appearing in 3+ locations → 🟠 Major;
+;             string literal in 1–2 locations → 🟡 Minor (suggest constant)
+
+; ================================================================
+; OVER-ENGINEERING CHECKS (Major unless stated otherwise)
+; ================================================================
+
+; ----------------------------------------------------------------
+; CHECK 10: YAGNI — abstraction with no current caller
+; ✗ Wrong — factory class built for "future extensibility"; only one type ever created
+class FileReaderFactory {                   ; 🟠 Major: YAGNI
+    static Create(type) {
+        return type = "text" ? TextFileReader() : BinaryFileReader()
+    }
+}
+class TextFileReader {
+    Read(path) { return FileRead(path, "UTF-8") }
+}
+; Actual usage in the entire script:
+content := FileReaderFactory.Create("text").Read("data.txt")
+
+; ✓ Correct — use the simplest form that satisfies current requirements
+content := FileRead("data.txt", "UTF-8")
+
+; ✗ Wrong — extensible plugin architecture for a 150-line hotkey script
+class PluginManager {                       ; 🟠 Major: 3 classes to call one function
+    static plugins := Map()
+    static Register(name, plugin) { PluginManager.plugins[name] := plugin }
+    static Execute(name) { PluginManager.plugins[name].Run() }
+}
+
+; ✓ Correct — direct Map of function references if dispatch is genuinely needed
+handlers := Map("open", OpenHandler, "save", SaveHandler)
+handlers[action]()
+
+; Agent rule: class/factory/manager with only one concrete subclass or one caller
+;             → 🟠 Major — flag as YAGNI; recommend direct call or Map dispatch
+
+; ----------------------------------------------------------------
+; CHECK 11: Over-defensive internal guards
+; ✗ Wrong — internal helper already guaranteed to receive an Array by its only caller
+BuildSummary(items) {
+    if !IsObject(items)             ; 🟡 Minor: caller always passes Array
+        throw TypeError("Expected Array")
+    if (items.Length = 0)           ; 🟡 Minor: empty array is valid; just returns ""
+        return ""
+    if (Type(items) != "Array")     ; 🟡 Minor: redundant — IsObject already checked
+        throw TypeError("Expected Array, got " Type(items))
+    ; ... actual logic ...
+}
+
+; ✓ Correct — validate at the public entry point only; internal functions trust callers
+ProcessUserCommand(rawInput) {      ; ← public boundary: validate here
+    if (Type(rawInput) != "String" || rawInput = "")
+        throw ValueError("rawInput must be non-empty String")
+    items := ParseCommand(rawInput)
+    return BuildSummary(items)      ; internal call — no re-validation needed
+}
+
+BuildSummary(items) {               ; internal — trust that caller passed valid Array
+    result := ""
+    for item in items
+        result .= item "`n"
+    return result
+}
+
+; Agent rule: type guard inside a function called only from within the same script,
+;             where the calling context already guarantees the type →
+;             🟡 Minor (one guard) or 🟠 Major (3+ redundant guards in one function)
+
+; ----------------------------------------------------------------
+; CHECK 12: Inappropriate design patterns for script scale
+; ✗ Wrong — Observer pattern for a 200-line utility script with 2 event types
+class EventBus {                    ; 🟠 Major: pattern complexity exceeds script size
+    static subscribers := Map()
+    static Subscribe(event, fn) { ... }
+    static Publish(event, data) { ... }
+    static Unsubscribe(event, fn) { ... }
+}
+; Two actual usages:
+EventBus.Subscribe("hotkey", HandleHotkey)
+EventBus.Publish("hotkey", keyData)
+
+; ✓ Correct — direct function call for 2-subscriber scenarios
+HandleHotkey(keyData)
+
+; ✗ Wrong — single-method class wrapping one AHK built-in
+class ClipboardHelper {             ; 🟠 Major: class adds zero value
+    static Get() { return A_Clipboard }
+    static Set(val) { A_Clipboard := val }
+}
+
+; ✓ Correct — use A_Clipboard directly; no wrapper needed
+A_Clipboard := newValue
+current := A_Clipboard
+
+; ================================================================
+; REVIEW PROCESS CHECKS
+; ================================================================
+
+; ----------------------------------------------------------------
+; CHECK 13: Pre-review declaration — run before Dimension 1–6 analysis
+;
+; Every review report must open with these four declarations:
+;
+;   Review scope:  [Complete script | Fragment — Dim 2–6 limited to visible constructs]
+;   AHK version:   [v2.0 confirmed via #Requires | v2.0 assumed — no directive found]
+;   Script length: [< 50 lines | 50–200 lines | 200–500 lines | 500+ lines]
+;   Declared intent: [stated goal] | [Not declared — reviewing for general quality only]
+;
+; Agent rule: omitting any of these four declarations is 🟠 Major —
+;             a reader cannot interpret severity in context without them.
+
+; ----------------------------------------------------------------
+; CHECK 14: Finding wording norms — severity language must be unambiguous
+;
+; Critical findings MUST include: (1) concrete runtime consequence,
+;                                 (2) specific fix with inline code if ≤ 5 lines.
+; Critical findings MUST NOT use: "might", "could", "consider", "perhaps".
+;
+; ✗ Wrong — vague Critical wording
+; 🔴 Line 7 — counter might not be assigned correctly.
+;    Consider using := instead of =.
+;
+; ✓ Correct — concrete Critical wording
+; 🔴 Line 7 — `counter = 0` uses `=` which is comparison in v2; counter stays "".
+;    Fix: `counter := 0`
+;
+; Major findings MUST include:   (1) what the violation costs,
+;                                (2) recommended action.
+; Major findings MUST NOT use:   "might cause issues", "generally better".
+;
+; ✗ Wrong — vague Major wording
+; 🟠 Line 23 — GetUser() is not that clean.
+;
+; ✓ Correct — concrete Major wording
+; 🟠 Line 23 — GetUser() writes to access.log (side effect in a Get* function).
+;    Rename to LogAndGetUser() or extract the FileAppend to a separate LogAccess().
+;
+; Minor findings MAY be brief but must name the specific line and pattern.
+; ✗ Wrong: "Some naming issues throughout"
+; ✓ Correct: "🟡 Line 45 — isNotReady is negative naming; rename to isReady"
+
 ; ----------------------------------------------------------------
 ; COMPOSITE: Producing the Priority Action List
 ; After all six dimensions, rank findings: Critical first, then Major by impact
@@ -755,6 +1158,18 @@ DebugLog(msg) {
 | Fat-arrow with block body | `MyBtn.OnEvent("Click", (*) => { DoA()`\n`DoB() })` | Named function + `MyBtn.OnEvent("Click", namedFn)` | JavaScript arrow function training allows block bodies; AHK v2 restricts fat-arrow to a single expression |
 | Skipping "✅ No issues found" | Omit dimension section when it has no findings | `✅ No issues found.` or `✅ Not applicable (no GUI present).` | LLMs tend to omit sections with nothing to say; report completeness is not inherent in generation without an explicit formatting constraint |
 | Flagging absent features | `🟠 Missing .Destroy() call` when script has no GUI | `✅ Not applicable — no GUI present` | Pattern-matching on known review items without first checking whether the relevant construct exists in the submitted code |
+| Comment restates code | `; add 1 to counter` above `counter += 1` | `; debounce: first event always accepted` (explains intent) | LLM training data contains abundant "explanatory" comments that describe what, not why; generated comments inherit this habit |
+| Get* function with side effect | `GetUser()` that also calls `FileAppend()` | Split into `GetUser()` (pure read) + `LogAccess()` (mutation) | Cross-language training: Python/JS examples often mix logging into retrieval functions without flagging it as a contract violation |
+| Negative boolean naming | `isNotReady`, `!isDisabled` in conditionals | `isReady`, `isEnabled` — always affirmative | Negations are common in training data; LLMs do not track the cognitive cost of double-negation for readers |
+| Magic string repeated 3+ times | `"HKCU\Software\MyApp"` inline in 4 locations | `APP_REGISTRY_KEY := "HKCU\Software\MyApp"` constant | Magic number rule from training data is well-known; magic string rule is underrepresented, so LLMs apply it inconsistently |
+| Over-abstraction / YAGNI | `FileReaderFactory.Create("text").Read(path)` for a single file type | `FileRead(path, "UTF-8")` directly | LLMs default to "extensible" solutions; training data rewards design patterns regardless of whether the problem size justifies them |
+| Over-defensive internal guards | 3 type checks inside a private helper whose only caller already guarantees the type | Validate at the public entry point only; trust internal callers | "Defensive programming" training data does not distinguish public API boundaries from internal function calls |
+| Single-method class wrapping a built-in | `class ClipboardHelper { static Get() { return A_Clipboard } }` | `A_Clipboard` directly | LLMs generalise OOP "encapsulate everything" patterns from enterprise-scale training data to single-file scripts |
+| Function > 40 lines | 80-line function mixing I/O, logic, and UI in one body | ≤ 40 lines per function; one named responsibility | LLMs generate complete end-to-end flows naturally; they do not apply a line-count threshold unless explicitly instructed |
+| Parameter count > 4 | `Fn(a, b, c, d, e, f)` positional API | `Fn(params)` where params is `Map(...)` | Positional parameters are the default function signature in most training language examples; Map parameter objects are underrepresented |
+| Vague Critical finding wording | `🔴 counter might not be assigned` | `🔴 Line 7 — counter = 0 uses = (comparison); counter stays "". Fix: counter := 0` | LLMs hedge uncertainty with "might/could"; Code Review severity demands declarative language with concrete consequences |
+| Unvalidated input in DllCall path | `DllCall("DeleteFileW", "Str", InputBox(...).Value)` | Regex whitelist + `FileExist()` check before `DllCall` | Security validation training data is sparse for scripting language contexts; LLMs default to trusting user-supplied strings |
+| Dynamic RegEx without try/catch | `RegExMatch(data, userPattern)` where pattern is from user input | Wrap in `try/catch`; surface `e.Message` | LLMs apply try/catch to static-pattern calls inconsistently; dynamic-pattern risk is rarely demonstrated in training examples |
 
 ## SEE ALSO
 
@@ -762,6 +1177,7 @@ DebugLog(msg) {
 > This module does NOT cover: try/catch error class hierarchy, typed exception matching, or `OnError()` global handlers → see Module_Errors.md.
 > This module does NOT cover: GUI control creation patterns, layout management, or control property APIs → see Module_GUI.md.
 > This module does NOT cover: class inheritance, meta-functions (`__Get`/`__Set`/`__Call`), or prototype chains → see Module_Classes.md.
+> This module does NOT cover: general software engineering theory (SOLID, DRY, design pattern catalogues) — only AHK v2 script-scale application of Clean Code and YAGNI principles is defined here.
 
 - `Module_Instructions.md` — master AHK v2 syntax rules, idiomatic patterns, and the baseline against which Dimension 1 compliance is measured; load this module first for any general AHK v2 question.
 - `Module_Errors.md` — typed error classes, `OnError()` global handler, and try/catch patterns for Dimension 2 deep-dives; cross-reference when evaluating COM or file I/O error handling.
