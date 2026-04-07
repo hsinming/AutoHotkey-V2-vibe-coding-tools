@@ -39,6 +39,27 @@ If the submission is non-AHK code, output raw JSON (no markdown fences):
 
 AHK v2 diagnostic rules and corrected code patterns are delivered through skills injected automatically into the current session. Use whatever context is available directly.
 
+# AHK Execution Strategy
+
+When execute_command is available, pipe AHK source directly to AutoHotkey — do not write temp files.
+
+**Completeness check** — a script is treated as complete only if it contains `#Requires` OR has at least one hotkey definition, class definition, or auto-execute-section statement at the global scope. Anything else (a bare method body, a class property block, a few isolated lines) is a partial snippet and must not be piped for execution.
+
+**Path resolution order** — try in sequence, stop at first success:
+1. `autohotkey.exe` — AHK v2 is in system PATH
+2. `"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"` — standard Windows install path
+
+**Stdin pipe invocation** (PowerShell):
+```powershell
+$script = @'
+[AHK source]
+'@
+$script | & autohotkey.exe /errorstdout *   # Step 2
+$script | & autohotkey.exe /validate *      # Step 4
+```
+
+**Non-Windows / path resolution failed**: Record `SKIPPED — autohotkey.exe not available` and continue with static analysis only. Do not abort the workflow.
+
 # Workflow
 
 Evaluate all diagnostic dimensions carefully before writing anything in the report.
@@ -54,6 +75,17 @@ Use the injected skill context directly — you do not fetch or call it. Record 
 **Continue-vs-spawn policy**: Continue in the same context window when the diagnostic PLAN block has been written but the corrected code has not yet been emitted. Spawn a fresh context (via orchestrator handoff) when the corrected code has been emitted and test-run verification is needed — route that verification pass to ahk-code; do not remain in the debug context. On context window reset: re-read AGENTS.md at this step to recover the diagnostic state and any patterns already identified before re-running the checklist.
 
 ## Step 2 — Execute Diagnostic Checklist
+
+**Pre-checklist runtime probe** — run before executing any checklist item:
+
+1. Determine whether the submitted input is a complete script (completeness check above).
+2. If partial snippet: record `validation_run : SKIPPED — partial snippet` and proceed directly to checklist.
+3. If complete script: resolve the AHK path and run:
+   ```powershell
+   $script | & autohotkey.exe /errorstdout *
+   ```
+   Record the raw output verbatim in `validation_run` of the PLAN block.
+   Treat any line-number references in the output as **confirmed findings** — incorporate them directly into the corresponding checklist categories without re-deriving them.
 
 Run every check in order. Mark each Pass or Fail with specific line references where applicable.
 
@@ -128,6 +160,18 @@ Before writing the corrected implementation, run the AHK Purity Pre-Flight and r
 
 Then produce the complete corrected script. If only a partial snippet was submitted, correct that snippet — do not fabricate surrounding code.
 
+**Post-fix validation** — run after writing the corrected code:
+
+1. Apply the same completeness check to the corrected code.
+2. If partial snippet: record `post_fix_validation : SKIPPED — partial snippet`.
+3. If complete script: run:
+   ```powershell
+   $corrected | & autohotkey.exe /validate *
+   ```
+   Record the raw output in `post_fix_validation` of the PLAN block.
+   If `/validate` reports errors, revise the corrected code and re-run until clean.
+   Do not emit corrected code that fails `/validate`.
+
 ## Step 5 — Verify success_criteria (if blueprint or delegation_payload provided)
 
 If `success_criteria[]` items were provided, verify each against the corrected code and add a Criteria Check section. Apply the following rules:
@@ -159,6 +203,8 @@ Output exactly this sequence — no text outside these blocks:
     OOP Structure        : [Pass | Fail — details]
     API Correctness      : [Pass | Fail — details]
     Type Validation      : [Pass | Fail — details with line refs]
+    validation_run      : [PASS | FAIL — raw /errorstdout output | SKIPPED — reason]
+    post_fix_validation : [PASS | FAIL — raw /validate output   | SKIPPED — reason]
   </diagnostic_execution>
 </PLAN>
 ```

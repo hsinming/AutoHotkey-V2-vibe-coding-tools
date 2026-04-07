@@ -93,7 +93,28 @@ Write the complete AHK v2 script following the contract exactly:
 - Defensive validation at each public method entry: use `!(param is ClassName)` for object type checks; use `Type(param) != "String"` / `!= "Integer"` only for AHK primitives where inheritance is irrelevant
 - `OutputDebug` for all diagnostic logging — never `MsgBox` for debugging
 
-## Step 4 — Criteria Verification
+## Step 4 — AHK Syntax Validation
+
+After writing the implementation, pipe it to AutoHotkey for syntax validation before
+proceeding to criteria verification.
+
+Path resolution order — try in sequence, stop at first success:
+1. `autohotkey.exe` — AHK v2 is in system PATH
+2. `"C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"` — standard Windows install path
+
+Run:
+```powershell
+$code | & autohotkey.exe /validate *
+```
+
+Record the result in `<pre_computation_validation>` item 6 as:
+`6. Syntax Validation : PASS | FAIL — [raw /validate output] | SKIPPED — [reason]`
+
+If `/validate` reports errors, fix the implementation and re-run before proceeding to Step 5.
+If autohotkey.exe is unavailable (e.g., macOS environment), record SKIPPED and continue.
+Do not emit code that fails `/validate`.
+
+## Step 5 — Criteria Verification
 
 After writing the code, verify each item in `success_criteria[]`. Apply the following halt rules before emitting the code block:
 
@@ -107,7 +128,7 @@ FLOOR FAIL output (raw JSON, no markdown fences):
 
 {"error": "FLOOR_CRITERIA_FAIL", "failed_criteria": ["verbatim criterion text"], "message": "One or more floor criteria cannot be satisfied by the current contract. Return to ahk-architect to revise the blueprint, or return to ahk-orchestrator to revise the delegation_payload."}
 
-## Step 5 — State Persistence
+## Step 6 — State Persistence
 
 When the context window is approaching its limit, execute the two-step write before the session ends:
 
@@ -130,6 +151,7 @@ Output exactly this sequence — no text outside these blocks:
     3. Blueprint Gaps     : [Any BLUEPRINT_GAP findings, or "none" — or "N/A (Path B)"]
     4. Purity Pre-Flight  : [Result of each Step 2 checklist item — flag any violation]
     5. Defensive Strategy : [List type checks (is vs Type()), try/catch placements, and fallbacks]
+    6. Syntax Validation  : [PASS | FAIL — raw /validate output | SKIPPED — reason]
   </pre_computation_validation>
 
   <criteria_check>
@@ -243,6 +265,7 @@ Input: Blueprint JSON from ahk-architect (Path A — abbreviated to key structur
     3. Blueprint Gaps     : none — OnSave calls configMgr.Set() and configMgr.Save(), both confirmed in ConfigManager.methods[].
     4. Purity Pre-Flight  : No class-name reuse. ✓ | OnSave is multi-line → named method + .Bind(this). ✓ | No JS syntax. ✓ | Map() used for settings. ✓ | No empty catch. ✓ | SettingsGUI.__New uses !(configMgr is ConfigManager). ✓ | ConfigManager.__New uses Type(filePath) != "String" — acceptable for String primitive. ✓
     5. Defensive Strategy : ConfigManager.__New: Type(filePath) check (primitive). ConfigManager.Set: empty key → ValueError. SettingsGUI.__New: !(configMgr is ConfigManager) → TypeError. OnSave: OSError caught → OutputDebug.
+    6. Syntax Validation  : PASS
   </pre_computation_validation>
 
   <criteria_check>

@@ -69,6 +69,7 @@ customModes:
     description: AHK Debug — auditor for broken or suspect AHK v2 code
     groups:
       - read
+      - command
       - - edit
         - fileRegex: (\.ahk$|^\.roo/rules-ahk-debug/(AGENTS\.md|patterns\.md)$)
           description: AHK v2 原始碼 + 自身 AGENTS.md 索引（最多 20 條）+ patterns.md 錯誤模式庫（最多 50 條活躍）
