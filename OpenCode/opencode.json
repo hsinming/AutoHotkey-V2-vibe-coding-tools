@@ -1,0 +1,83 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "oh-my-opencode",
+    "superpowers@git+https://github.com/obra/superpowers.git"
+  ],
+  "agent": {
+    "ahk-orchestrator": {
+      "description": "Master workflow controller for the AHK v2 coding agent ecosystem. Routes AHK v2 development requests to the appropriate specialist subagent after validation, context extraction, and delegation payload construction. Switch to this agent to start any AHK v2 task.",
+      "mode": "primary",
+      "color": "primary",
+      "model": "qwen/qwen3.6-plus:free",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "ahk-*": "allow"
+        },
+        "todowrite": "allow",
+        "todoread": "allow"
+      }
+    },
+    "ahk-architect": {
+      "description": "Software design authority for AHK v2. Produces complete architectural blueprints that ahk-code can implement without ambiguity. Invoke when a task requires evaluating class structure, data strategy, layer separation, or any design decision specific to this system.",
+      "mode": "subagent",
+      "hidden": true,
+      "color": "#6B8AFF",
+      "permission": {}
+    },
+    "ahk-code": {
+      "description": "AHK v2 implementation engine. Ingests a blueprint from ahk-architect or a delegation payload from ahk-orchestrator and produces production-grade, executable AHK v2 code. Only invoked after architectural review is complete.",
+      "mode": "subagent",
+      "hidden": true,
+      "color": "#4CAF50",
+      "permission": {
+        "edit": {
+          "*.ahk": "allow",
+          "*": "deny"
+        },
+        "write": {
+          "*.ahk": "allow",
+          "*": "deny"
+        },
+        "bash": {
+          "*": "ask",
+          "cat *": "allow",
+          "grep *": "allow",
+          "git status": "allow",
+          "git diff *": "allow",
+          "git log *": "allow",
+          "git add *": "allow",
+          "git commit *": "ask"
+        }
+      }
+    },
+    "ahk-debug": {
+      "description": "AHK v2 code auditor. Analyzes submitted AHK v2 code or error traces, produces a structured diagnostic report categorized by severity, and outputs corrected code verified clean. Invoke when code is broken, throws errors, or exhibits unexpected runtime behavior.",
+      "mode": "subagent",
+      "hidden": true,
+      "color": "#FF6B6B",
+      "permission": {
+        "edit": {
+          "*.ahk": "allow",
+          "*": "deny"
+        },
+        "bash": {
+          "*": "ask",
+          "cat *": "allow",
+          "grep *": "allow",
+          "autohotkey.exe /validate *": "allow",
+          "autohotkey.exe /errorstdout *": "allow"
+        }
+      }
+    },
+    "ahk-ask": {
+      "description": "AHK v2 technical mentor. Answers questions about AHK v2 concepts, syntax, debugging patterns, and general programming topics. Can be @mentioned directly for quick questions; also invoked by ahk-orchestrator for conceptual queries.",
+      "mode": "subagent",
+      "color": "#FFB347",
+      "permission": {
+        "webfetch": "allow"
+      }
+    }
+  }
+}
