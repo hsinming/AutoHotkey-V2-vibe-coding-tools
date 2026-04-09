@@ -57,7 +57,7 @@ Each subdirectory under `skills/` is one skill. After copying, the layout should
 
 **Step 2 — Install Custom Mode Definitions (`.roomodes`)**
 
-Read the file `<SOURCE>/Roo code mode prompts/roomodes.md`. It contains a YAML block starting with `customModes:`. Write the YAML content to `<WORKSPACE>/.roomodes` (create the file if it does not exist). This registers the five modes with Roo at project level.
+Read the file `<SOURCE>/Roo Code/_roomodes.md`. It contains a YAML block starting with `customModes:`. Write the YAML content to `<WORKSPACE>/.roomodes` (create the file if it does not exist). This registers the five modes with Roo at project level.
 
 The five modes to install are:
 | Mode Slug | Display Name | Role |
@@ -75,11 +75,11 @@ Each mode's detailed prompt/system instructions must be copied into its own `.ro
 ```
 SOURCE files → DESTINATION directories (create each directory if it does not exist):
 
-  <SOURCE>/Roo code mode prompts/ahk-orchestrator.md  →  <WORKSPACE>/.roo/rules-ahk-orchestrator/ahk-orchestrator.md
-  <SOURCE>/Roo code mode prompts/ahk-architect.md     →  <WORKSPACE>/.roo/rules-ahk-architect/ahk-architect.md
-  <SOURCE>/Roo code mode prompts/ahk-code.md          →  <WORKSPACE>/.roo/rules-ahk-code/ahk-code.md
-  <SOURCE>/Roo code mode prompts/ahk-debug.md         →  <WORKSPACE>/.roo/rules-ahk-debug/ahk-debug.md
-  <SOURCE>/Roo code mode prompts/ahk-ask.md           →  <WORKSPACE>/.roo/rules-ahk-ask/ahk-ask.md
+  <SOURCE>/Roo Code/ahk-orchestrator.md  →  <WORKSPACE>/.roo/rules-ahk-orchestrator/ahk-orchestrator.md
+  <SOURCE>/Roo Code/ahk-architect.md     →  <WORKSPACE>/.roo/rules-ahk-architect/ahk-architect.md
+  <SOURCE>/Roo Code/ahk-code.md          →  <WORKSPACE>/.roo/rules-ahk-code/ahk-code.md
+  <SOURCE>/Roo Code/ahk-debug.md         →  <WORKSPACE>/.roo/rules-ahk-debug/ahk-debug.md
+  <SOURCE>/Roo Code/ahk-ask.md           →  <WORKSPACE>/.roo/rules-ahk-ask/ahk-ask.md
 ```
 
 After copying, the layout should be:
@@ -123,15 +123,15 @@ Confirm the following paths exist after installation:
 
 **Step 1 — Install Project-level Sub-agents**
 
-Copy all `.md` files from `<SOURCE>/OpenCode agent prompts/` to `<WORKSPACE>/.claude/agents/`. Create the destination directory if it does not exist.
+Copy all `.md` files from `<SOURCE>/OpenCode/` to `<WORKSPACE>/.claude/agents/`. Create the destination directory if it does not exist.
 
 ```
 SOURCE files (copy each individually):
-  <SOURCE>/OpenCode agent prompts/ahk-orchestrator.md  →  <WORKSPACE>/.claude/agents/ahk-orchestrator.md
-  <SOURCE>/OpenCode agent prompts/ahk-architect.md     →  <WORKSPACE>/.claude/agents/ahk-architect.md
-  <SOURCE>/OpenCode agent prompts/ahk-code.md          →  <WORKSPACE>/.claude/agents/ahk-code.md
-  <SOURCE>/OpenCode agent prompts/ahk-debug.md         →  <WORKSPACE>/.claude/agents/ahk-debug.md
-  <SOURCE>/OpenCode agent prompts/ahk-ask.md           →  <WORKSPACE>/.claude/agents/ahk-ask.md
+  <SOURCE>/OpenCode/ahk-orchestrator.md  →  <WORKSPACE>/.claude/agents/ahk-orchestrator.md
+  <SOURCE>/OpenCode/ahk-architect.md     →  <WORKSPACE>/.claude/agents/ahk-architect.md
+  <SOURCE>/OpenCode/ahk-code.md          →  <WORKSPACE>/.claude/agents/ahk-code.md
+  <SOURCE>/OpenCode/ahk-debug.md         →  <WORKSPACE>/.claude/agents/ahk-debug.md
+  <SOURCE>/OpenCode/ahk-ask.md           →  <WORKSPACE>/.claude/agents/ahk-ask.md
 ```
 
 **Step 2 — Install Context Modules**
@@ -159,15 +159,15 @@ Confirm the following paths exist:
 
 **Step 1 — Install Agent Prompts**
 
-Copy all `.md` files from `<SOURCE>/OpenCode agent prompts/` to `<WORKSPACE>/.opencode/agents/`. Create the destination directory if it does not exist.
+Copy all `.md` files from `<SOURCE>/OpenCode/` to `<WORKSPACE>/.opencode/agents/`. Create the destination directory if it does not exist.
 
 ```
 SOURCE files (copy each individually):
-  <SOURCE>/OpenCode agent prompts/ahk-orchestrator.md  →  <WORKSPACE>/.opencode/agents/ahk-orchestrator.md
-  <SOURCE>/OpenCode agent prompts/ahk-architect.md     →  <WORKSPACE>/.opencode/agents/ahk-architect.md
-  <SOURCE>/OpenCode agent prompts/ahk-code.md          →  <WORKSPACE>/.opencode/agents/ahk-code.md
-  <SOURCE>/OpenCode agent prompts/ahk-debug.md         →  <WORKSPACE>/.opencode/agents/ahk-debug.md
-  <SOURCE>/OpenCode agent prompts/ahk-ask.md           →  <WORKSPACE>/.opencode/agents/ahk-ask.md
+  <SOURCE>/OpenCode/ahk-orchestrator.md  →  <WORKSPACE>/.opencode/agents/ahk-orchestrator.md
+  <SOURCE>/OpenCode/ahk-architect.md     →  <WORKSPACE>/.opencode/agents/ahk-architect.md
+  <SOURCE>/OpenCode/ahk-code.md          →  <WORKSPACE>/.opencode/agents/ahk-code.md
+  <SOURCE>/OpenCode/ahk-debug.md         →  <WORKSPACE>/.opencode/agents/ahk-debug.md
+  <SOURCE>/OpenCode/ahk-ask.md           →  <WORKSPACE>/.opencode/agents/ahk-ask.md
 ```
 
 **Step 2 — Install Skills**
@@ -245,6 +245,10 @@ This repository organizes AHK v2 knowledge into modular Context Modules and Skil
 ```
 AutoHotkey-V2-vibe-coding-tools/
 ├── README.md                          ← This file (AI-readable auto-installer)
+├── .roomodes                          ← Roo Code mode registry YAML
+├── opencode.json                      ← OpenCode configuration
+├── .gitignore
+├── LICENSE
 ├── Context Modules/                   ← Source knowledge base (.md per domain)
 │   ├── Module_Instructions.md         ← Core role + engineering principles (always load first)
 │   ├── ahk_formatting_spec.md         ← Formatting: 4-space, CRLF, K&R brace style
@@ -277,14 +281,14 @@ AutoHotkey-V2-vibe-coding-tools/
 │   ├── get-ahk-system-context/
 │   ├── get-ahk-logic-context/
 │   └── get-ahk-review-context/
-├── Roo code mode prompts/             ← Roo Code custom mode definitions
-│   ├── roomodes.md                    ← YAML: paste into .roomodes or Roo settings
+├── Roo Code/                          ← Roo Code custom mode definitions
+│   ├── _roomodes.md                   ← YAML: paste into .roomodes or Roo settings
 │   ├── ahk-orchestrator.md
 │   ├── ahk-architect.md
 │   ├── ahk-code.md
 │   ├── ahk-debug.md
 │   └── ahk-ask.md
-└── OpenCode agent prompts/            ← OpenCode / Claude Code sub-agent definitions
+└── OpenCode/                          ← OpenCode / Claude Code sub-agent definitions
     ├── ahk-orchestrator.md            ← Start here — primary entry point
     ├── ahk-architect.md
     ├── ahk-code.md
