@@ -25,24 +25,72 @@ order on every review request. Do not skip steps or reorder them.
 
 ---
 
+## How to Use This Skill
+
+### Step 1 — Decision Table: task type → module to load
+
+| Task type | Load module |
+|-----------|-------------|
+| Any code review / audit / v2 compliance check | `references/Module_CodeReview.md` |
+| v2 syntax baseline verification (Dimension 1) | `../get-ahk-core-context/references/Module_Instructions.md` |
+| OOP / class / inheritance review | `../get-ahk-core-context/references/Module_Classes.md` |
+| Function naming contract enforcement | `../get-ahk-core-context/references/Module_Functions.md` |
+| Error handling / throwing operations review | `../get-ahk-logic-context/references/Module_Errors.md` |
+| GUI / event binding review (Dimension 4) | `../get-ahk-ui-context/references/Module_GUI.md` |
+| DllCall / Buffer / COM security review (Dimension 5) | `../get-ahk-system-context/references/Module_DllCallAndMemory.md` |
+
+### Step 2 — Cross-skill dependency loading order
+
+Load in this sequence; conditional modules require scanning the submitted code first.
+
+1. `../get-ahk-core-context/references/Module_Instructions.md` — **always load first** (authoritative v2 syntax baseline)
+2. `references/Module_CodeReview.md` — **always load** (primary review framework: 6 dimensions, severity rules, Clean Code + OE contracts)
+3. `../get-ahk-core-context/references/Module_Classes.md` — if `class`, `extends`, `__New`, `static`, or OOP patterns present
+4. `../get-ahk-core-context/references/Module_Functions.md` — if `Get*`, `Check*`, `Is*`, or `Set*` function/method names present
+5. `../get-ahk-logic-context/references/Module_Errors.md` — if `try`, `catch`, `FileRead`, `ComObject`, `RegRead`, `DllCall`, or `Download` present
+6. `../get-ahk-ui-context/references/Module_GUI.md` — if `Gui()`, `.Add()`, `.OnEvent()`, or `SetTimer` present
+7. `../get-ahk-system-context/references/Module_DllCallAndMemory.md` — if `DllCall`, `Buffer`, or `ComObjQuery` present
+
+### Step 3 — Apply Universal Critical Rules
+
+After loading all required modules, cross-check the submitted code against the Critical and Major severity rule tables in `references/Module_CodeReview.md` before writing any finding. Confirm: every Critical condition has been evaluated.
+
+### Step 4 — Generate the review report
+
+Produce the six-dimension report defined in `references/Module_CodeReview.md`, assigning each finding the mandatory severity level (🔴 Critical / 🟠 Major / 🟡 Minor) from the severity classification tables — not from personal judgment.
+
+### Step 5 — Pre-output self-check
+
+Before writing the final report, verify every item below:
+
+- [ ] `=` is not used as assignment anywhere in the reviewed code (must be `:=`)
+- [ ] No `catch {}` body is empty — every catch block contains a handling action
+- [ ] Every `.OnEvent()` callback on a class method calls `.Bind(this)`
+- [ ] No fat-arrow function uses a multi-statement body `=> { ... }`
+- [ ] No duplicate hotkey definitions exist in the script
+- [ ] Every `Get*` / `Fetch*` / `Read*` function/method is side-effect-free
+- [ ] Every `Check*` / `Is*` / `Has*` function/method returns a boolean and mutates no state
+
+---
+
 ## Step 1 — Load Modules (before reading the submitted code)
 
 ### Always load
 
 | Module | Path | Why |
 |--------|------|-----|
-| `Module_CodeReview` | `.roo/skills/get-ahk-review-context/references/Module_CodeReview.md` | Primary review framework: 6 dimensions, severity rules, Clean Code + OE contracts |
-| `Module_Instructions` | `.roo/skills/get-ahk-core-context/references/Module_Instructions.md` | Authoritative v2 syntax baseline for Dimension 1 compliance |
+| `Module_CodeReview` | `references/Module_CodeReview.md` | Primary review framework: 6 dimensions, severity rules, Clean Code + OE contracts |
+| `Module_Instructions` | `../get-ahk-core-context/references/Module_Instructions.md` | Authoritative v2 syntax baseline for Dimension 1 compliance |
 
 ### Load conditionally — scan the submitted code first
 
 | If the submitted code contains… | Also load |
 |---------------------------------|-----------|
-| `class`, `extends`, `__New`, `static`, OOP patterns | `Module_Classes.md` — naming contracts for class methods (`Get*`/`Check*`/`Is*`), `__Delete` lifecycle, `.Bind(this)` |
-| Function definitions with `Get*`, `Check*`, `Is*`, `Set*` prefixes | `Module_Functions.md` — naming contract enforcement, pure vs side-effect separation |
-| `try`, `catch`, `FileRead`, `ComObject`, `RegRead`, `DllCall`, `Download` | `Module_Errors.md` — throwing operation reference, error class hierarchy |
-| `Gui()`, `.Add()`, `.OnEvent()`, `SetTimer` | `Module_GUI.md` — event binding patterns for Dimension 4 |
-| `DllCall`, `Buffer`, `ComObjQuery` | `Module_DllCallAndMemory.md` — DllCall signature rules for Dimension 5 security checks |
+| `class`, `extends`, `__New`, `static`, OOP patterns | `../get-ahk-core-context/references/Module_Classes.md` — naming contracts for class methods (`Get*`/`Check*`/`Is*`), `__Delete` lifecycle, `.Bind(this)` |
+| Function definitions with `Get*`, `Check*`, `Is*`, `Set*` prefixes | `../get-ahk-core-context/references/Module_Functions.md` — naming contract enforcement, pure vs side-effect separation |
+| `try`, `catch`, `FileRead`, `ComObject`, `RegRead`, `DllCall`, `Download` | `../get-ahk-logic-context/references/Module_Errors.md` — throwing operation reference, error class hierarchy |
+| `Gui()`, `.Add()`, `.OnEvent()`, `SetTimer` | `../get-ahk-ui-context/references/Module_GUI.md` — event binding patterns for Dimension 4 |
+| `DllCall`, `Buffer`, `ComObjQuery` | `../get-ahk-system-context/references/Module_DllCallAndMemory.md` — DllCall signature rules for Dimension 5 security checks |
 
 ---
 
@@ -243,25 +291,13 @@ Do not fabricate try/catch requirements. Apply only to genuinely throwing operat
 
 ## Reference Files
 
-Paths are relative to the root of whichever skills directory your environment uses
-(e.g. `.roo/skills/`, `/mnt/skills/user/`, or any equivalent location).
-
 ```
-get-ahk-review-context/references/
-  Module_CodeReview.md          ← primary (always load)
-
-get-ahk-core-context/references/
-  Module_Instructions.md        ← always load alongside
-  Module_Functions.md           ← load if Get*/Check*/Is* function names present
-  Module_Classes.md             ← load if class / extends / OOP present
-
-get-ahk-logic-context/references/
-  Module_Errors.md              ← load if try/catch or throwing ops present
-  Module_AsyncAndTimers.md      ← load if SetTimer / async patterns present
-
-get-ahk-ui-context/references/
-  Module_GUI.md                 ← load if Gui() or .OnEvent() present
-
-get-ahk-system-context/references/
-  Module_DllCallAndMemory.md    ← load if DllCall / Buffer / COM present
+references/Module_CodeReview.md                              ← primary (always load)
+../get-ahk-core-context/references/Module_Instructions.md   ← always load alongside
+../get-ahk-core-context/references/Module_Functions.md      ← load if Get*/Check*/Is* function names present
+../get-ahk-core-context/references/Module_Classes.md        ← load if class / extends / OOP present
+../get-ahk-logic-context/references/Module_Errors.md        ← load if try/catch or throwing ops present
+../get-ahk-logic-context/references/Module_AsyncAndTimers.md ← load if SetTimer / async patterns present
+../get-ahk-ui-context/references/Module_GUI.md              ← load if Gui() or .OnEvent() present
+../get-ahk-system-context/references/Module_DllCallAndMemory.md ← load if DllCall / Buffer / COM present
 ```
