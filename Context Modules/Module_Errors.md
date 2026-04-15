@@ -1,8 +1,8 @@
-﻿# Module_Errors.md
-<!-- DOMAIN: Errors — syntax errors, runtime errors, v1→v2 migration, exception handling -->
+# Module_Errors.md
+<!-- DOMAIN: Error Handling — syntax errors, runtime errors, v1→v2 migration, exception handling -->
 <!-- SCOPE: COM-specific error propagation, HRESULT codes, and deep GUI event-binding diagnostics are not covered — see Module_SystemAndCOM.md and Module_GUI.md. -->
-<!-- TRIGGERS: error, exception, try, catch, throw, OnError, debug, crash, "syntax error", "runtime error", "not working", "script won't run", "unknown command", "variable not assigned", ErrorLevel, UnsetError, "v1 to v2 migration", "old script broken", "unexpected behavior", "throws exception" -->
-<!-- CONSTRAINTS: Use `:=` for assignment — `=` alone in an expression is case-insensitive string comparison, not assignment; all built-in commands require function syntax with parentheses and quoted strings; `ErrorLevel` is removed in v2 — use `try/catch as err` instead; fat-arrow functions are single-expression only, never multi-line blocks; `new ClassName()` is invalid in v2 — call the class directly; register `OnError()` as the first executable statement so early throws are captured. -->
+<!-- TRIGGERS: error, exception, try, catch, throw, OnError, debug, crash, "syntax error", "runtime error", "not working", "script won't run", "unknown command", "variable not assigned", ErrorLevel, UnsetError, "v1 to v2 migration", "old script broken", "unexpected behavior", "throws exception", TypeError, OSError, MemberError, UnsetItemError -->
+<!-- CONSTRAINTS: Use `:=` for assignment — `=` alone in an expression is case-insensitive string comparison, not assignment; all built-in commands require function syntax with parentheses and quoted strings; `ErrorLevel` is removed in v2 — use `try/catch as err` instead; fat-arrow functions are single-expression only, never multi-line blocks; `new ClassName()` is invalid in v2 — call the class directly; register `OnError()` as the first executable statement so early throws are captured; `catch` clauses must be ordered most-specific subclass first or broad `Error` swallows all typed exceptions. -->
 <!-- CROSS-REF: Module_Instructions.md, Module_Classes.md, Module_GUI.md, Module_Arrays.md, Module_DataStructures.md, Module_SystemAndCOM.md, Module_FileSystem.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -15,7 +15,7 @@
 | `%Var%` inside strings or expressions | `Var` directly; concatenate with `.` | `%Var%` is a literal six-character string in v2 expressions, not variable expansion |
 | `#If WinActive("Title")` | `#HotIf WinActive("Title")` | Context directive not recognized — context-sensitive hotkeys silently non-functional |
 | `if (ErrorLevel)` after any function call | `try { } catch as err { }` | `ErrorLevel` removed in v2; most functions never set it — condition always evaluates an unset variable |
-| `new MyClass()` | `MyClass()` | `new` is invalid in v2 — parse error, or `__New` constructor is bypassed entirely |
+| `new MyClass()` | `MyClass()` | `new` is invalid in v2 — `NameError` at runtime; the interpreter treats `new` as an unknown function name |
 | `Gui, Add, Edit, vMyEdit` / `Gui, Show` | `gui := Gui("", "Title")` → `gui.Add("Edit", "vMyEdit")` → `gui.Show()` | "Unknown command" — GUI is fully object-based in v2; command-style is not recognized |
 | `return, total` | `return total` | Parse error — comma after `return` is a v1-only holdover, invalid in v2 |
 | `SetTimer, MyFunc, 2000` | `SetTimer(MyFunc, 2000)` | "Unknown command" — `SetTimer` is a function call, not a command |
@@ -24,60 +24,74 @@
 ## API QUICK-REFERENCE
 
 ### Built-in Error Classes
-| Class | Constructor Signature | Notes |
-|-------|-----------------------|-------|
-| `Error` | `Error(message, what?, extra?)` | Base class for all exceptions; `.File`, `.Line`, `.Stack` populated automatically |
-| `ValueError` | `ValueError(message, what?, extra?)` | Wrong value type or out-of-range argument |
-| `TypeError` | `TypeError(message, what?, extra?)` | Wrong object type passed to a function or operator |
-| `OSError` | `OSError(code?)` | OS-level I/O failure; `code` is a numeric Windows error code (defaults to `A_LastError`); sets `.Number` and `.Message` automatically |
-| `MemoryError` | `MemoryError(message?)` | Memory allocation failure |
-| `UnsetError` | `UnsetError(message, what?)` | Uninitialized variable or unset function parameter |
-| `UnsetItemError` | `UnsetItemError(message, what?)` | Array index or Map key not found |
-| `MemberError` | `MemberError(message, what?)` | Property or method does not exist on an object |
-| `IndexError` | `IndexError(message, what?)` | Array index out of bounds |
-| `KeyError` | `KeyError(message, what?)` | Map key absent when direct access `m[k]` is used |
-| `TargetError` | `TargetError(message, what?)` | Target window or control not found |
+
+Total distinct error classes: 15. Each subsection is ≤ 20 items — table format used per subsection.
+
+<!-- CONVERTED: removed non-existent `KeyError` class (not in AHK v2 built-in hierarchy — UnsetItemError is what fires on absent Map key access); added missing TimeoutError, ZeroDivisionError, PropertyError, MethodError from official class hierarchy -->
+
+| Class | Constructor Signature | Returns | Throws | Notes |
+|-------|-----------------------|---------|--------|-------|
+| `Error` | `Error(message, what?, extra?)` | `Error` instance | — | Base class for all exceptions; `.File`, `.Line`, `.Stack` populated automatically |
+| `ValueError` | `ValueError(message, what?, extra?)` | `ValueError` instance | — | Wrong value type or out-of-range argument |
+| `IndexError` | `IndexError(message, what?, extra?)` | `IndexError` instance | — | Subclass of `ValueError`; `__Item` index invalid or out of range |
+| `ZeroDivisionError` | `ZeroDivisionError(message, what?, extra?)` | `ZeroDivisionError` instance | — | Subclass of `ValueError`; division by zero in expression or `Mod()` |
+| `TypeError` | `TypeError(message, what?, extra?)` | `TypeError` instance | — | Wrong object type passed to a function or operator; `.Extra` contains the errant value |
+| `OSError` | `OSError(code?)` | `OSError` instance | — | OS-level I/O failure; `code` defaults to `A_LastError`; auto-sets `.Number` and `.Message` |
+| `MemoryError` | `MemoryError(message?)` | `MemoryError` instance | — | Memory allocation failure |
+| `TargetError` | `TargetError(message, what?)` | `TargetError` instance | — | Target window or control not found |
+| `TimeoutError` | `TimeoutError(message, what?)` | `TimeoutError` instance | — | `SendMessage` timed out |
+| `UnsetError` | `UnsetError(message, what?)` | `UnsetError` instance | — | Uninitialized variable or unset function parameter |
+| `UnsetItemError` | `UnsetItemError(message, what?)` | `UnsetItemError` instance | — | Subclass of `UnsetError`; Array index or Map key absent on direct `m[k]` access |
+| `MemberError` | `MemberError(message, what?)` | `MemberError` instance | — | Subclass of `UnsetError`; property or method does not exist on the object |
+| `PropertyError` | `PropertyError(message, what?)` | `PropertyError` instance | — | Subclass of `MemberError`; specifically a missing or unreadable property |
+| `MethodError` | `MethodError(message, what?)` | `MethodError` instance | — | Subclass of `MemberError`; specifically a missing or uncallable method |
 
 ### Error Object Properties
-| Property | Type | Notes |
-|----------|------|-------|
-| `.Message` | String | Human-readable description — always present |
-| `.What` | String | Name of the function/method that threw |
-| `.Extra` | String | Supplementary information, if provided |
-| `.File` | String | Full path to the source file where the error occurred |
-| `.Line` | Integer | Line number in the source file |
-| `.Stack` | String | Multi-line call-stack trace string |
+
+| Property | Access | Returns | Throws | Notes |
+|----------|--------|---------|--------|-------|
+| `.Message` | Read | String | — | Human-readable description — always present |
+| `.What` | Read | String | — | Name of the function/method that threw |
+| `.Extra` | Read | String | — | Supplementary information, if provided |
+| `.File` | Read | String | — | Full path to the source file where the error occurred |
+| `.Line` | Read | Integer | — | Line number in the source file |
+| `.Stack` | Read | String | — | Multi-line call-stack trace string |
 
 ### Exception Control Flow
-| Keyword / Function | Syntax | Notes |
-|-------------------|--------|-------|
-| `throw` | `throw ExpressionOrObject` | Throws any value; `Error`-derived objects gain `.File`/`.Line` automatically |
-| `try` | `try { ... }` | Guards the block; jumps to matching `catch` on exception |
-| `catch` | `catch [ErrorClass] as varName { }` | Type clause is optional; most-specific subclass must come **first** |
-| `finally` | `finally { }` | Always runs after try/catch regardless of outcome — use for guaranteed cleanup |
-| `OnError()` | `OnError(callback, addRemove?)` | Register global uncaught-exception handler; call before any throwable code |
+
+| Keyword / Function | Syntax | Returns | Throws | Notes |
+|-------------------|--------|---------|--------|-------|
+| `throw` | `throw ExpressionOrObject` | — | Any value | Throws any value; `Error`-derived objects gain `.File`/`.Line` automatically; bare `throw` inside `catch` retrows without losing stack |
+| `try` | `try { ... }` | — | — | Guards the block; jumps to matching `catch` on exception; bare `try` without `catch` acts like `catch Error {}` |
+| `catch` | `catch [Class[, Class2]] [as varName] { }` | — | — | Type clause is optional; most-specific subclass must come **first**; `catch Any` catches any thrown value; comma-delimited list catches multiple types in one clause |
+| `finally` | `finally { }` | — | — | Always runs after try/catch regardless of outcome — use for guaranteed cleanup |
+| `OnError()` | `OnError(callback, addRemove?)` | — | — | Register global uncaught-exception handler; call before any throwable code; callback returns `0`/`""` (proceed), `1` (suppress dialog), or `-1` (suppress + continue thread for continuable errors) |
 
 ### Supporting Functions Used in Error Patterns
-| Function | Signature | Notes |
-|----------|-----------|-------|
-| `Type()` | `Type(value)` | Returns the type name as a string — use in OnError to identify exception class |
-| `FormatTime()` | `FormatTime(time?, format?)` | Format timestamps for crash logs |
-| `FileAppend()` | `FileAppend(text, filename, encoding?)` | Append structured entries to persistent crash log |
-| `MouseGetPos()` | `MouseGetPos(&x?, &y?, &win?, &ctrl?)` | All four output parameters require `&` prefix |
-| `ProcessExist()` | `ProcessExist(pidOrName?)` | Returns PID if running, 0 if not — use in completion-check timers |
-| `Run()` | `Run(target, workingDir?, options?, &pidVarName?)` | Non-blocking process launch; capture PID via `&pidVarName` |
-| `RunWait()` | `RunWait(target, workingDir?, options?, &pidVarName?)` | Blocking launch — freezes GUI; prefer `Run()` + timer for GUI scripts |
-| `StrSplit()` | `StrSplit(string, delimiters?, omitChars?, maxParts?)` | Returns Array; replaces v1 `Loop, Parse` |
-| `WinActivate()` | `WinActivate(winTitle?, ...)` | Bring target window to foreground before sending input |
-| `WinWaitActive()` | `WinWaitActive(winTitle?, ..., timeout?)` | Block until window is active — pair with `WinActivate()` |
-| `ControlSend()` | `ControlSend(keys, control?, winTitle?, ...)` | Send keystrokes to a specific control without activating the window |
+
+| Function | Signature | Returns | Throws | Notes |
+|----------|-----------|---------|--------|-------|
+| `Type()` | `Type(value)` | String | — | Returns the type name — use in `OnError` to identify exception class |
+| `IsSet()` | `IsSet(var)` | Integer (bool) | — | Returns 1 if var has a value; 0 if unset — use before access to prevent UnsetError |
+| `FormatTime()` | `FormatTime(time?, format?)` | String | — | Format timestamps for crash logs |
+| `FileAppend()` | `FileAppend(text, filename, encoding?)` | — | `OSError` | Append structured entries to persistent crash log |
+| `DirCreate()` | `DirCreate(dirName)` | — | `OSError` | Create log directory if absent; safe before first `FileAppend` |
+| `DirExist()` | `DirExist(dirName)` | String or `""` | — | Returns attribute string or `""` — check `!= ""` for truthiness |
+| `MouseGetPos()` | `MouseGetPos(&x?, &y?, &win?, &ctrl?)` | — | — | All four output parameters require `&` prefix — omitting silently discards values |
+| `ProcessExist()` | `ProcessExist(pidOrName?)` | Integer (PID) or 0 | — | Returns PID if running, 0 if not — use in completion-check timers |
+| `Run()` | `Run(target, workingDir?, options?, &pidVarName?)` | — | `OSError` | Non-blocking process launch; capture PID via `&pidVarName` |
+| `RunWait()` | `RunWait(target, workingDir?, options?, &pidVarName?)` | Integer (exit code) | `OSError` | Blocking launch — freezes GUI; prefer `Run()` + timer for GUI scripts |
+| `StrSplit()` | `StrSplit(string, delimiters?, omitChars?, maxParts?)` | `Array` | — | Returns Array; replaces v1 `Loop, Parse` |
+| `WinActivate()` | `WinActivate(winTitle?, ...)` | — | `TargetError` | Bring target window to foreground before sending input |
+| `WinWaitActive()` | `WinWaitActive(winTitle?, ..., timeout?)` | Integer (HWND) or 0 | — | Block until window is active — pair with `WinActivate()` |
+| `ControlSend()` | `ControlSend(keys, control?, winTitle?, ...)` | — | `TargetError` | Send keystrokes to a specific control without activating the window |
 
 ## AHK V2 CONSTRAINTS
 
 - `:=` is always assignment; `=` in an expression is always case-insensitive string comparison; never use `=` to assign — the script runs without error but produces wrong values silently.
 - All AHK built-in commands require function syntax: parentheses, quoted string arguments. `MsgBox text` is a parse error; `MsgBox("text")` is correct.
 - `%Var%` inside quoted strings or expressions is never variable expansion in v2 — it resolves to a literal string. Use `Var` directly in expressions or concatenate with `.`.
-- All functions and hotkeys have **local scope by default** — global variables referenced inside them must be declared with `global varName`; omitting this causes UnsetError at runtime.
+- All functions and hotkeys have **local scope by default** — global variables **assigned** inside a function must be declared with `global varName`; omitting this creates a separate local variable instead of writing to the global. Variables that are only *read* (never assigned anywhere in the function body) resolve to global scope without a declaration. If a name is assigned anywhere in the function body without a `global` declaration, AHK v2 treats every reference to that name in the function as local, so reads before the assignment see an unset local.
 - `ErrorLevel` is removed in v2 — it is never set by built-in functions. Checking it produces UnsetError or always-false logic. Use `try/catch as err` exclusively.
 - Fat-arrow functions `=>` accept exactly one expression, never a brace-enclosed block of statements — using `() => { multiple; lines }` is a parse error.
 - `new ClassName()` is invalid in AHK v2 under any circumstances — instantiate by calling the class: `obj := MyClass()`.
@@ -85,6 +99,7 @@
 - `OnError()` must be registered **before** any throwable code — exceptions thrown during initialization are not captured by a handler registered afterward.
 - `return` and its value must appear on the **same physical line** — a line break between them is parsed as a bare `return` followed by a stray expression (parse error or dead code).
 - `#HotIf` replaces `#If` — using the old directive causes the context block to be silently ignored; hotkeys fire unconditionally.
+- `OnError` callback return values: `0`/`""` = default behavior; `1` = suppress AHK dialog; `-1` = suppress AND continue thread execution (only valid when `mode = "Return"`). Returning `1` from a `mode = "ExitApp"` handler has no effect — the program still exits.
 
 Safe-access priority order for exception handling:
 1. `??` null-coalescing — one-line resolution for unset variables, never throws
@@ -101,11 +116,29 @@ Pair every prohibition with its positive alternative:
 - ✓ `obj := MyClass()` — direct class call invokes `__New` correctly
 - ✗ `fn := (x) => { doA(x); return doB(x) }` — multi-line fat-arrow is a parse error
 - ✓ Named function with `{ }` braces for multi-statement logic
+- ✗ `catch Error as err { }` placed before `catch NetworkError as err { }` — swallows typed exception
+- ✓ Most-specific subclass first; `catch Error` as the final fallback clause only
+
+## AGENT QA CHECKLIST
+
+- [ ] Did I use `:=` for every assignment — never bare `=` in an expression context?
+- [ ] Are all `catch` clauses ordered most-specific subclass first, with the broad `catch Error` placed last?
+- [ ] Did I register `OnError()` as the very first executable statement, before any throwable initialization code?
+- [ ] Did I avoid the `new` keyword — calling `MyClass()` directly rather than `new MyClass()`?
+
+## RUNTIME ERROR MAPPING
+
+| Exception Class | Trigger Condition | Detection Code | Fix |
+|----------------|-------------------|----------------|-----|
+| `UnsetError` | Output parameter passed without `&` prefix — e.g. `MouseGetPos(x, y)` — variables are never populated | `e.Message` contains "Parameter" or variable name | Add `&` prefix to all output-parameter arguments: `MouseGetPos(&x, &y, &win, &ctrl)` |
+| `MemberError` | Accessing a custom property (`.Code`, `.URL`, `.StatusCode`) on a base `Error` object caught by a broad `catch Error` clause when a typed subclass was expected | `e.Message` contains "has no value" and property name | Order `catch` clauses most-specific first; define custom properties in the subclass `__New`; use `Type(err)` to distinguish at runtime |
+| `TypeError` / `UnsetError` inside handler | Unbound method reference passed to `OnError()` without `.Bind()` — callback fires but `this` is unset inside the handler | Handler body throws immediately on first `this.` access | Use `OnError(MyClass.Handler.Bind(MyClass))` for any method used as a callback |
 
 ## TIER 1 — Syntax, Built-in Variable and Escaping Errors
 > METHODS COVERED: `MsgBox()` · `Run()` · `A_Clipboard` · `A_ScreenWidth` · `A_Index`
 
 The most common first-contact errors when writing or migrating AHK v2 code are purely syntactic: wrong assignment operator, command-style function calls without parentheses, percent-sign variable expansion, and missing `A_` prefixes on built-ins. These errors are CRITICAL severity — the script refuses to run or produces immediately wrong output. Every item in this tier is a direct v1 habit that must be unlearned.
+
 ```ahk
 ; ── ASSIGNMENT OPERATOR ──────────────────────────────────────────────────────
 
@@ -167,6 +200,7 @@ index  := A_Index
 > METHODS COVERED: `global` declaration · `??` null-coalescing operator
 
 Errors in this tier arise once the script starts executing: uninitialized variables, incorrect variable scope inside hotkeys and functions, missing braces around multi-line blocks, and v1-style return syntax. These are HIGH severity — the script runs but produces wrong results or throws UnsetError at the point of first use.
+
 ```ahk
 ; ── UNINITIALIZED VARIABLES ──────────────────────────────────────────────────
 
@@ -241,6 +275,7 @@ HandleClick() {
 > METHODS COVERED: `StrSplit()` · `Loop Read` · `.Bind()` · `WinActivate()` · `WinWaitActive()` · `ControlSend()` · `Send()` · `SendInput()`
 
 These are HIGH-severity logic errors that arise from operator confusion, v1 loop syntax, and missing callback binding — the script compiles and runs but produces wrong results or fires in the wrong window. The operator distinction (`=` vs `==` vs `:=`) is a frequent source of subtle bugs because all three forms are syntactically legal in v2.
+
 ```ahk
 ; ── COMPARISON OPERATORS ─────────────────────────────────────────────────────
 
@@ -311,6 +346,7 @@ ControlSend("Hello", "Edit1", "MyApp")
 > METHODS COVERED: `#HotIf` · `Gui()` · `.Add()` · `.Show()` · `Run()` · `RunWait()` · `SetTimer()` · `ProcessExist()` · `FileRead()` · `FileSelect()`
 
 MEDIUM-severity errors that prevent entire feature areas from working: wrong hotkey context directive, legacy GUI command syntax, missing string quotes around Send arguments, blocking calls that freeze the GUI, and hard-coded paths that break on any machine other than the developer's. These errors are typically silent at parse time but immediately visible at runtime.
+
 ```ahk
 ; ── HOTKEY CONTEXT DIRECTIVE ─────────────────────────────────────────────────
 
@@ -381,6 +417,7 @@ MsgBox("Process started", "Info", "T3")   ; Auto-closes after 3 seconds
 > METHODS COVERED: `try/catch/finally/throw` · `OnError()` · `MouseGetPos()` · `SetTimer()` · `FileAppend()` · `FormatTime()` · `Type()` · `.Bind()` · `super.__New()`
 
 HIGH-severity errors in exception architecture: omitting `&` on output parameters, leaving operations unwrapped in try/catch, swallowing errors with empty catch blocks, throwing generic `Error` instead of typed subclasses, and failing to register a global safety net. This tier also covers the full custom exception hierarchy pattern and the `OnError` crash-log idiom.
+
 ```ahk
 ; ── BYREF OUTPUT PARAMETERS ──────────────────────────────────────────────────
 
@@ -503,6 +540,7 @@ GlobalCrashHandler(err, mode) {
          . "Details saved to: " . logPath, "Error", 16)
 
     return 1   ; 1 = suppress default AHK crash dialog; 0 = show it afterward
+               ; -1 = suppress AND continue thread (only valid when mode = "Return")
 }
 
 ; ✓ OnError stacks — multiple handlers can coexist; pass 0 to unregister
@@ -513,22 +551,13 @@ GlobalCrashHandler(err, mode) {
 ; OnError(GlobalCrashHandler)   ; → handler never sees the database error
 ```
 
-### Performance Notes
-
-**`try/catch` overhead:** The overhead of a `try` block on the happy path is negligible in AHK v2. The cost is paid only when an exception is actually thrown and caught — exception-path performance is irrelevant when the path is genuinely exceptional. Never use `try/catch` as a substitute for conditional checks on predictable outcomes (e.g., file existence) because the throw+catch cycle is measurably slower than `FileExist()` followed by a branch.
-
-**`OnError` handler cost:** The `OnError` callback runs on the main thread in an already-faulted state. Keep the handler lightweight: write the log entry, show a single notification, return. Do not perform network calls, COM operations, or long loops inside an `OnError` handler — the script state is undefined and secondary exceptions may occur.
-
-**Typed catch clause matching:** AHK v2 resolves `catch` clauses by `instanceof` check in order. Placing a broad `catch Error` first forces every exception — including typed subclasses — to be checked against it first. Ordering most-specific first both ensures correct recovery logic and marginally reduces matching work for the common case.
-
-**Custom exception class allocation:** Creating custom `Error` subclasses adds one object allocation per thrown exception. This is inconsequential on any exception path. The readability and recovery-precision benefit of typed exceptions far outweighs the allocation cost.
-
 ## TIER 6 — Version, Compatibility and Diagnostic Patterns
 > METHODS COVERED: `#Requires` · `Map()` · `FileOpen()` · `.Read()` · `.Close()` · `ProcessExist()`
 
 <!-- merged: TIER 6+7, reason: TIER_7 "Advanced Diagnostic Patterns" (object literals, comma errors, infinite loops) are peer severity to TIER_6 version/compatibility patterns; merging keeps tier count at exactly 6 -->
 
 LOW-to-MEDIUM severity errors relating to version pinning, removed globals (`ErrorLevel`), the `new` keyword, object literal misuse, comma placement, and infinite-loop patterns. These errors are especially common in scripts ported from AHK v1 or generated by AI tools trained on mixed-version data.
+
 ```ahk
 ; ── #REQUIRES DIRECTIVE ───────────────────────────────────────────────────────
 
@@ -556,8 +585,8 @@ try {
 ; ✓ Class instantiation is a direct function call in v2 — no new keyword
 obj := MyClass()
 
-; ✗ new keyword — invalid in AHK v2; parse error or bypasses __New
-; obj := new MyClass()   ; → parse error
+; ✗ new keyword — invalid in AHK v2; NameError at runtime
+; obj := new MyClass()   ; → NameError at runtime
 
 ; ── OBJECT LITERALS vs MAP ───────────────────────────────────────────────────
 
@@ -635,6 +664,95 @@ MsgBox("Hello")
 ; Send, %var%     ; → v1 syntax; "Unknown command" in v2
 ; MsgBox("Hello") ; → v2 syntax; correct
 ; (mixing causes cascade of parse errors)
+```
+
+### Performance Notes
+
+**`try/catch` overhead:** The overhead of a `try` block on the happy path is negligible in AHK v2. The cost is paid only when an exception is actually thrown and caught — exception-path performance is irrelevant when the path is genuinely exceptional. Never use `try/catch` as a substitute for conditional checks on predictable outcomes (e.g., file existence) because the throw+catch cycle is measurably slower than `FileExist()` followed by a branch.
+
+**`OnError` handler cost:** The `OnError` callback runs on the main thread in an already-faulted state. Keep the handler lightweight: write the log entry, show a single notification, return. Do not perform network calls, COM operations, or long loops inside an `OnError` handler — the script state is undefined and secondary exceptions may occur.
+
+**Typed catch clause matching:** AHK v2 resolves `catch` clauses by `instanceof` check in order. Placing a broad `catch Error` first forces every exception — including typed subclasses — to be checked against it first. Ordering most-specific first both ensures correct recovery logic and marginally reduces matching work for the common case.
+
+**Custom exception class allocation:** Creating custom `Error` subclasses adds one object allocation per thrown exception. This is inconsequential on any exception path. The readability and recovery-precision benefit of typed exceptions far outweighs the allocation cost.
+
+## DROP-IN RECIPES
+
+```ahk
+; ── RECIPE 1: SafeExecute ────────────────────────────────────────────────────
+; Wraps any zero-arg callable in try/catch; returns a result Map on success or
+; on caught failure when a default is provided; rethrows otherwise.
+; ✓ Returns Map("ok", true, "value", result) on success
+; ✓ Returns Map("ok", false, "value", default, "error", err) when default is supplied
+; ✓ Bare throw inside catch preserves original .File and .Line without wrapping
+SafeExecute(fn, default := unset) {
+    if !(fn is Func)
+        throw TypeError("SafeExecute: fn must be a Func, BoundFunc, or Closure", -1)
+    try {
+        result := fn.Call()
+        return Map("ok", true, "value", result)
+    } catch Error as err {
+        if IsSet(default)
+            return Map("ok", false, "value", default, "error", err)
+        throw   ; rethrow — original .File/.Line/.Stack are preserved
+    }
+}
+; Call site:
+; outcome := SafeExecute(FileRead.Bind("config.txt"))
+; if outcome["ok"]
+;     Process(outcome["value"])
+; else
+;     MsgBox("Read failed: " . outcome["error"].Message)
+
+
+; ── RECIPE 2: SetupCrashLogger ───────────────────────────────────────────────
+; Registers a global OnError handler that writes timestamped crash entries to a
+; dated log file; creates the log directory if absent.
+; ✓ Call once as the very first executable statement to capture all uncaught exceptions
+; ✓ Uses .Bind() so logPath is captured in the named callback — no fat-arrow multi-line needed
+; ✓ Returns the log file path for caller reference (e.g. to show in a status bar)
+SetupCrashLogger(logDir := "") {
+    if Type(logDir) != "String"
+        throw TypeError("SetupCrashLogger: logDir must be a string", -1)
+    if logDir = ""
+        logDir := A_ScriptDir . "\logs"
+    if !DirExist(logDir)
+        DirCreate(logDir)
+    logPath := logDir . "\crash_" . FormatTime(, "yyyyMMdd") . ".log"
+    OnError(_CrashLogWrite.Bind(logPath))
+    return logPath
+}
+
+; ✓ Top-level named function — multi-statement body cannot use fat-arrow syntax
+_CrashLogWrite(logPath, err, mode) {
+    entry := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+           . " [" . Type(err) . "] " . err.Message
+           . " @ " . err.File . ":" . err.Line . "`n"
+    try FileAppend(entry, logPath, "UTF-8")   ; wrapped — log dir may not exist yet
+    return 1   ; suppress AHK's default crash dialog
+               ; use -1 instead to suppress AND continue thread for mode="Return" errors
+}
+; Call site (must be first executable statement):
+; logFile := SetupCrashLogger()
+; logFile := SetupCrashLogger(A_ScriptDir . "\diagnostics")
+
+
+; ── RECIPE 3: TypeAssert ─────────────────────────────────────────────────────
+; Validates a function argument type using Type() and throws a descriptive
+; TypeError at the call site (what := -2 points two levels up the call stack).
+; ✓ Use at the top of every public function to surface bad arguments immediately
+; ✓ Type() returns the exact class name — covers String, Integer, Float, Array, Map, and user classes
+TypeAssert(value, typeName, paramName := "param") {
+    if Type(typeName) != "String" || typeName = ""
+        throw TypeError("TypeAssert: typeName must be a non-empty string", -1)
+    actualType := Type(value)
+    if actualType != typeName
+        throw TypeError(paramName . " must be " . typeName . "; got " . actualType, -2)
+}
+; Call sites:
+; TypeAssert(path,  "String",  "path")
+; TypeAssert(count, "Integer", "count")
+; TypeAssert(items, "Array",   "items")
 ```
 
 ## ANTI-PATTERNS
