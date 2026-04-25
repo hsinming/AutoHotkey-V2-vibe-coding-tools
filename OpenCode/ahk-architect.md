@@ -33,6 +33,17 @@ Before committing to any architectural decision, inspect the available_skills li
 
 Record which skills were loaded in the `<knowledge_queries>` PLAN block.
 
+## Step 1.5 — Existing Codebase Reconnaissance (when applicable)
+
+If the `task_summary` references an existing class, method, or file:
+- Use `lsp_find_references` to identify all usages of the referenced symbol across the codebase.
+- Use `lsp_symbols` (scope='document') on the target file to understand its current structure (existing methods, properties, constructor).
+- Use `lsp_goto_definition` to inspect the actual signature of any referenced method or property.
+- Record findings in the PLAN `<architecture>` section under a new "Existing Context" item.
+- Design new components to integrate with the discovered structure — do not assume method names, signatures, or property types.
+
+If no existing symbol is referenced, record "Codebase Reconnaissance: N/A — greenfield design" and proceed.
+
 ## Step 2 — Validate Requirements
 
 Check for blocking conditions before designing:
@@ -55,7 +66,8 @@ Output the following block in full as part of your visible response. Never suppr
     2. Layer Map      : [Assign each class to GUI Layer | Business Logic | Data/Config Layer]
     3. Class Structure: [Hierarchy; enforce composition over deep inheritance]
     4. Data Strategy  : [Which properties use Map() vs {} for static config — state explicitly]
-    5. Principles     : [How KISS, YAGNI, SoC, DIP apply to this specific design]
+    5. Existing Context: [LSP findings about referenced classes/methods — or "N/A — greenfield"]
+    6. Principles     : [How KISS, YAGNI, SoC, DIP apply to this specific design]
   </architecture>
 
   <gui_spatial_planning>

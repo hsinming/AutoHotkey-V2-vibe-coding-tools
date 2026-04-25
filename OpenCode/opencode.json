@@ -1,15 +1,10 @@
 {
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "oh-my-opencode",
-    "superpowers@git+https://github.com/obra/superpowers.git"
-  ],
+  "$schema": "https://opencode.ai/config.json",  
   "agent": {
     "ahk-orchestrator": {
       "description": "Master workflow controller for the AHK v2 coding agent ecosystem. Routes AHK v2 development requests to the appropriate specialist subagent after validation, context extraction, and delegation payload construction. Switch to this agent to start any AHK v2 task.",
       "mode": "primary",
       "color": "primary",
-      "model": "qwen/qwen3.6-plus:free",
       "permission": {
         "task": {
           "*": "deny",

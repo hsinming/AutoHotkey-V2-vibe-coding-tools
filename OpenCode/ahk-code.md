@@ -75,6 +75,14 @@ For each class in `blueprint.classes[]`:
 - Parse `architectural_constraints` as non-negotiable rules
 - Derive the required class structure, method signatures, and data patterns from these two fields
 
+## Step 1.5 — Context7 Syntax Verification (when applicable)
+
+If the contract involves AHK v2 syntax patterns that are unfamiliar, recently changed, or involve obscure built-in APIs (e.g., `DllCall` signatures, COM object methods, Gui control options, `#Directive` behavior), use the context7 MCP to verify before writing code:
+- `npx ctx7@latest library "AutoHotkey" "<specific syntax question>"`
+- Examples: "v2 syntax for Gui.Add ListView with Sort", "v2 DllCall SendMessageW wParam lParam types", "v2 ComObject Excel.Workbook methods"
+
+This is NOT a replacement for loaded skills — it is a syntax verification step for patterns where training data may be stale. If the pattern is well-known and covered by loaded skills, skip this step and record "Context7: skipped — pattern covered by skills" in `<pre_computation_validation>`.
+
 ## Step 2 — AHK Purity Pre-Flight
 
 Run this checklist in order before writing any code. Flag any violation — do not suppress it:
@@ -98,6 +106,15 @@ Write the complete AHK v2 script following the contract exactly:
 - Defensive validation at each public method entry: use `!(param is ClassName)` for object type checks; use `Type(param) != "String"` / `!= "Integer"` only for AHK primitives
 - `OutputDebug` for all diagnostic logging — never `MsgBox` for debugging
 - When a method has no `error_contract` field in the blueprint, omit try/catch — do not add unrequested error handling (YAGNI)
+
+## Step 3.5 — LSP Verification
+
+After writing the code, run `lsp_diagnostics` on the target file(s).
+- If **errors** are reported: fix them and re-verify until clean.
+- If **warnings** are reported: evaluate each — fix if it violates an `architectural_constraint` or `FLOOR:` criterion; otherwise record in `<pre_computation_validation>` item 5 under "LSP Warnings (accepted)".
+- If **clean**: proceed to Step 4 (Criteria Verification).
+
+Record the LSP result in `<pre_computation_validation>` item 5: `"LSP Diagnostics: [X errors, Y warnings — fixed | clean]"`.
 
 ## Step 4 — Criteria Verification
 
@@ -125,9 +142,11 @@ Output exactly this sequence — no text outside these blocks:
   <pre_computation_validation>
     1. Input Source       : [Path A — Blueprint | Path B — delegation_payload, no architecture review]
        Skills Loaded      : [Skills loaded in Step 0 — list names, or "none available"]
-    2. Blueprint Gaps     : [Any BLUEPRINT_GAP findings, or "none" — or "N/A (Path B)"]
-    3. Purity Pre-Flight  : [Result of each Step 2 checklist item — flag any violation]
-    4. Defensive Strategy : [List type checks (is vs Type()), try/catch placements, and fallbacks]
+    2. Context7 Verify    : [Patterns verified via context7 | skipped — pattern covered by skills | N/A — no unfamiliar patterns]
+    3. Blueprint Gaps     : [Any BLUEPRINT_GAP findings, or "none" — or "N/A (Path B)"]
+    4. Purity Pre-Flight  : [Result of each Step 2 checklist item — flag any violation]
+    5. LSP Diagnostics    : [X errors, Y warnings — fixed | clean | N/A — file does not exist yet]
+    6. Defensive Strategy : [List type checks (is vs Type()), try/catch placements, and fallbacks]
   </pre_computation_validation>
 
   <criteria_check>

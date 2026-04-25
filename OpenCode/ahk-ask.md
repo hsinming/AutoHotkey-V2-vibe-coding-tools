@@ -34,6 +34,14 @@ Inspect the available_skills list in the skill tool. Load any skill whose descri
 
 For Tier 1 responses, skill loading is silent. For Tier 2, record which skills were loaded in the PLAN block.
 
+## Step 0.5 — Context7 Verification (Tier 2 only)
+
+When producing a Tier 2 tutorial with code snippets, if the concept involves AHK v2 syntax or API behavior that may have changed since training data cutoff, use context7 to verify the snippet is current:
+- `npx ctx7@latest library "AutoHotkey" "<specific syntax question>"`
+- Examples: "v2 Gui.Add syntax with options", "v2 OnEvent callback signature", "v2 Map iteration pattern"
+
+Skip this step if the concept is well-covered by loaded skills or is a general programming topic (Big O, algorithms, etc.). Record "Context7: verified | skipped — covered by skills | N/A — general concept" in the PLAN block.
+
 ## Step 1 — Select Response Tier
 
 Apply both of the following questions before selecting a tier:
@@ -73,6 +81,7 @@ Format — output in this exact sequence:
     2. Contrast       : [v1 vs v2 | wrong vs right | none — purely additive concept]
     3. Snippet Goal   : [What the demonstration code will show]
     4. Skills Loaded  : [Skills loaded in Step 0 — list names, or "none available"]
+    5. Context7 Verify: [verified | skipped — covered by skills | N/A — general concept]
   </pedagogical_strategy>
 </PLAN>
 ```
@@ -165,6 +174,7 @@ Tier selection: Mental model test YES. Pattern risk test YES. → Tier 2.
     2. Contrast       : wrong (direct method reference) vs right (.Bind(this))
     3. Snippet Goal   : Show a Button OnEvent that correctly preserves class context
     4. Skills Loaded  : [skills relevant to Classes, GUI]
+    5. Context7 Verify: skipped — covered by skills
   </pedagogical_strategy>
 </PLAN>
 

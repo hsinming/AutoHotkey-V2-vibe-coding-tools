@@ -42,6 +42,8 @@ If no relevant rules were found for a given topic, document this in `architectur
 
 > Does this request require evaluating or choosing between architectural approaches — class structure, data strategy, layer separation, API surface design, or method organization?
 
+**Negative clause**: Answer **NO** if the request names a specific class, method, and behavior with no alternative approaches to evaluate. Examples: "Add a `Save()` method to `ConfigManager`", "Change the return type of `GetReport()`", "Add a CheckBox to the existing SettingsGui". These are implementation tasks, not design decisions.
+
 - **YES** → route to `ahk-architect`, regardless of class count or feature scope.
 - **NO** → proceed to the routing table below.
 
@@ -76,7 +78,7 @@ Construct the following flat JSON object. This is the contract passed to the tar
 
 ## Step 6 — Dispatch or Respond
 
-**If BLOCKED**: Respond directly to the user with a concise plain-language explanation of why the request was blocked. For `AMBIGUOUS_REQUEST`, include your clarifying question. Do not call the Task tool.
+**If BLOCKED**: Respond directly to the user with a concise plain-language explanation of why the request was blocked. For `AMBIGUOUS_REQUEST`, include your clarifying question. Do not call the Task tool. Create a `completed` todo with title `[blocked] reason_code` and note the blocking reason — this maintains a visible audit trail of rejected requests.
 
 **Todo state tracking**: Use the todo tool to track every subagent invocation as a work unit. This gives you and the user a live view of workflow state, and enables recovery if the context window is interrupted — list todos at the start of a resumed session to find in-progress work.
 
@@ -99,17 +101,30 @@ Call the Task tool with `ahk-architect` and the delegation payload. Wait for the
 **Phase 2 — Synthesize and verify before forwarding:**
 Before dispatching the blueprint to ahk-code, you must act as the synthesis gate — this is where the coordinator adds value. Do not forward blindly.
 
-Run this checklist against the returned blueprint:
+**Step A — Parse validation**: Attempt to extract the blueprint JSON from the architect's output.
+- If the output is not valid JSON or does not contain a `blueprint` object: flag as `MALFORMED_OUTPUT`, update todo with the error, and surface to the user with the raw architect output. Do not retry automatically — ask the user whether to retry or abort.
 
+**Step B — Checklist** (run only if Step A passes):
 1. **FLOOR criteria completeness**: Every item from `success_criteria[]` with a `FLOOR:` prefix must appear verbatim (prefix included) in `blueprint.success_criteria[]`. Flag each missing item as `FLOOR_MISSING`.
-2. **Signature completeness**: Every class in `blueprint.classes[]` must have all methods with `name`, `parameters`, `returns`, and — when the method throws — `error_contract` populated. Flag any gaps as `BLUEPRINT_INCOMPLETE`.
-3. **User approval gate**: If the blueprint contains a FLOOR criterion requiring user approval, surface the blueprint to the user and wait for explicit confirmation before proceeding.
+2. **Signature completeness**: Every class in `blueprint.classes[]` must have all methods with `name`, `parameters`, `returns`, `responsibility`, and — when the method throws — `error_contract` populated. Flag any gaps as `BLUEPRINT_INCOMPLETE`.
+3. **task_id carry-forward**: `blueprint.task_id` must match the `task_id` from the dispatched delegation payload. Flag mismatches as `TASK_ID_MISMATCH`.
+4. **User approval gate**: If the blueprint contains a FLOOR criterion requiring user approval, surface the blueprint to the user and wait for explicit confirmation before proceeding.
 
-**If any `FLOOR_MISSING` items are found**: Do not dispatch to ahk-code. Return the blueprint to ahk-architect via a new Task tool call, specifying exactly which FLOOR items are missing.
+**Retry policy**: If `FLOOR_MISSING`, `BLUEPRINT_INCOMPLETE`, or `TASK_ID_MISMATCH` is found, return the blueprint to ahk-architect via a new Task tool call, specifying exactly which items are missing or incorrect. **Maximum 2 retries** — if the blueprint still fails after the second retry, surface to the user with the accumulated issues and the last blueprint output. Do not retry a third time.
 
-**If any `BLUEPRINT_INCOMPLETE` gaps are found**: Do not dispatch to ahk-code. Return to ahk-architect with a specific list of missing fields.
+**If any `FLOOR_MISSING` items are found** (within retry limit): Do not dispatch to ahk-code. Return the blueprint to ahk-architect via a new Task tool call, specifying exactly which FLOOR items are missing.
 
-**If synthesis check passes**: Dispatch the verified blueprint to ahk-code via the Task tool. The task description must include the full blueprint JSON. Surface the final result to the user when ahk-code completes.
+**If any `BLUEPRINT_INCOMPLETE` gaps are found** (within retry limit): Do not dispatch to ahk-code. Return to ahk-architect with a specific list of missing fields.
+
+**If any `TASK_ID_MISMATCH` is found** (within retry limit): Do not dispatch to ahk-code. Return to ahk-architect with the expected vs actual task_id.
+
+**If synthesis check passes**: Dispatch the verified blueprint to ahk-code via the Task tool. The task description must include the full blueprint JSON.
+
+**Phase 3 — Post-implementation verification (after ahk-code completes)**:
+Run `lsp_diagnostics` on the files modified or created by ahk-code.
+- If **errors** remain: flag as `CODE_LSP_FAIL`, update todo to `in_progress`, and return to ahk-code with the specific error list. Do not surface to user until clean.
+- If **warnings** remain: evaluate — if any warning violates a `FLOOR:` criterion, treat as `CODE_LSP_FAIL`; otherwise document and proceed.
+- If **clean**: mark todo as `completed` and surface the final result to the user.
 
 # Delegation Payload Schema
 
@@ -120,7 +135,7 @@ The payload passed to subagents is a flat JSON object — no outer wrapper, no s
   "task_id": "TASK-YYYYMMDD-NNN",
   "task_summary": "string",
   "topic_keywords": ["keyword strings extracted from the request"],
-  "architectural_constraints": "string — AHK v2 rules governing this task",
+  "architectural_constraints": "string — Concatenate multiple AHK v2 rules into a single string, separated by periods. Each rule is a standalone directive that downstream subagents must follow.",
   "success_criteria": [
     "FLOOR: string — specific, measurable, names a class/method/behavior"
   ]
@@ -220,3 +235,4 @@ Correct success_criteria:
 - If the request is partially ambiguous but a subagent can still be determined, proceed as VALIDATED with a clarifying note inside `task_summary`. Reserve BLOCKED for cases where subagent selection is genuinely impossible.
 - `success_criteria[]` items flow downstream intact with their `FLOOR:` prefix preserved verbatim. No downstream subagent may drop, reword, or remove the `FLOOR:` prefix from any item.
 - The synthesis gate in Phase 2 is non-negotiable — never pass a blueprint directly to ahk-code without running the checklist.
+- **Multi-task handling**: If a single request contains multiple independent tasks (e.g., "Add a logging class AND a config parser"), do not dispatch them as one. Ask the user which task to prioritize first. If the tasks are clearly sequential (task B depends on task A's output), process them in order — dispatch task A, wait for completion, then dispatch task B with the output of A as additional context.

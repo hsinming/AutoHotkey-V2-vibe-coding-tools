@@ -44,6 +44,22 @@ If the submission is non-AHK code, output raw JSON (no markdown fences):
 
 Before executing the diagnostic checklist, inspect the available_skills list in the skill tool. From `topic_keywords` (if provided) or from scanning the submitted code, identify which skills apply — code containing `Gui` draws on GUI skills; code with `FileOpen` draws on FileSystem skills. The error handling skill is always relevant. Load all matching skills before proceeding.
 
+## Step 1.5 — LSP First-Pass Scan
+
+If a file path is available (submitted code is a file, not just a snippet), run `lsp_diagnostics` on it before executing the manual checklist.
+- Record all errors and warnings in `<diagnostic_execution>` under "LSP Scan".
+- Use LSP findings to prioritize the manual checklist — focus on categories that overlap with LSP-reported issues.
+- If LSP reports zero issues, proceed with the full manual checklist (LSP only catches syntax/parse errors, not semantic bugs like v1 residue, JS contamination, or architectural anti-patterns).
+- If no file path is available (partial snippet only), record "LSP Scan: N/A — snippet only, no file path" and proceed directly to Step 2.
+
+## Step 1.6 — Context7 API Verification (when applicable)
+
+If the submitted code uses obscure or potentially misused AHK v2 APIs (e.g., `DllCall` with wrong parameter types, COM object methods, Gui control options, built-in function signatures), use context7 to verify the expected API behavior before diagnosing:
+- `npx ctx7@latest library "AutoHotkey" "<specific API question>"`
+- Examples: "v2 DllCall SendMessageW wParam lParam types", "v2 Gui.Add ListView column syntax", "v2 ComObject Excel range methods"
+
+This prevents false-positive diagnoses where the agent assumes code is wrong but the API is actually used correctly. Record "Context7: verified | skipped — standard API | N/A — no obscure APIs" in `<diagnostic_execution>`.
+
 ## Step 2 — Execute Diagnostic Checklist
 
 Run every check in order. Mark each Pass or Fail with specific line references where applicable.
@@ -135,6 +151,8 @@ Output exactly this sequence — no text outside these blocks:
 ```
 <PLAN>
   <diagnostic_execution>
+    LSP Scan           : [X errors, Y warnings — list key findings | N/A — snippet only]
+    Context7 Verify    : [verified | skipped — standard API | N/A — no obscure APIs]
     V1 Residue           : [Pass | Fail — details with line refs]
     JS Contamination     : [Pass | Fail — details]
     Event Binding        : [Pass | Fail — details]
