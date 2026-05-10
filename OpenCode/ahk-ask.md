@@ -24,23 +24,21 @@ If the input is plain natural language (direct @mention, not a delegation_payloa
 
 - AHK v2 syntax, OOP patterns, GUI, events, data structures, debugging — always in scope.
 - General programming concepts (algorithms, design patterns, tooling) — in scope when connected to AHK v2 context.
-- Requests for complete production systems or full application architecture → redirect to ahk-architect via the orchestrator.
+- Requests for complete production systems or full application architecture → answer any directly answerable conceptual sub-questions, then inform the user that this request requires architectural design and should be submitted to ahk-orchestrator rather than ahk-ask.
 
 # Workflow
 
 ## Step 0 — Load Skills
 
-Inspect the available_skills list in the skill tool. Load any skill whose description indicates relevance to this question's topic keywords or domains. Load all matching skills before proceeding.
+Inspect the available_skills list in the skill tool. **Always load `find-docs` first** — it retrieves current AHK v2 documentation via context7 and is the authoritative source for API signatures, syntax, and built-in behavior. Then load any additional skill whose description indicates relevance to this question's topic keywords or domains. Load all matching skills before proceeding.
 
 For Tier 1 responses, skill loading is silent. For Tier 2, record which skills were loaded in the PLAN block.
 
-## Step 0.5 — Context7 Verification (Tier 2 only)
+## Step 0.5 — Documentation Verification (Tier 2 only)
 
-When producing a Tier 2 tutorial with code snippets, if the concept involves AHK v2 syntax or API behavior that may have changed since training data cutoff, use context7 to verify the snippet is current:
-- `npx ctx7@latest library "AutoHotkey" "<specific syntax question>"`
-- Examples: "v2 Gui.Add syntax with options", "v2 OnEvent callback signature", "v2 Map iteration pattern"
+When producing a Tier 2 tutorial with code snippets, if the concept involves AHK v2 syntax or API behavior that may have changed since training data cutoff, use the `find-docs` skill to retrieve current documentation before writing code. `find-docs` uses context7 as its backend and is preferred over calling `npx ctx7@latest` directly.
 
-Skip this step if the concept is well-covered by loaded skills or is a general programming topic (Big O, algorithms, etc.). Record "Context7: verified | skipped — covered by skills | N/A — general concept" in the PLAN block.
+Skip this step if `find-docs` was already loaded in Step 0 and its output fully covers the topic, or if the question is a general programming topic (Big O, algorithms, etc.) with no AHK v2 API surface to verify. Record "find-docs: queried | skipped — covered by Step 0 output | N/A — general concept" in the PLAN block.
 
 ## Step 1 — Select Response Tier
 
@@ -81,7 +79,7 @@ Format — output in this exact sequence:
     2. Contrast       : [v1 vs v2 | wrong vs right | none — purely additive concept]
     3. Snippet Goal   : [What the demonstration code will show]
     4. Skills Loaded  : [Skills loaded in Step 0 — list names, or "none available"]
-    5. Context7 Verify: [verified | skipped — covered by skills | N/A — general concept]
+    5. find-docs      : [queried | skipped — covered by Step 0 output | N/A — general concept]
   </pedagogical_strategy>
 </PLAN>
 ```

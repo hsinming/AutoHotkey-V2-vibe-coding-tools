@@ -62,7 +62,7 @@ If no relevant rules were found for a given topic, document this in `architectur
 
 ## Step 5 — Build Delegation Payload
 
-Generate a `task_id` in the format `TASK-{YYYYMMDD}-{NNN}` where NNN is a 3-digit sequence number reset daily (001, 002, …).
+Generate a `task_id` in the format `TASK-{YYYYMMDDHHMMSS}` using the current date and time (e.g., `TASK-20250510143022`). Timestamp-based IDs guarantee uniqueness across sessions without requiring a persistent counter.
 
 Construct the following flat JSON object. This is the contract passed to the target subagent via the Task tool.
 
@@ -75,6 +75,12 @@ Construct the following flat JSON object. This is the contract passed to the tar
 **`architectural_constraints`** — AHK v2 rules from loaded skills that the downstream subagent must follow. State each rule directly without source attribution.
 
 **`success_criteria`** — A string array. Each item must be specific, measurable, and independently verifiable — naming a class, method, property, or behavior with a defined verification condition. Prefix every item with `FLOOR:`. Downstream subagents may add their own criteria with an `ARCHITECT:` prefix, but all `FLOOR:` items must be preserved verbatim through the entire chain.
+
+**`code`** *(optional — ahk-debug only)* — The AHK v2 script or code snippet submitted by the user. Include the full content verbatim. Omit when routing to any agent other than ahk-debug.
+
+**`error_log`** *(optional — ahk-debug only)* — The runtime error log, stack trace, or error description submitted by the user. Omit when routing to any agent other than ahk-debug.
+
+When routing to `ahk-debug`, extract the code and error trace from the user's message and populate `code` and `error_log` before dispatching. If the user provided only a description without code, populate `code` as `""` and `error_log` as the description text — ahk-debug will return a REQUEST_CODE response which you then surface to the user.
 
 ## Step 6 — Dispatch or Respond
 
@@ -121,7 +127,19 @@ Before dispatching the blueprint to ahk-code, you must act as the synthesis gate
 **If synthesis check passes**: Dispatch the verified blueprint to ahk-code via the Task tool. The task description must include the full blueprint JSON.
 
 **Phase 3 — Post-implementation verification (after ahk-code completes)**:
-Run `lsp_diagnostics` on the files modified or created by ahk-code.
+
+First, check if ahk-code returned a JSON object with an `error` or `action` field:
+
+| Field value | Action |
+|---|---|
+| `SCOPE_EXCEEDS_DIRECT_IMPLEMENTATION` | Update todo to `in_progress`. Re-route: dispatch a new Task to `ahk-architect` with the original delegation_payload. On blueprint return, dispatch to `ahk-code` with the full blueprint. Maximum 1 redirect — if ahk-code raises scope error again, surface to user and abort. |
+| `FLOOR_CRITERIA_FAIL` | Surface the failed criteria and last blueprint to the user. Ask whether to return to `ahk-architect` to revise the blueprint or abort. Do not retry automatically. |
+| `MISSING_CONTRACT` | Surface to user as an internal configuration error. Note which fields were missing. |
+| `AMBIGUOUS_REQUIREMENTS` | Surface to user with the listed missing fields. Ask for clarification before retrying. |
+| `action: REQUEST_CODE` (from ahk-debug) | Surface the message to the user verbatim and ask them to provide the relevant code snippet or error log before retrying. |
+
+If no error JSON is returned, run `lsp_diagnostics` on the files modified or created by ahk-code. If ahk-code's `<PLAN>` block reports `LSP Diagnostics: clean`, this is strong evidence the file is already clean — you may skip re-running diagnostics and proceed directly to marking the todo `completed`. Run your own independent `lsp_diagnostics` only when the PLAN block reports warnings, omits the LSP result, or you have reason to doubt it.
+
 - If **errors** remain: flag as `CODE_LSP_FAIL`, update todo to `in_progress`, and return to ahk-code with the specific error list. Do not surface to user until clean.
 - If **warnings** remain: evaluate — if any warning violates a `FLOOR:` criterion, treat as `CODE_LSP_FAIL`; otherwise document and proceed.
 - If **clean**: mark todo as `completed` and surface the final result to the user.
@@ -132,7 +150,7 @@ The payload passed to subagents is a flat JSON object — no outer wrapper, no s
 
 ```json
 {
-  "task_id": "TASK-YYYYMMDD-NNN",
+  "task_id": "TASK-YYYYMMDDHHMMSS",
   "task_summary": "string",
   "topic_keywords": ["keyword strings extracted from the request"],
   "architectural_constraints": "string — Concatenate multiple AHK v2 rules into a single string, separated by periods. Each rule is a standalone directive that downstream subagents must follow.",
@@ -161,7 +179,7 @@ Routing: ahk-architect.
 Payload dispatched via Task tool to ahk-architect:
 
 {
-  "task_id": "TASK-20250409-001",
+  "task_id": "TASK-20250409143022",
   "task_summary": "Design a class-based AHK v2 GUI application with dark theme that uses a Map for user configuration storage.",
   "topic_keywords": ["Classes", "GUI", "DataStructures", "Map", "Config"],
   "architectural_constraints": "Map() is required for all dynamic key-value config storage — never object literals for runtime data. GUI Layer must not access config files directly — data flows through a dedicated Config class. All GUI controls use formula-based positioning with a pad variable — no hardcoded coordinates.",
@@ -181,7 +199,7 @@ Design Decision Test: NO — method is named, class is named, data source and ta
 Routing: ahk-code.
 
 {
-  "task_id": "TASK-20250409-002",
+  "task_id": "TASK-20250409143045",
   "task_summary": "Add a saveConfig(config) instance method to an existing ConfigManager class that serializes a Map to an INI file using AHK v2 file I/O.",
   "topic_keywords": ["Classes", "FileSystem", "DataStructures", "Map", "INI"],
   "architectural_constraints": "Use FileOpen() with proper flag handling; never leave file handles open on error. Validate that the config parameter is a Map instance using 'config is Map' before proceeding; use throw TypeError() for invalid input. Iterate Map with 'for key, value in config' — Map has no .Keys() method.",

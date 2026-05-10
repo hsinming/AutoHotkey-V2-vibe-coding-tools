@@ -59,6 +59,8 @@ From `delegation_payload.topic_keywords` (if present) or from blueprint parsing,
 
 Record the skills loaded and the input source (Path A or Path B) in `<pre_computation_validation>` item 1.
 
+If the contract's `architectural_constraints` already address the relevant topic domains, treat those constraints as authoritative and use skill loading to supplement domains not yet covered — do not redundantly re-derive rules already stated in the constraints.
+
 ## Step 1 — Parse Contract
 
 **For Path A (Blueprint)**:

@@ -25,6 +25,10 @@ When a `delegation_payload` is present, parse it as a structured input contract 
 - `topic_keywords` → use to identify which skills are relevant to the submitted code
 - `architectural_constraints` → non-negotiable rules that apply to the corrected code
 - `success_criteria[]` → all items are FLOOR criteria when no blueprint is present
+- `code` *(optional)* → the AHK v2 script or snippet to audit; treat as the primary submitted code if present
+- `error_log` *(optional)* → the runtime error log or stack trace; treat as the submitted error trace if present
+
+If both `code` in the delegation_payload and inline code in the task description are present, `code` from the delegation_payload takes precedence.
 
 **Natural language input handling**: If the user describes a problem without submitting code, output:
 

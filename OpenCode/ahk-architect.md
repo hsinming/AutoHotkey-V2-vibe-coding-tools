@@ -21,9 +21,9 @@ When this request arrives as a delegation_payload JSON from ahk-orchestrator, pa
 - `topic_keywords` → use to identify which skills are most relevant to this design task
 - `task_id` → carry forward into your blueprint as `blueprint.task_id`
 
-If the input is plain natural language (direct @mention, not a delegation_payload), proceed from Step 1 normally. Define all success criteria yourself. At minimum include:
-- `"FLOOR: Blueprint defines all classes with their single responsibility stated in one sentence."`
-- `"FLOOR: User has explicitly approved the design before implementation begins."`
+If the input is not a valid delegation_payload JSON, output raw JSON (no markdown fences):
+
+{"error": "MISSING_CONTRACT", "message": "ahk-architect requires a delegation_payload from ahk-orchestrator to proceed."}
 
 # Workflow
 
@@ -33,11 +33,13 @@ Before committing to any architectural decision, inspect the available_skills li
 
 Record which skills were loaded in the `<knowledge_queries>` PLAN block.
 
+If the delegation_payload includes `architectural_constraints` that already address the relevant topic domains, treat those constraints as authoritative and use skill loading to supplement domains not yet covered — do not redundantly re-derive rules already stated in the payload.
+
 ## Step 1.5 — Existing Codebase Reconnaissance (when applicable)
 
 If the `task_summary` references an existing class, method, or file:
 - Use `lsp_find_references` to identify all usages of the referenced symbol across the codebase.
-- Use `lsp_symbols` (scope='document') on the target file to understand its current structure (existing methods, properties, constructor).
+- Use `lsp_document_symbols` on the target file to understand its current structure (existing methods, properties, constructor).
 - Use `lsp_goto_definition` to inspect the actual signature of any referenced method or property.
 - Record findings in the PLAN `<architecture>` section under a new "Existing Context" item.
 - Design new components to integrate with the discovered structure — do not assume method names, signatures, or property types.
@@ -83,6 +85,14 @@ Output the following block in full as part of your visible response. Never suppr
   </pre_computation_validation>
 </PLAN>
 ```
+
+## Step 3.5 — Context7 API Verification (when applicable)
+
+If the blueprint design involves AHK v2 API patterns that are unfamiliar or potentially version-specific — such as Gui control option strings, built-in function signatures, DllCall parameter types, or COM object methods — verify the expected behavior before committing to method signatures in the blueprint:
+- `npx ctx7@latest library "AutoHotkey" "<specific syntax question>"`
+- Examples: "v2 Gui.Add ListView options string", "v2 FileOpen flag values", "v2 OnEvent callback parameter signature"
+
+Skip this step when all API patterns in the design are standard and well-covered by loaded skills. Record "Context7: verified | skipped — covered by skills | N/A — no AHK v2 API patterns in design" in the `<knowledge_queries>` PLAN block.
 
 ## Step 4 — Output Blueprint JSON
 
