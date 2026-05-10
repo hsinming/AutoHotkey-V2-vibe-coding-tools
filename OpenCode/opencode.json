@@ -11,6 +11,8 @@
           "ahk-*": "allow"
         },
         "read":      { "*": "allow" },
+        "lsp":       "allow",
+        "skill":     { "*": "allow" },
         "todowrite": "allow",
         "todoread":  "allow",
         "bash": {
@@ -34,21 +36,24 @@
       "color": "#6B8AFF",
       "permission": {
         "read":     { "*": "allow" },
+        "lsp":      "allow",
+        "skill":    { "*": "allow" },
         "todoread": "allow",
         "webfetch": "allow",
         "bash": {
-          "ls *":              "allow",
-          "dir *":             "allow",
-          "grep *":            "allow",
-          "Select-String *":   "allow",
-          "Get-ChildItem *":   "allow",
-          "Get-Content *":     "allow",
-          "Get-Item *":        "allow",
-          "Test-Path *":       "allow",
-          "Resolve-Path *":    "allow",
-          "git log *":         "allow",
-          "git diff *":        "allow",
-          "*":                 "deny"
+          "ls *":                  "allow",
+          "dir *":                 "allow",
+          "grep *":                "allow",
+          "Select-String *":       "allow",
+          "Get-ChildItem *":       "allow",
+          "Get-Content *":         "allow",
+          "Get-Item *":            "allow",
+          "Test-Path *":           "allow",
+          "Resolve-Path *":        "allow",
+          "git log *":             "allow",
+          "git diff *":            "allow",
+          "npx ctx7@latest *":     "allow",
+          "*":                     "deny"
         }
       }
     },
@@ -61,26 +66,31 @@
         "read":  { "*": "allow" },
         "edit":  { "*.ahk": "allow", "*": "deny" },
         "write": { "*.ahk": "allow", "*": "deny" },
+        "lsp":      "allow",
+        "skill":    { "*": "allow" },
         "todoread": "allow",
         "bash": {
-          "cat *":             "allow",
-          "type *":            "allow",
-          "head *":            "allow",
-          "grep *":            "allow",
-          "ls *":              "allow",
-          "dir *":             "allow",
-          "Get-ChildItem *":   "allow",
-          "Get-Content *":     "allow",
-          "Get-Item *":        "allow",
-          "Test-Path *":       "allow",
-          "Resolve-Path *":    "allow",
-          "Select-String *":   "allow",          
-          "git status":        "allow",
-          "git diff *":        "allow",
-          "git log *":         "allow",
-          "git add *":         "allow",
-          "git commit *":      "ask",
-          "*":                 "deny"
+          "cat *":                 "allow",
+          "type *":                "allow",
+          "head *":                "allow",
+          "grep *":                "allow",
+          "ls *":                  "allow",
+          "dir *":                 "allow",
+          "Get-ChildItem *":       "allow",
+          "Get-Content *":         "allow",
+          "Get-Item *":            "allow",
+          "Test-Path *":           "allow",
+          "Resolve-Path *":        "allow",
+          "Select-String *":       "allow",
+          "./run-tests.ps1":       "allow",
+          "./run-tests.ps1 *":     "allow",
+          "git status":            "allow",
+          "git diff *":            "allow",
+          "git log *":             "allow",
+          "git add *":             "allow",
+          "git commit *":          "ask",
+          "npx ctx7@latest *":     "allow",
+          "*":                     "deny"
         }
       }
     },
@@ -92,6 +102,9 @@
       "permission": {
         "read":  { "*": "allow" },
         "edit":  { "*.ahk": "allow", "*": "deny" },
+        "write": { "*.ahk": "allow", "*": "deny" },
+        "lsp":      "allow",
+        "skill":    { "*": "allow" },
         "todoread": "allow",
         "bash": {
           "cat *":                         "allow",
@@ -108,9 +121,13 @@
           "Select-String *":               "allow",
           "autohotkey.exe /validate *":    "allow",
           "autohotkey.exe /errorstdout *": "allow",
-          "New-Object System.Diagnostics.ProcessStartInfo": "allow",          
+          "New-Object System.Diagnostics.ProcessStartInfo": "allow",
+          "./run-tests.ps1":               "allow",
+          "./run-tests.ps1 *":             "allow",
+          "./*_run_main.ps1":              "allow",
           "git status":                    "allow",
           "git diff *":                    "allow",
+          "npx ctx7@latest *":             "allow",
           "*":                             "deny"
         }
       }
@@ -121,6 +138,8 @@
       "color": "#FFB347",
       "permission": {
         "read":     { "*": "allow" },
+        "lsp":      "allow",
+        "skill":    { "*": "allow" },
         "todoread": "allow",
         "webfetch": "allow",
         "bash": {
