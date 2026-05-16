@@ -80,97 +80,116 @@ Write code only after completing Steps 1–3. Each module's TIER system determin
 
 ---
 
-### GUI Windows & Controls (Module_GUI.md — 1176 lines)
+### GUI Windows & Controls (Module_GUI.md — 1348 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All GUI API: Gui constructor, Add methods, control methods, ListView, TreeView | `## API QUICK-REFERENCE` | 75 |
-| `Gui()` constructor + window-level methods (`Show`, `Hide`, `Destroy`, `Submit`) | `### Gui Constructor and Window Methods` | 15 |
-| Control add methods (`Add("Edit", …)`, `Add("Button", …)`, …) | `### Gui Control Add Methods` | 21 |
-| Control object methods + properties (`.Value`, `.Focus()`, `.OnEvent()`) | `### Control Object Methods and Properties` | 10 |
-| ListView methods (`Add`, `Delete`, `Modify`, `GetNext`, column setup) | `### ListView Control Methods` | 11 |
-| TreeView methods (`Add`, `Delete`, `Modify`, `GetSelection`) | `### TreeView Control Methods` | 11 |
+| All GUI API: Gui constructor, Add methods, control methods, ListView, TreeView | `## API QUICK-REFERENCE` | 133 |
+| `Gui()` constructor + window-level methods (`Show`, `Hide`, `Destroy`, `Submit`) | `### Gui Constructor and Window Methods` | 21 |
+| `Gui` window properties (`.Title`, `.BackColor`, `.MarginX`, …) | `### Gui Properties` | 14 |
+| Control add methods (`Add("Edit", …)`, `Add("Button", …)`, …) | `### Gui Control Add Methods` | 23 |
+| Control object methods (`.Focus()`, `.OnEvent()`, `.GetPos()`) | `### Control Object Methods` | 12 |
+| Control object properties (`.Value`, `.Text`, `.Enabled`, `.Visible`) | `### Control Object Properties` | 15 |
+| ListView methods (`Add`, `Delete`, `Modify`, `GetNext`, column setup) | `### ListView Control Methods` | 12 |
+| TreeView methods (`Add`, `Delete`, `Modify`, `GetSelection`) | `### TreeView Control Methods` | 12 |
+| StatusBar methods | `### StatusBar Methods` | 8 |
+| Tab3 methods | `### Tab3 Methods` | 6 |
+| Helper functions (GuiCtrlFromHwnd, …) | `### Helper Functions` | 8 |
 | v1 → v2 breaking changes (GUI) | `## V1 → V2 BREAKING CHANGES` | 15 |
-| Constraints: class encapsulation, `.Bind(this)` callbacks, v1 g-label removal | `## AHK V2 CONSTRAINTS` | 22 |
-| **Working example** — basic GUI creation | `## TIER 1 — Basic GUI Creation` | 26 |
-| **Working example** — controls, events, ListView, TreeView, multi-window | `## TIER 2 — Controls, Event Handling, ListView, TreeView, Multi-Window` | 322 |
-| **Working example** — layout + positioning management | `## TIER 3 — Layout and Positioning Management` | 172 |
-| **Working example** — mathematical layout system | `## TIER 4 — Mathematical Layout System` | 167 |
-| **Working example** — GuiForm mathematical positioning (TIER 5+) | `## TIER 5 — GuiForm Mathematical Positioning` | 138 |
-| **Working example** — advanced layout compositions | `## TIER 6 — Advanced Layout Compositions` | 204 |
+| Constraints: class encapsulation, `.Bind(this)` callbacks, v1 g-label removal | `## AHK V2 CONSTRAINTS` | 38 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — basic GUI creation | `## TIER 1 — Basic GUI Creation` | 27 |
+| **Working example** — controls, events, ListView, TreeView, multi-window | `## TIER 2 — Controls, Event Handling, ListView, TreeView, Multi-Window` | 324 |
+| **Working example** — layout + positioning management | `## TIER 3 — Layout and Positioning Management` | 173 |
+| **Working example** — mathematical layout system | `## TIER 4 — Mathematical Layout System` | 168 |
+| **Working example** — GuiForm mathematical positioning (TIER 5+) | `## TIER 5 — GuiForm Mathematical Positioning` | 68 |
+| **Working example** — advanced layout compositions | `## TIER 6 — Advanced Layout Compositions` | 205 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 74 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 17 |
 
 ---
 
-### Window & Control Interaction (Module_WindowAndControl.md — 823 lines)
+### Window & Control Interaction (Module_WindowAndControl.md — 1031 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All window/control API: state, metadata, mutation, coordinate, control data | `## API QUICK-REFERENCE` | 91 |
-| Window state: `WinExist`, `WinWait`, `WinActive`, `WinGetProcessName` | `### Window State Functions` | 17 |
-| Window metadata: `WinGetTitle`, `WinGetPos`, `WinGetClass`, `WinGetPID` | `### Window Metadata Functions` | 13 |
-| Window mutation: `WinMove`, `WinSetAlwaysOnTop`, `WinSetTransparent` | `### Window Mutation Functions` | 9 |
-| Title matching modes (`ahk_id`, `ahk_class`, `ahk_exe`, `ahk_group`) | `### Title Matching` | 5 |
-| `GroupAdd` / `GroupActivate` window groups | `### Window Groups` | 8 |
-| `CoordMode` — screen, window, client coordinate systems | `### Coordinate Mode` | 5 |
-| `ControlClick`, `ControlSend`, `ControlFocus` | `### Control Interaction` | 11 |
-| `ControlGetText`, `ControlGetPos`, `ControlGetValue` | `### Control Data` | 12 |
-| `SetWinEventHook` via DllCall | `### Hook and Callback (DllCall)` | 9 |
+| All window/control API: state, metadata, mutation, coordinate, control data | `## API QUICK-REFERENCE` | 112 |
+| Window state: `WinExist`, `WinWait`, `WinActive`, `WinGetProcessName` | `### Window State Functions` | 18 |
+| Window metadata: `WinGetTitle`, `WinGetPos`, `WinGetClass`, `WinGetPID` | `### Window Metadata Functions` | 14 |
+| Window mutation: `WinMove`, `WinSetAlwaysOnTop`, `WinSetTransparent` | `### Window Mutation Functions` | 10 |
+| Title matching modes (`ahk_id`, `ahk_class`, `ahk_exe`, `ahk_group`) | `### Title Matching` | 6 |
+| `GroupAdd` / `GroupActivate` window groups | `### Window Groups` | 9 |
+| `CoordMode` — screen, window, client coordinate systems | `### Coordinate Mode` | 6 |
+| Mouse input functions (`Click`, `MouseMove`, `MouseClickDrag`) | `### Mouse Input Functions` | 9 |
+| `ControlClick`, `ControlSend`, `ControlFocus` | `### Control Interaction` | 12 |
+| `ControlGetText`, `ControlGetPos`, `ControlGetValue` | `### Control Data` | 16 |
+| `SetWinEventHook` via DllCall | `### Hook and Callback (DllCall)` | 10 |
 | v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: TargetError guards, HWND as integer, CoordMode declaration | `## AHK V2 CONSTRAINTS` | 26 |
-| **Working example** — basic state checks + safety guards | `## TIER 1 — Basic State Checks and Safety Guards` | 64 |
-| **Working example** — window metadata queries | `## TIER 2 — Window Metadata Queries` | 67 |
-| **Working example** — CoordMode + basic control commands | `## TIER 3 — Coordinate System Declaration and Basic Control Commands` | 73 |
-| **Working example** — advanced control data interaction | `## TIER 4 — Advanced Control Data Interaction` | 97 |
-| **Working example** — window groups, batch lifecycle, OOP wrapper | `## TIER 5 — Window Groups, Batch Lifecycle, and OOP Wrapper` | 235 |
-| **Working example** — SetWinEventHook via DllCall | `## TIER 6 — System-Level Window Hooks via DllCall + SetWinEventHook` | 127 |
+| Constraints: TargetError guards, HWND as integer, CoordMode declaration | `## AHK V2 CONSTRAINTS` | 25 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — basic state checks + safety guards | `## TIER 1 — Basic State Checks and Safety Guards` | 65 |
+| **Working example** — window metadata queries | `## TIER 2 — Window Metadata Queries` | 86 |
+| **Working example** — CoordMode + basic control commands | `## TIER 3 — Coordinate System Declaration and Basic Control Commands` | 81 |
+| **Working example** — advanced control data interaction | `## TIER 4 — Advanced Control Data Interaction` | 118 |
+| **Working example** — window groups, batch lifecycle, OOP wrapper | `## TIER 5 — Window Groups, Batch Lifecycle, and OOP Wrapper` | 181 |
+| **Working example** — SetWinEventHook via DllCall | `## TIER 6 — System-Level Window Hooks via DllCall + SetWinEventHook` | 128 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 104 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 12 |
 
 ---
 
-### Hotkeys, Hotstrings & Input (Module_InputAndHotkeys.md — 506 lines)
+### Hotkeys, Hotstrings & Input (Module_InputAndHotkeys.md — 635 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All input/hotkey API: Send functions, Click, Hotkey(), InputHook | `## API QUICK-REFERENCE` | 65 |
-| `Send` / `SendInput` / `SendEvent` / `SendPlay` differences | `### Send Functions` | 10 |
-| `Click` / `MouseMove` / `MouseClick` / `MouseClickDrag` | `### Click and Mouse` | 6 |
-| `Hotkey()` function: dynamic binding, enable/disable | `### Hotkey Control` | 8 |
-| `GetKeyState()` / `KeyWait()` | `### Key State and Wait` | 6 |
-| `InputHook` object: constructor, `.Start()`, `.Stop()`, `.OnEnd` | `### InputHook Object` | 11 |
-| Built-in variables (`A_PriorKey`, `A_TimeSinceThisHotkey`, …) | `### Built-in Variables` | 9 |
+| All input/hotkey API: Send functions, Click, Hotkey(), InputHook | `## API QUICK-REFERENCE` | 82 |
+| `Send` / `SendInput` / `SendEvent` / `SendPlay` differences | `### Send Functions` | 11 |
+| `Click` / `MouseMove` / `MouseClick` / `MouseClickDrag` | `### Click and Mouse` | 7 |
+| `Hotkey()` function: dynamic binding, enable/disable | `### Hotkey Control` | 9 |
+| `GetKeyState()` / `KeyWait()` | `### Key State and Wait` | 7 |
+| `InputHook` object: constructor, `.Start()`, `.Stop()`, `.OnEnd` | `### InputHook Object` | 20 |
+| Built-in variables (`A_PriorKey`, `A_TimeSinceThisHotkey`, …) | `### Built-in Variables` | 12 |
+| Utility functions used in TIER examples | `### Utility Functions (used in TIER examples)` | 14 |
 | v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 15 |
-| Constraints: `#HotIf` only, `Hotkey()` needs callback not string-label | `## AHK V2 CONSTRAINTS` | 27 |
-| **Working example** — static hotkeys, hotstrings, Send fundamentals | `## TIER 1 — Static Hotkeys, Hotstrings, and Send Fundamentals` | 62 |
-| **Working example** — dynamic hotkeys with `Hotkey()` | `## TIER 2 — Dynamic Hotkeys with Hotkey()` | 30 |
-| **Working example** — key state queries + wait operations | `## TIER 3 — Key State Queries and Wait Operations` | 32 |
-| **Working example** — context-sensitive routing with `#HotIf` + `HotIf()` | `## TIER 4 — Context-Sensitive Routing with #HotIf and HotIf()` | 70 |
-| **Working example** — InputHook + custom modifier chords | `## TIER 5 — InputHook and Custom Modifier Chords` | 94 |
-| **Working example** — class-encapsulated hotkey management | `## TIER 6 — Class-Encapsulated Hotkey Management` | 76 |
+| Constraints: `#HotIf` only, `Hotkey()` needs callback not string-label | `## AHK V2 CONSTRAINTS` | 36 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — static hotkeys, hotstrings, Send fundamentals | `## TIER 1 — Static Hotkeys, Hotstrings, and Send Fundamentals` | 63 |
+| **Working example** — dynamic hotkeys with `Hotkey()` | `## TIER 2 — Dynamic Hotkeys with Hotkey()` | 31 |
+| **Working example** — key state queries + wait operations | `## TIER 3 — Key State Queries and Wait Operations` | 33 |
+| **Working example** — context-sensitive routing with `#HotIf` + `HotIf()` | `## TIER 4 — Context-Sensitive Routing with #HotIf and HotIf()` | 71 |
+| **Working example** — InputHook + custom modifier chords | `## TIER 5 — InputHook and Custom Modifier Chords` | 120 |
+| **Working example** — class-encapsulated hotkey management | `## TIER 6 — Class-Encapsulated Hotkey Management` | 77 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 57 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 15 |
 
 ---
 
-### Graphics & Screen (Module_GraphicsAndScreen.md — 708 lines)
+### Graphics & Screen (Module_GraphicsAndScreen.md — 803 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All graphics API: CoordMode, pixel, ImageSearch, monitor, overlay | `## API QUICK-REFERENCE` | 49 |
-| `CoordMode` modes + `A_ScreenWidth` / `A_ScreenHeight` | `### CoordMode and Screen Dimensions` | 8 |
-| `MouseMove` / `Click` with coordinate modes | `### Mouse and Click` | 7 |
-| `PixelGetColor` / `PixelSearch` | `### Pixel Operations` | 6 |
-| `ImageSearch` API + image file options | `### Image Search` | 5 |
-| `WinGetPos` / `WinGetClientPos` window position | `### Window Position` | 6 |
-| `MonitorGet` / `MonitorGetCount` / `MonitorGetPrimary` | `### Monitor Functions` | 8 |
-| `WinSetTransparent` / overlay window creation | `### Overlay / Window Transparency` | 7 |
+| All graphics API: CoordMode, pixel, ImageSearch, monitor, overlay | `## API QUICK-REFERENCE` | 56 |
+| `CoordMode` modes + `A_ScreenWidth` / `A_ScreenHeight` | `### CoordMode and Screen Dimensions` | 9 |
+| `MouseMove` / `Click` with coordinate modes | `### Mouse and Click` | 8 |
+| `PixelGetColor` / `PixelSearch` | `### Pixel Operations` | 7 |
+| `ImageSearch` API + image file options | `### Image Search` | 6 |
+| `WinGetPos` / `WinGetClientPos` window position | `### Window Position` | 7 |
+| `MonitorGet` / `MonitorGetCount` / `MonitorGetPrimary` | `### Monitor Functions` | 9 |
+| `WinSetTransparent` / overlay window creation | `### Overlay and Window Transparency` | 8 |
 | v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: `ImageSearch` returns Boolean not ErrorLevel, CoordMode required | `## AHK V2 CONSTRAINTS` | 30 |
-| **Working example** — basic screen information | `## TIER 1 — Basic Screen Information` | 45 |
-| **Working example** — pixel and color detection | `## TIER 2 — Pixel and Color Detection` | 59 |
-| **Working example** — ImageSearch fundamentals | `## TIER 3 — ImageSearch Fundamentals` | 75 |
-| **Working example** — multi-monitor + work-area calculation | `## TIER 4 — Multi-Monitor and Work-Area Calculation` | 120 |
-| **Working example** — dynamic resolution adaptation | `## TIER 5 — Dynamic Resolution Adaptation` | 162 |
-| **Working example** — visual debug overlays | `## TIER 6 — Visual Debug Overlays` | 127 |
+| Constraints: `ImageSearch` returns Boolean not ErrorLevel, CoordMode required | `## AHK V2 CONSTRAINTS` | 40 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — basic screen information | `## TIER 1 — Basic Screen Information` | 46 |
+| **Working example** — pixel and color detection | `## TIER 2 — Pixel and Color Detection` | 60 |
+| **Working example** — ImageSearch fundamentals | `## TIER 3 — ImageSearch Fundamentals` | 76 |
+| **Working example** — multi-monitor + work-area calculation | `## TIER 4 — Multi-Monitor and Work-Area Calculation` | 121 |
+| **Working example** — dynamic resolution adaptation | `## TIER 5 — Dynamic Resolution Adaptation` | 109 |
+| **Working example** — visual debug overlays | `## TIER 6 — Visual Debug Overlays` | 183 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 56 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 12 |
 
 ---

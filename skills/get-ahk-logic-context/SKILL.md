@@ -76,86 +76,101 @@ start from the lowest TIER that covers the required functionality.
 
 ---
 
-### Timers & Async (Module_AsyncAndTimers.md — 517 lines)
+### Timers & Async (Module_AsyncAndTimers.md — 598 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All timer/async API: SetTimer, Sleep, Critical, binding utilities | `## API QUICK-REFERENCE` | 45 |
-| `SetTimer` signature, interval, period `-1` one-shot | `### SetTimer` | 7 |
-| `Sleep` and `Sleep -1` (message-queue flush) | `### Sleep` | 5 |
-| `Critical` — blocking the message queue | `### Critical` | 8 |
-| `.Bind(this)` / `ObjBindMethod` for callbacks | `### Binding Utilities` | 6 |
+| All timer/async API: SetTimer, Sleep, Critical, binding utilities | `## API QUICK-REFERENCE` | 51 |
+| `SetTimer` signature, interval, period `-1` one-shot | `### SetTimer` | 8 |
+| `Sleep` and `Sleep -1` (message-queue flush) | `### Sleep` | 6 |
+| `Critical` — blocking the message queue | `### Critical` | 9 |
+| `.Bind(this)` / `ObjBindMethod` for callbacks | `### Binding Utilities` | 7 |
+| Time and measurement helpers | `### Time and Measurement` | 7 |
+| Supporting built-ins used in examples | `### Supporting Built-ins Used in Examples` | 12 |
 | v1 → v2 breaking changes (timers) | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: re-entrancy, Sleep in GUI, one-shot pattern | `## AHK V2 CONSTRAINTS` | 27 |
+| Constraints: re-entrancy, Sleep in GUI, one-shot pattern | `## AHK V2 CONSTRAINTS` | 31 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
 | **Working example** — basic timer creation + one-off delays | `## TIER 1 — Basic Timer Creation and One-Off Delays` | 36 |
 | **Working example** — timer lifecycle + class integration | `## TIER 2 — Timer Lifecycle and Class Integration` | 68 |
 | **Working example** — state tracking, re-entrancy guards, Critical | `## TIER 3 — State Tracking, Re-Entrancy Guards, and Critical Sections` | 106 |
 | **Working example** — debounce and throttle | `## TIER 4 — Higher-Order Timing: Debounce and Throttle` | 43 |
-| **Working example** — parameterized callbacks + advanced binding | `## TIER 5 — Parameterized Callbacks and Advanced Binding` | 78 |
+| **Working example** — parameterized callbacks + advanced binding | `## TIER 5 — Parameterized Callbacks and Advanced Binding` | 68 |
 | **Working example** — non-blocking state machines + chunked processing | `## TIER 6 — Non-Blocking State Machines and Chunked Processing` | 70 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 56 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 14 |
 
 ---
 
-### Error Handling (Module_Errors.md — 666 lines)
+### Error Handling (Module_Errors.md — 784 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All error API: built-in error classes, properties, try/catch/finally | `## API QUICK-REFERENCE` | 51 |
-| Built-in error class hierarchy (`Error`, `TypeError`, `ValueError`, `OSError`, `TargetError`) | `### Built-in Error Classes` | 15 |
-| Error object properties (`.Message`, `.What`, `.Extra`, `.Stack`) | `### Error Object Properties` | 10 |
-| `try/catch/finally`, `throw`, `OnError()` | `### Exception Control Flow` | 9 |
-| Which operations throw (vs return falsy) | `### Supporting Functions Used in Error Patterns` | 15 |
+| All error API: built-in error classes, properties, try/catch/finally | `## API QUICK-REFERENCE` | 65 |
+| Built-in error class hierarchy (`Error`, `TypeError`, `ValueError`, `OSError`, `TargetError`) | `### Built-in Error Classes` | 23 |
+| Error object properties (`.Message`, `.What`, `.Extra`, `.Stack`) | `### Error Object Properties` | 11 |
+| `try/catch/finally`, `throw`, `OnError()` | `### Exception Control Flow` | 10 |
+| Which operations throw (vs return falsy) | `### Supporting Functions Used in Error Patterns` | 19 |
 | v1 → v2 breaking changes (error handling) | `## V1 → V2 BREAKING CHANGES` | 15 |
-| Constraints: throwing vs non-throwing ops, empty catch ban | `## AHK V2 CONSTRAINTS` | 30 |
-| **Working example** — syntax, built-in variable, and escaping errors | `## TIER 1 — Syntax, Built-in Variable and Escaping Errors` | 61 |
-| **Working example** — scope, control flow, return statement errors | `## TIER 2 — Scope, Control Flow and Return Statement Errors` | 74 |
-| **Working example** — logic, operator, event and callback errors | `## TIER 3 — Logic, Operator, Event and Callback Errors` | 70 |
-| **Working example** — context, hotkey, automation and path errors | `## TIER 4 — Context, Hotkey, Automation and Path Errors` | 70 |
-| **Working example** — try/catch, custom exceptions, OnError | `## TIER 5 — Exception Handling: try/catch, Custom Exceptions and OnError` | 146 |
-| **Working example** — version/compatibility + diagnostic patterns | `## TIER 6 — Version, Compatibility and Diagnostic Patterns` | 114 |
+| Constraints: throwing vs non-throwing ops, empty catch ban | `## AHK V2 CONSTRAINTS` | 33 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — syntax, built-in variable, and escaping errors | `## TIER 1 — Syntax, Built-in Variable and Escaping Errors` | 62 |
+| **Working example** — scope, control flow, return statement errors | `## TIER 2 — Scope, Control Flow and Return Statement Errors` | 75 |
+| **Working example** — logic, operator, event and callback errors | `## TIER 3 — Logic, Operator, Event and Callback Errors` | 71 |
+| **Working example** — context, hotkey, automation and path errors | `## TIER 4 — Context, Hotkey, Automation and Path Errors` | 71 |
+| **Working example** — try/catch, custom exceptions, OnError | `## TIER 5 — Exception Handling: try/catch, Custom Exceptions and OnError` | 138 |
+| **Working example** — version/compatibility + diagnostic patterns | `## TIER 6 — Version, Compatibility and Diagnostic Patterns` | 115 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 79 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 15 |
 
 ---
 
-### Text & String Processing (Module_TextProcessing.md — 436 lines)
+### Text & String Processing (Module_TextProcessing.md — 549 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All string API: StrLen, SubStr, StrReplace, Trim, Format, … | `## API QUICK-REFERENCE` | 32 |
-| String built-in functions (`StrLen`, `SubStr`, `StrReplace`, `Trim`, `Format`, …) | `### String Functions` | 15 |
-| Regex functions (`RegExMatch`, `RegExReplace`) | `### Regex Functions` | 6 |
-| `RegExMatch` match object properties | `### RegExMatch Object (matchObj)` | 9 |
-| v1 → v2 breaking changes (strings, regex) | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: backtick escapes, `.=` in loops, quote selection | `## AHK V2 CONSTRAINTS` | 16 |
+| All string API: StrLen, SubStr, StrReplace, Trim, Format, … | `## API QUICK-REFERENCE` | 40 |
+| String built-in functions (`StrLen`, `SubStr`, `StrReplace`, `Trim`, `Format`, …) | `### String Functions` | 20 |
+| Regex functions (`RegExMatch`, `RegExReplace`) | `### Regex Functions` | 7 |
+| `RegExMatch` match object properties | `### RegExMatch Object (matchObj)` | 11 |
+| v1 → v2 breaking changes (strings, regex) | `## V1 → V2 BREAKING CHANGES` | 13 |
+| Constraints: backtick escapes, `.=` in loops, quote selection | `## AHK V2 CONSTRAINTS` | 25 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 8 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
 | **Working example** — string building, concatenation, quote strategy | `## TIER 1 — String Building, Concatenation, and Quote Strategy` | 33 |
-| **Working example** — backtick escape system (full reference) | `## TIER 2 — Escape Sequences: The Backtick System` | 63 |
-| **Working example** — built-in string methods | `## TIER 3 — Built-in String Methods` | 35 |
-| **Working example** — regex fundamentals: RegExMatch + RegExReplace | `## TIER 4 — Regex Fundamentals: RegExMatch and RegExReplace` | 62 |
-| **Working example** — string validation classes | `## TIER 5 — String Validation Classes` | 43 |
-| **Working example** — StringBuilder + EscapeValidator | `## TIER 6 — StringBuilder and EscapeValidator: Advanced String Construction` | 109 |
+| **Working example** — backtick escape system (full reference) | `## TIER 2 — Escape Sequences: The Backtick System` | 55 |
+| **Working example** — built-in string methods | `## TIER 3 — Built-in String Methods` | 52 |
+| **Working example** — regex fundamentals: RegExMatch + RegExReplace | `## TIER 4 — Regex Fundamentals: RegExMatch and RegExReplace` | 71 |
+| **Working example** — string validation classes | `## TIER 5 — String Validation Classes` | 42 |
+| **Working example** — StringBuilder + EscapeValidator | `## TIER 6 — StringBuilder and EscapeValidator: Advanced String Construction` | 108 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 49 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 12 |
 
 ---
 
-### Input Validation (Module_Validation.md — 959 lines)
+### Input Validation (Module_Validation.md — 1125 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All validation API: type detection, capability probes, ValidationBuilder | `## API QUICK-REFERENCE` | 53 |
-| `IsObject()`, `IsInteger()`, `IsFloat()`, `IsAlpha()`, … type operators | `### Type Detection Operators` | 9 |
-| `HasMethod()`, `HasProp()` capability probes | `### Object Capability Probes` | 6 |
-| `TypeError`, `ValueError`, `OSError`, `TargetError` constructors | `### Error Constructors (Validation Context)` | 8 |
-| `FileExist()`, `WinExist()`, `DirExist()` pre-flight functions | `### Environment Pre-Flight Functions` | 9 |
-| `ValidationBuilder` / `FormValidator` fluent API | `### ValidationBuilder / FormValidator Methods` | 19 |
+| All validation API: type detection, capability probes, ValidationBuilder | `## API QUICK-REFERENCE` | 52 |
+| `IsObject()`, `IsInteger()`, `IsFloat()`, `IsAlpha()`, … type operators | `### Type Detection Operators` | 8 |
+| `HasMethod()`, `HasProp()` capability probes | `### Object Capability Probes` | 5 |
+| `TypeError`, `ValueError`, `OSError`, `TargetError` constructors | `### Error Constructors (Validation Context)` | 7 |
+| `FileExist()`, `WinExist()`, `DirExist()` pre-flight functions | `### Environment Pre-Flight Functions` | 8 |
+| `ValidationBuilder` fluent API methods | `### ValidationBuilder Methods` | 15 |
+| `FormValidator` fluent API methods | `### FormValidator Methods` | 7 |
 | v1 → v2 breaking changes (validation) | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: duck-typing, fail-early, guard-clause placement | `## AHK V2 CONSTRAINTS` | 21 |
-| **Working example** — type and null fundamentals | `## TIER 1 — Type and Null Fundamentals` | 125 |
-| **Working example** — guard clauses | `## TIER 2 — Guard Clauses` | 150 |
-| **Working example** — string + business logic validation | `## TIER 3 — String and Business Logic Validation` | 101 |
-| **Working example** — duck-type object + interface validation | `## TIER 4 — Duck-Type Object and Interface Validation` | 103 |
-| **Working example** — state + external environment validation | `## TIER 5 — State and External Environment Validation` | 178 |
-| **Working example** — fluent ValidationBuilder framework | `## TIER 6 — Fluent Validator Framework` | 187 |
+| Constraints: duck-typing, fail-early, guard-clause placement | `## AHK V2 CONSTRAINTS` | 35 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — type and null fundamentals | `## TIER 1 — Type and Null Fundamentals` | 126 |
+| **Working example** — guard clauses | `## TIER 2 — Guard Clauses` | 122 |
+| **Working example** — string + business logic validation | `## TIER 3 — String and Business Logic Validation` | 102 |
+| **Working example** — duck-type object + interface validation | `## TIER 4 — Duck-Type Object and Interface Validation` | 105 |
+| **Working example** — state + external environment validation | `## TIER 5 — State and External Environment Validation` | 185 |
+| **Working example** — fluent ValidationBuilder framework | `## TIER 6 — Fluent Validator Framework` | 188 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 154 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 13 |
 
 ---

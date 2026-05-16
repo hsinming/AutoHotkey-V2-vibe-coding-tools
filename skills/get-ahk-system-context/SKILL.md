@@ -78,119 +78,141 @@ Write code at the complexity tier that matches the task. Read the loaded module'
 
 ---
 
-### DLL Calls & Memory (Module_DllCallAndMemory.md — 1334 lines)
+### DLL Calls & Memory (Module_DllCallAndMemory.md — 1531 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All DllCall/memory API overview | `## API QUICK-REFERENCE` | 153 |
-| `Buffer()` constructor, `.Ptr`, `.Size` | `### Buffer Object` | 9 |
-| `NumPut` / `NumGet` numeric memory I/O | `### Numeric Memory I/O` | 8 |
-| `StrPut` / `StrGet` string memory I/O | `### String Memory I/O` | 8 |
-| `DllCall()` type strings, return types | `### DllCall` | 13 |
-| `OnMessage()` / `PostMessage()` / `SendMessage()` | `### Message Functions` | 7 |
-| `CallbackCreate()` / `CallbackFree()` | `### Callback Functions` | 10 |
+| All DllCall/memory API overview | `## API QUICK-REFERENCE` | 165 |
+| `Buffer()` constructor, `.Ptr`, `.Size` | `### Buffer Object` | 10 |
+| `NumPut` / `NumGet` numeric memory I/O | `### Numeric Memory I/O` | 9 |
+| `StrPut` / `StrGet` string memory I/O | `### String Memory I/O` | 9 |
+| `DllCall()` type strings, return types | `### DllCall` | 14 |
+| `OnMessage()` / `PostMessage()` / `SendMessage()` | `### Message Functions` | 8 |
+| `CallbackCreate()` / `CallbackFree()` | `### Callback Functions` | 11 |
+| ntdll memory operations | `### ntdll Memory Operations` | 13 |
+| Virtual memory (kernel32) | `### Virtual Memory (kernel32)` | 9 |
+| Heap management (kernel32) | `### Heap Management (kernel32)` | 14 |
 | Win32 type mapping (`Int`, `Ptr`, `WStr`, `AStr`, …) | `### Win32 Type Mapping` | 34 |
 | v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 15 |
-| Constraints: Buffer rules, type-string pitfalls, encoding selection | `## AHK V2 CONSTRAINTS` | 39 |
-| **Working example** — Buffer fundamentals | `## TIER 1 — Buffer Object Fundamentals` | 52 |
-| **Working example** — memory read, write, block operations | `## TIER 2 — Memory Read, Write, and Block Operations` | 158 |
-| **Working example** — simple DllCall + core Win32 utilities | `## TIER 3 — Simple DllCall and Core Win32 Utilities` | 290 |
-| **Working example** — system message passing + interception | `## TIER 4 — System Message Passing and Interception` | 81 |
-| **Working example** — struct simulation, heap + global memory | `## TIER 5 — Struct Simulation, Heap and Global Memory` | 386 |
-| **Working example** — C-style callbacks with CallbackCreate | `## TIER 6 — C-Style Callbacks with CallbackCreate` | 124 |
+| Constraints: Buffer rules, type-string pitfalls, encoding selection | `## AHK V2 CONSTRAINTS` | 43 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 10 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 10 |
+| **Working example** — Buffer fundamentals | `## TIER 1 — Buffer Object Fundamentals` | 53 |
+| **Working example** — memory read, write, block operations | `## TIER 2 — Memory Read, Write, and Block Operations` | 159 |
+| **Working example** — simple DllCall + core Win32 utilities | `## TIER 3 — Simple DllCall and Core Win32 Utilities` | 291 |
+| **Working example** — system message passing + interception | `## TIER 4 — System Message Passing and Interception` | 82 |
+| **Working example** — struct simulation, heap + global memory | `## TIER 5 — Struct Simulation, Heap and Global Memory` | 301 |
+| **Working example** — C-style callbacks with CallbackCreate | `## TIER 6 — C-Style Callbacks with CallbackCreate` | 125 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 153 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 20 |
 
 ---
 
-### File System (Module_FileSystem.md — 420 lines)
+### File System (Module_FileSystem.md — 539 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All file/directory API: FileRead, FileOpen, SplitPath, Loop, INI | `## API QUICK-REFERENCE` | 84 |
-| `FileRead` / `FileAppend` / `FileDelete` standalone functions | `### Standalone Read/Write Functions` | 8 |
-| `FileCopy` / `FileMove` / `FileDelete` mutation functions | `### File Mutation Functions` | 7 |
-| `DirCreate` / `DirDelete` / `DirCopy` directory functions | `### Directory Functions` | 8 |
-| `SplitPath` / `A_WorkingDir` / `A_ScriptDir` path functions | `### Path Functions` | 5 |
-| `FileOpen()` File Object methods (`.Read`, `.Write`, `.Seek`, `.Close`) | `### FileOpen Handle (File Object)` | 19 |
-| `IniRead` / `IniWrite` / `IniDelete` INI functions | `### INI Functions` | 7 |
-| `Loop Files` / `Loop Read` + built-in loop variables | `### Loop Constructs and Built-in Loop Variables` | 12 |
-| v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: encoding, FileAppend-in-loop ban, path validation | `## AHK V2 CONSTRAINTS` | 19 |
-| **Working example** — existence checks + simple read/write | `## TIER 1 — Fundamentals: Existence Checks and Simple Read/Write` | 30 |
-| **Working example** — copy, move, delete | `## TIER 2 — Core Mutation: Copy, Move, and Delete` | 33 |
-| **Working example** — path parsing + directory traversal | `## TIER 3 — Search and Validation: Path Parsing and Directory Traversal` | 31 |
-| **Working example** — line parsing + CSV processing | `## TIER 4 — Transformations: Line Parsing and CSV Processing` | 39 |
-| **Working example** — INI config + FileOpen lifecycle + wrapper classes | `## TIER 5 — Advanced Operations: INI Config, FileOpen Lifecycle, and Wrapper Classes` | 89 |
-| **Working example** — binary I/O: raw streaming + file pointer | `## TIER 6 — Binary I/O: Raw Streaming and File Pointer Manipulation` | 55 |
-| Anti-patterns to avoid | `## ANTI-PATTERNS` | 10 |
+| All file/directory API: FileRead, FileOpen, SplitPath, Loop, INI | `## API QUICK-REFERENCE` | 93 |
+| `FileRead` / `FileAppend` / `FileDelete` standalone functions | `### Standalone Read/Write Functions` | 10 |
+| `FileCopy` / `FileMove` / `FileDelete` mutation functions | `### File Mutation Functions` | 9 |
+| `DirCreate` / `DirDelete` / `DirCopy` directory functions | `### Directory Functions` | 9 |
+| `SplitPath` / `A_WorkingDir` / `A_ScriptDir` path functions | `### Path Functions` | 6 |
+| `FileOpen()` File Object methods (`.Read`, `.Write`, `.Seek`, `.Close`) | `### FileOpen Handle (File Object)` | 21 |
+| `IniRead` / `IniWrite` / `IniDelete` INI functions | `### INI Functions` | 8 |
+| `Loop Files` / `Loop Read` + built-in loop variables | `### Loop Constructs and Built-in Loop Variables` | 14 |
+| Buffer object (binary I/O reference) | `### Buffer Object` | 6 |
+| String/Array helpers for file content processing | `### String/Array Helpers (cross-domain — used in file content processing tiers)` | 8 |
+| v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 14 |
+| Constraints: encoding, FileAppend-in-loop ban, path validation | `## AHK V2 CONSTRAINTS` | 27 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — existence checks + simple read/write | `## TIER 1 — Fundamentals: Existence Checks and Simple Read/Write` | 31 |
+| **Working example** — copy, move, delete | `## TIER 2 — Core Mutation: Copy, Move, and Delete` | 37 |
+| **Working example** — path parsing + directory traversal | `## TIER 3 — Search and Validation: Path Parsing and Directory Traversal` | 39 |
+| **Working example** — line parsing + CSV processing | `## TIER 4 — Transformations: Line Parsing and CSV Processing` | 45 |
+| **Working example** — INI config + FileOpen lifecycle + wrapper classes | `## TIER 5 — Advanced Operations: INI Config, FileOpen Lifecycle, and Wrapper Classes` | 80 |
+| **Working example** — binary I/O: raw streaming + file pointer | `## TIER 6 — Binary I/O: Raw Streaming and File Pointer Manipulation` | 61 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 56 |
+| Anti-patterns to avoid | `## ANTI-PATTERNS` | 11 |
 
 ---
 
-### Network & HTTP (Module_NetworkAndHTTP.md — 1109 lines)
+### Network & HTTP (Module_NetworkAndHTTP.md — 1273 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All HTTP API: Download, WinHttp COM, Jxon, HttpPromise | `## API QUICK-REFERENCE` | 80 |
-| `Download()` built-in — simple file fetch | `### Download (built-in)` | 5 |
-| WinHttp core request methods (`Open`, `Send`, `ResponseText`, …) | `### WinHttp.WinHttpRequest.5.1 COM Object — Core Request Methods` | 18 |
-| WinHttp extended capabilities (timeouts, auth, certificates) | `### WinHttp.WinHttpRequest.5.1 COM Object — Extended Capabilities` | 11 |
-| `WaitForResponse` — three blocking modes | `### WaitForResponse — Three Blocking Modes` | 8 |
-| WinHttp vs Msxml2 comparison table | `### WinHttp vs Msxml2 — Capability Comparison` | 14 |
-| `HttpPromise` class API (async, TIER 5) | `### HttpPromise Class (defined in TIER 5)` | 8 |
-| Jxon library — JSON parse/stringify | `### Jxon Community Library (third-party — required for full JSON support)` | 6 |
+| All HTTP API: Download, WinHttp COM, Jxon, HttpPromise | `## API QUICK-REFERENCE` | 88 |
+| `Download()` built-in — simple file fetch | `### Download (built-in)` | 6 |
+| WinHttp core request methods (`Open`, `Send`, `ResponseText`, …) | `### WinHttp.WinHttpRequest.5.1 COM Object — Core Request Methods` | 19 |
+| WinHttp extended capabilities (timeouts, auth, certificates) | `### WinHttp.WinHttpRequest.5.1 COM Object — Extended Capabilities` | 12 |
+| `WaitForResponse` — three blocking modes | `### WaitForResponse — Three Blocking Modes` | 9 |
+| WinHttp vs Msxml2 comparison table | `### WinHttp vs Msxml2 — Capability Comparison` | 15 |
+| `HttpPromise` class API (async, TIER 5) | `### HttpPromise Class (defined in TIER 5)` | 9 |
+| Jxon library — JSON parse/stringify | `### Jxon Community Library (third-party — required for full JSON support)` | 7 |
+| Path and file helpers used in TIER 1 | `### Path and File Helpers (used in TIER 1)` | 9 |
 | v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 18 |
-| Constraints: no built-in JSON, COM release, try/catch requirement | `## AHK V2 CONSTRAINTS` | 35 |
-| **Working example** — basic file download | `## TIER 1 — Basic File Download` | 56 |
-| **Working example** — synchronous HTTP GET | `## TIER 2 — Synchronous HTTP GET` | 88 |
-| **Working example** — HTTP POST with headers + authentication | `## TIER 3 — HTTP POST with Headers and Authentication` | 143 |
-| **Working example** — JSON handling strategies | `## TIER 4 — JSON Handling Strategies` | 111 |
-| **Working example** — async HTTP + Promise-style concurrency | `## TIER 5 — Asynchronous HTTP and Promise-Style Concurrency` | 294 |
-| **Working example** — full REST API client class | `## TIER 6 — Full REST API Client Class` | 250 |
+| Constraints: no built-in JSON, COM release, try/catch requirement | `## AHK V2 CONSTRAINTS` | 39 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — basic file download | `## TIER 1 — Basic File Download` | 57 |
+| **Working example** — synchronous HTTP GET | `## TIER 2 — Synchronous HTTP GET` | 89 |
+| **Working example** — HTTP POST with headers + authentication | `## TIER 3 — HTTP POST with Headers and Authentication` | 144 |
+| **Working example** — JSON handling strategies | `## TIER 4 — JSON Handling Strategies` | 112 |
+| **Working example** — async HTTP + Promise-style concurrency | `## TIER 5 — Asynchronous HTTP and Promise-Style Concurrency` | 275 |
+| **Working example** — full REST API client class | `## TIER 6 — Full REST API Client Class` | 251 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 131 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 17 |
 
 ---
 
-### Script Environment & Lifecycle (Module_ScriptEnvironment.md — 633 lines)
+### Script Environment & Lifecycle (Module_ScriptEnvironment.md — 796 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All script-environment API: directives, A_* variables, tray, Ahk2Exe | `## API QUICK-REFERENCE` | 63 |
-| `#Requires`, `#SingleInstance`, `#Include` directive signatures | `### Directives (load-time, not runtime-conditional)` | 8 |
-| Built-in `A_*` variables (A_ScriptDir, A_Args, A_IsAdmin, …) | `### Built-in A_* Variables` | 20 |
-| `A_TrayMenu` (Menu object) API | `### A_TrayMenu (Menu Object)` | 8 |
-| `OnExit()`, `ExitApp()`, `Reload()`, `Pause()` lifecycle functions | `### Standalone Functions` | 13 |
-| Ahk2Exe compiler directives (`@Ahk2Exe-SetMainIcon`, …) | `### Ahk2Exe Compiler Directives` | 12 |
+| All script-environment API: directives, A_* variables, tray, Ahk2Exe | `## API QUICK-REFERENCE` | 71 |
+| `#Requires`, `#SingleInstance`, `#Include` directive signatures | `### Directives (load-time, not runtime-conditional)` | 9 |
+| Built-in `A_*` variables (A_ScriptDir, A_Args, A_IsAdmin, …) | `### Built-in A_* Variables (Script Properties)` | 23 |
+| `A_TrayMenu` (Menu object) API | `### A_TrayMenu (Menu Object Methods)` | 9 |
+| `OnExit()`, `ExitApp()`, `Reload()`, `Pause()` lifecycle functions | `### Standalone Functions` | 15 |
+| Ahk2Exe compiler directives (`@Ahk2Exe-SetMainIcon`, …) | `### Ahk2Exe Compiler Directives (comments at runtime)` | 13 |
 | v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 13 |
-| Constraints: directive order, tray API changes, admin elevation | `## AHK V2 CONSTRAINTS` | 20 |
-| **Working example** — script directives + environment variables | `## TIER 1 — Script Directives and Environment Variables` | 85 |
-| **Working example** — `#Include` + library system | `## TIER 2 — Include Directives and Library System` | 55 |
-| **Working example** — tray menu customization | `## TIER 3 — Tray Menu Customization` | 72 |
-| **Working example** — admin elevation patterns | `## TIER 4 — Admin Elevation Patterns` | 64 |
-| **Working example** — Ahk2Exe compiler directives (metadata) | `## TIER 5 — Compiler Directives (Ahk2Exe Metadata)` | 125 |
-| **Working example** — script lifecycle + OnExit cleanup hooks | `## TIER 6 — Script Lifecycle and OnExit Cleanup Hooks` | 108 |
+| Constraints: directive order, tray API changes, admin elevation | `## AHK V2 CONSTRAINTS` | 33 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — script directives + environment variables | `## TIER 1 — Script Directives and Environment Variables` | 88 |
+| **Working example** — `#Include` + library system | `## TIER 2 — Include Directives and Library System` | 56 |
+| **Working example** — tray menu customization | `## TIER 3 — Tray Menu Customization` | 73 |
+| **Working example** — admin elevation patterns | `## TIER 4 — Admin Elevation Patterns` | 65 |
+| **Working example** — Ahk2Exe compiler directives (metadata) | `## TIER 5 — Compiler Directives (Ahk2Exe Metadata)` | 57 |
+| **Working example** — script lifecycle + OnExit cleanup hooks | `## TIER 6 — Script Lifecycle and OnExit Cleanup Hooks` | 112 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 116 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 12 |
 
 ---
 
-### System Control & COM Automation (Module_SystemAndCOM.md — 542 lines)
+### System Control & COM Automation (Module_SystemAndCOM.md — 743 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All system/COM API: clipboard, Run, registry, COM functions | `## API QUICK-REFERENCE` | 48 |
-| `A_Clipboard`, `OnClipboardChange()`, clipboard read/write | `### Clipboard` | 7 |
-| `Run`, `RunWait`, `ProcessExist`, `ProcessWaitClose` | `### Process and Execution` | 12 |
-| `WinWait`, `WinExist`, `WinClose`, `WinActivate` | `### Window` | 9 |
-| `RegRead`, `RegWrite`, `RegDelete`, `RegDeleteKey` | `### Registry` | 8 |
-| `ComObject()`, `ComValue()`, `ComObjQuery()`, `ObjRelease()` | `### COM Functions` | 10 |
-| v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: clipboard, COM release, WinWait timeouts, registry safety | `## AHK V2 CONSTRAINTS` | 19 |
-| **Working example** — clipboard + application launch | `## TIER 1 — Clipboard and Application Launch Fundamentals` | 37 |
-| **Working example** — registry operations + process exit codes | `## TIER 2 — Registry Operations and Process Exit Codes` | 45 |
-| **Working example** — process + window state validation | `## TIER 3 — Process and Window State Validation` | 37 |
-| **Working example** — WMI data queries + Map transformation | `## TIER 4 — WMI Data Queries and Map Transformation` | 36 |
-| **Working example** — COM application automation + lifecycle | `## TIER 5 — COM Application Automation and Lifecycle Management` | 165 |
+| All system/COM API: clipboard, Run, registry, COM functions | `## API QUICK-REFERENCE` | 61 |
+| `A_Clipboard`, `OnClipboardChange()`, clipboard read/write | `### Clipboard` | 8 |
+| `Run`, `RunWait`, `ProcessExist`, `ProcessWaitClose` | `### Process and Execution` | 14 |
+| `WinWait`, `WinExist`, `WinClose`, `WinActivate` | `### Window (System-level Wait and Validation)` | 10 |
+| `RegRead`, `RegWrite`, `RegDelete`, `RegDeleteKey` | `### Registry` | 9 |
+| Environment variable read/write (`EnvGet`, `EnvSet`) | `### Environment Variables` | 7 |
+| `ComObject()`, `ComValue()`, `ComObjQuery()`, `ObjRelease()` | `### COM Functions` | 11 |
+| v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 14 |
+| Constraints: clipboard, COM release, WinWait timeouts, registry safety | `## AHK V2 CONSTRAINTS` | 58 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 8 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — clipboard + application launch | `## TIER 1 — Clipboard and Application Launch Fundamentals` | 38 |
+| **Working example** — registry operations + process exit codes | `## TIER 2 — Registry Operations and Process Exit Codes` | 59 |
+| **Working example** — process + window state validation | `## TIER 3 — Process and Window State Validation` | 55 |
+| **Working example** — WMI data queries + Map transformation | `## TIER 4 — WMI Data Queries and Map Transformation` | 37 |
+| **Working example** — COM application automation + lifecycle | `## TIER 5 — COM Application Automation and Lifecycle Management` | 176 |
 | **Working example** — COM event sinking + production wrapper classes | `## TIER 6 — COM Event Sinking and Production Wrapper Classes` | 108 |
-| Anti-patterns to avoid | `## ANTI-PATTERNS` | 15 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 85 |
+| Anti-patterns to avoid | `## ANTI-PATTERNS` | 16 |
 
 ---
 

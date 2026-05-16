@@ -1,8 +1,8 @@
-﻿# Module_SystemAndCOM.md
+# Module_SystemAndCOM.md
 <!-- DOMAIN: System and COM -->
-<!-- SCOPE: IStream/async COM interfaces, named-pipe IPC, Win32 memory-level OS access, and low-level DLL calls are not covered — see Module_DllCallAndMemory.md -->
-<!-- TRIGGERS: Run, RunWait, A_Clipboard, ClipWait, RegRead, RegWrite, RegDelete, ComObject, ComObjActive, ComObjGet, ComObjConnect, ComObjArray, ProcessExist, WinWaitActive, "start application", "clipboard text", "write registry", "read excel cell", "WMI query", "kill process", "COM automation", "exit code", "zombie process" -->
-<!-- CONSTRAINTS: COM teardown is order-critical — call .Quit()/.Close() on the host application BEFORE assigning "" to any reference; reversing the order leaves zombie processes. Wrap every COM method call in try/catch — unhandled COM exceptions are immediate non-resumable runtime errors that crash the script. Never call .Quit() on a ComObjActive() instance; that session was not created by the script. -->
+<!-- SCOPE: IStream/async COM interfaces, named-pipe IPC, Win32 memory-level OS access, and low-level DllCall are not covered — see Module_DllCallAndMemory.md -->
+<!-- TRIGGERS: Run, RunWait, A_Clipboard, ClipWait, RegRead, RegWrite, RegDelete, ComObject, ComObjActive, ComObjGet, ComObjConnect, ComObjArray, ProcessExist, WinWaitActive, EnvGet, EnvSet, "start application", "clipboard text", "write registry", "read excel cell", "WMI query", "kill process", "COM automation", "exit code", "zombie process", "environment variable", "process priority" -->
+<!-- CONSTRAINTS: COM teardown is order-critical — call .Quit()/.Close() on the host application BEFORE assigning "" to any reference; reversing the order leaves zombie processes. Wrap every COM method call in try/catch — unhandled COM exceptions are immediate non-resumable runtime errors that crash the script. Never call .Quit() on a ComObjActive() instance; that session was not created by the script. Use ComObject() not the removed ComObjCreate(). Capture RunWait() exit codes from its return value — ErrorLevel is deprecated and always 0 in v2. -->
 <!-- CROSS-REF: Module_DllCallAndMemory.md, Module_WindowAndControl.md, Module_Errors.md, Module_FileSystem.md, Module_Classes.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -13,82 +13,153 @@
 | `Clipboard` built-in variable | `A_Clipboard` | `Clipboard` is undefined in v2 — NameError at runtime |
 | `ComObjCreate("Excel.Application")` | `ComObject("Excel.Application")` | `ComObjCreate` is removed in v2 — NameError at runtime |
 | `RegRead, OutputVar, KeyName, ValueName` | `val := RegRead(KeyName, ValueName?)` | v1 command syntax is a parse error in v2; OutputVar assignment is silently lost |
-| `ErrorLevel` after RunWait | `exitCode := RunWait(...)` (return value) | ErrorLevel is deprecated in v2 and always returns 0 — exit code is silently discarded |
+| `ErrorLevel` after `RunWait` | `exitCode := RunWait(...)` (return value) | `ErrorLevel` is deprecated in v2 and always returns 0 — exit code is silently discarded |
 | `Run, %path%, , Hide` without parentheses | `Run(path, , "Hide")` | v1 command syntax is a parse error in v2 |
-| `WinActivate` immediately after `Run` | `Run(...)` then `WinWaitActive(title,, timeout)` | Race condition — window may not exist yet; WinActivate on an absent window is silently ignored |
-| `Sleep, 200` after clipboard copy | `A_Clipboard := "" ; Send("^c") ; ClipWait(timeout)` | Sleep duration is environment-dependent; ClipWait waits for the population event and confirms success via return value |
+| `WinActivate` immediately after `Run` | `Run(...)` then `WinWaitActive(title,, timeout)` | Race condition — window may not exist yet; `WinActivate` on an absent window is silently ignored |
+| `Sleep, 200` after clipboard copy | `A_Clipboard := "" ; Send("^c") ; ClipWait(timeout)` | Sleep duration is environment-dependent; `ClipWait` waits for the population event and confirms success via return value |
+| `EnvGet, OutputVar, VarName` (v1 command) | `val := EnvGet("VarName")` | v1 command syntax is a parse error in v2 |
+| `RegEnumKey, OutputVar, KeyName, N` | `Loop Reg KeyName` with `A_LoopRegName` | v1 enumeration command removed; use built-in `Loop Reg` with iteration variables |
 
 ## API QUICK-REFERENCE
 
 ### Clipboard
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `A_Clipboard` | Built-in variable | Text-only read/write; clear to `""` before copying so ClipWait detects the new content, not leftover data |
-| `ClipWait()` | `ClipWait(Timeout?, WaitForAnyData?)` | Returns 1 if clipboard populated within timeout, 0 on timeout — always check the return value |
-| `ClipboardAll()` | `ClipboardAll(Data?, Size?)` | Captures all clipboard formats as a binary snapshot; pass no args to snapshot the current clipboard; restore by assigning to `A_Clipboard` |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `A_Clipboard` | Built-in variable (read/write) | String | — | Text-only; clear to `""` before copying so `ClipWait` detects new content, not leftover data |
+| `ClipWait()` | `ClipWait(Timeout?, WaitForAnyData?)` | 1 on success, 0 on timeout | — | Always check the return value — 0 means clipboard was NOT populated within timeout |
+| `ClipboardAll()` | `ClipboardAll(Data?, Size?)` | ClipboardAll object | — | Captures all clipboard formats as a binary snapshot; restore by assigning to `A_Clipboard` |
 
 ### Process and Execution
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `Run()` | `Run(Target, WorkingDir?, Options?, &OutputVarPID?)` | Non-blocking; use `&OutputVarPID` to capture PID for subsequent `WinWait` |
-| `RunWait()` | `RunWait(Target, WorkingDir?, Options?, &OutputVarPID?)` | Blocks until process exits; **return value is the exit code** — do not use ErrorLevel |
-| `ProcessExist()` | `ProcessExist(PIDOrName?)` | Returns PID if running, 0 otherwise; call before Run to prevent duplicate instances |
-| `ProcessWait()` | `ProcessWait(PIDOrName, Timeout?)` | Blocks until process appears; returns PID on success, 0 on timeout |
-| `ProcessWaitClose()` | `ProcessWaitClose(PIDOrName, Timeout?)` | Blocks until process closes; returns 0 when closed, non-zero on timeout |
-| `ProcessClose()` | `ProcessClose(PIDOrName)` | Forcibly terminates process; returns PID that was closed |
-| `A_ComSpec` | Built-in variable | Full path to cmd.exe — use instead of hardcoded `"cmd.exe"` for portability |
-| `A_IsAdmin` | Built-in variable | 1 if running as administrator, 0 otherwise; check before requiring elevated operations |
 
-### Window
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `WinExist()` | `WinExist(WinTitle?, WinText?, ExcludeTitle?, ExcludeText?)` | Returns HWND if window found, 0 otherwise; use before `WinActivate` to avoid acting on absent windows |
-| `WinActivate()` | `WinActivate(WinTitle?, WinText?, ExcludeTitle?, ExcludeText?)` | Always follow with `WinWaitActive()` to confirm focus transfer |
-| `WinWait()` | `WinWait(WinTitle?, WinText?, Timeout?, ExcludeTitle?, ExcludeText?)` | Returns HWND on success, 0 on timeout — **always pass a timeout to prevent indefinite hang** |
-| `WinWaitActive()` | `WinWaitActive(WinTitle?, WinText?, Timeout?, ExcludeTitle?, ExcludeText?)` | Returns HWND when window gains focus, 0 on timeout |
-| `WinWaitClose()` | `WinWaitClose(WinTitle?, WinText?, Timeout?, ExcludeTitle?, ExcludeText?)` | Returns 1 when window closes; 0 on timeout |
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `Run()` | `Run(Target, WorkingDir?, Options?, &OutputVarPID?)` | — | OSError | Non-blocking; capture PID via `&OutputVarPID` for subsequent `WinWait` |
+| `RunWait()` | `RunWait(Target, WorkingDir?, Options?, &OutputVarPID?)` | Exit code (Integer) | OSError | Blocks until process exits; **return value is the exit code** — do not use `ErrorLevel` |
+| `ProcessExist()` | `ProcessExist(PIDOrName?)` | PID if running, 0 otherwise | — | Call before `Run` to prevent duplicate instances |
+| `ProcessWait()` | `ProcessWait(PIDOrName, Timeout?)` | PID on success, 0 on timeout | — | Blocks until process appears; always pass a timeout |
+| `ProcessWaitClose()` | `ProcessWaitClose(PIDOrName, Timeout?)` | 0 when closed, non-zero on timeout | — | Blocks until process closes; always pass a timeout |
+| `ProcessClose()` | `ProcessClose(PIDOrName)` | PID that was closed | — | Forcibly terminates process |
+| `ProcessSetPriority()` | `ProcessSetPriority(Level, PIDOrName?)` | PID on success, 0 on failure | — | Level: `"Normal"`, `"High"`, `"Low"`, `"BelowNormal"`, `"AboveNormal"`, `"Realtime"` |
+| `A_ComSpec` | Built-in variable (read-only) | String (path to cmd.exe) | — | Use instead of hardcoded `"cmd.exe"` for portability across Windows versions |
+| `A_IsAdmin` | Built-in variable (read-only) | 1 if admin, 0 otherwise | — | Check before any operation requiring elevation |
+
+### Window (System-level Wait and Validation)
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `WinExist()` | `WinExist(WinTitle?, WinText?, ExcludeTitle?, ExcludeText?)` | HWND if found, 0 otherwise | — | Use before `WinActivate` to avoid acting on absent windows |
+| `WinActivate()` | `WinActivate(WinTitle?, WinText?, ExcludeTitle?, ExcludeText?)` | — | — | Always follow with `WinWaitActive()` to confirm focus transfer |
+| `WinWait()` | `WinWait(WinTitle?, WinText?, Timeout?, ExcludeTitle?, ExcludeText?)` | HWND on success, 0 on timeout | — | **Always pass a timeout** to prevent indefinite hang |
+| `WinWaitActive()` | `WinWaitActive(WinTitle?, WinText?, Timeout?, ExcludeTitle?, ExcludeText?)` | HWND when focused, 0 on timeout | — | Confirms focus transfer after `WinActivate` |
+| `WinWaitClose()` | `WinWaitClose(WinTitle?, WinText?, Timeout?, ExcludeTitle?, ExcludeText?)` | 1 when closed, 0 on timeout | — | Use after `ProcessClose` to confirm window is gone |
 
 ### Registry
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `RegRead()` | `RegRead(KeyName, ValueName?)` | Returns value string; throws `OSError` on missing key or insufficient permissions — always wrap in try |
-| `RegWrite()` | `RegWrite(Value, ValueType, KeyName, ValueName?)` | ValueType: `"REG_SZ"`, `"REG_DWORD"`, `"REG_BINARY"`, `"REG_EXPAND_SZ"`, `"REG_MULTI_SZ"` |
-| `RegDelete()` | `RegDelete(KeyName, ValueName?)` | Deletes a single value; throws if value does not exist — use bare catch to suppress when absence is acceptable |
-| `RegDeleteKey()` | `RegDeleteKey(KeyName)` | Deletes entire key and all sub-keys and values |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `RegRead()` | `RegRead(KeyName, ValueName?)` | Value string | `OSError` | Throws on missing key or insufficient permissions — always wrap in try |
+| `RegWrite()` | `RegWrite(Value, ValueType, KeyName, ValueName?)` | — | `OSError` | ValueType: `"REG_SZ"`, `"REG_DWORD"`, `"REG_BINARY"`, `"REG_EXPAND_SZ"`, `"REG_MULTI_SZ"` |
+| `RegDelete()` | `RegDelete(KeyName, ValueName?)` | — | `OSError` | Deletes a single value; throws if value does not exist — use bare catch to suppress when absence is acceptable |
+| `RegDeleteKey()` | `RegDeleteKey(KeyName)` | — | `OSError` | Deletes entire key plus all sub-keys and values — irreversible; guard with existence check |
+
+### Environment Variables
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `EnvGet()` | `EnvGet(EnvVarName)` | String value, or `""` if absent | — | Returns empty string (not an error) when variable is absent — always check `!= ""` |
+| `EnvSet()` | `EnvSet(EnvVarName, Value)` | — | — | Sets the variable only for the **current process** — does not affect system or other processes |
 
 ### COM Functions
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `ComObject()` | `ComObject(CLSID, IID?)` | Creates a new COM instance — replaces removed v1 `ComObjCreate()`; always wrap in try |
-| `ComObjActive()` | `ComObjActive(CLSID)` | Attaches to an already-running COM instance — **never call `.Quit()` on the result** |
-| `ComObjGet()` | `ComObjGet(Name)` | WMI moniker access (e.g., `"winmgmts:..."`); always wrap in try — WMI permissions vary by environment |
-| `ComObjConnect()` | `ComObjConnect(ComObj, PrefixOrSink?)` | Pass a class instance as `PrefixOrSink` to sink events; omit the second argument to disconnect |
-| `ComObjArray()` | `ComObjArray(VarType, Count1, Count2?)` | Creates a VARIANT SafeArray for bulk COM transfers; indexing is **0-based** — unlike all AHK v2 arrays |
-| `ComValue()` | `ComValue(VarType, Value)` | Wraps an AHK value as a specific COM VARIANT type (e.g., VT_BSTR = 8, VT_VARIANT = 12) |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `ComObject()` | `ComObject(CLSID, IID?)` | COM wrapper object | `Error` | Creates a new COM instance — replaces removed v1 `ComObjCreate()`; always wrap in try |
+| `ComObjActive()` | `ComObjActive(CLSID)` | COM wrapper object | `Error` | Attaches to an already-running COM instance — **never call `.Quit()` on the result** |
+| `ComObjGet()` | `ComObjGet(Name)` | COM wrapper object | `Error` | WMI moniker access (e.g., `"winmgmts:..."`); always wrap in try — WMI permissions vary by environment |
+| `ComObjConnect()` | `ComObjConnect(ComObj, PrefixOrSink?)` | — | — | Pass a class instance as `PrefixOrSink` to sink events; omit the second argument to disconnect |
+| `ComObjArray()` | `ComObjArray(VarType, Count1, Count2?)` | SafeArray wrapper | — | Creates a VARIANT SafeArray for bulk COM transfers; indexing is **0-based** — unlike all AHK v2 arrays |
+| `ComValue()` | `ComValue(VarType, Value)` | COM variant wrapper | — | Wraps an AHK value as a specific COM VARIANT type (e.g., VT_BSTR = 8, VT_VARIANT = 12) |
 
 ## AHK V2 CONSTRAINTS
 
 - Use `A_Clipboard` exclusively — the v1 `Clipboard` variable does not exist in v2 and causes a NameError on access.
-- Clear `A_Clipboard := ""` before triggering a copy operation, then call `ClipWait(timeout)` and check its return value before reading `A_Clipboard` — skipping the clear means ClipWait may detect leftover content and return immediately with stale data.
+  - ✗ `text := Clipboard` — NameError: undefined variable
+  - ✓ `text := A_Clipboard` — correct built-in variable name in v2
+
+- Clear `A_Clipboard := ""` before triggering a copy operation, then call `ClipWait(timeout)` and check its return value before reading `A_Clipboard` — skipping the clear means `ClipWait` may detect leftover content and return immediately with stale data.
+  - ✗ `Send("^c") ; Sleep 200 ; text := A_Clipboard` — race condition; Sleep duration is environment-dependent
+  - ✓ `A_Clipboard := "" ; Send("^c") ; if ClipWait(2) { text := A_Clipboard }` — event-driven, confirmed
+
 - Always pass a timeout to `WinWait`, `WinWaitActive`, `ProcessWait`, and `ProcessWaitClose` — omitting the timeout parameter causes an indefinite script hang when the target never appears.
+  - ✗ `WinWait("ahk_pid " pid)` — hangs forever on headless or crashed process
+  - ✓ `WinWait("ahk_pid " pid,, 10)` — fails fast after 10 seconds
+
 - Wrap all `RegRead`, `RegWrite`, and `RegDelete` calls in try/catch — these functions throw `OSError` on missing keys or insufficient permissions, crashing the script if unhandled.
-- Wrap **every** COM method call in try/catch — COM exceptions propagate as runtime errors that immediately crash the script; there is no "soft failure" for COM errors. This includes `ComObject()`/`ComObjActive()` creation, `.Workbooks.Open()`, `.Range()`, and every property access.
-- COM teardown sequence is strict and non-negotiable: **(1)** call `.Quit()` or `.Close()` on the host application object, **(2)** then assign `""` to all references — reversing the order drops the AHK reference before the host application is told to exit, leaving a zombie process (e.g., a hidden `Excel.exe` that blocks file access and consumes memory).
+  - ✗ `val := RegRead("HKCU\App", "Setting")` without try — crashes on absent key
+  - ✓ `try { val := RegRead("HKCU\App", "Setting") } catch { val := "default" }` — safe fallback
+
+- Wrap **every** COM method call in try/catch — COM exceptions propagate as runtime errors that immediately crash the script; there is no "soft failure" for COM errors. This applies to `ComObject()`/`ComObjActive()` creation, property access, and every method call.
+  - ✗ `xlApp := ComObject("Excel.Application")` without try — crashes if Excel not installed
+  - ✓ `try { xlApp := ComObject("Excel.Application") } catch as e { throw Error("COM init failed: " e.Message) }`
+
+- COM teardown sequence is strict and non-negotiable: **(1)** call `.Quit()` or `.Close()` on the host application object, **(2)** then assign `""` to all references — reversing the order drops the AHK reference before the host application is told to exit, leaving a zombie process.
+  - ✗ `xlApp := "" ; xlApp.Quit()` — xlApp is already "" when Quit() is called; Excel.exe remains in Task Manager
+  - ✓ `try xlApp.Quit() ; xlApp := ""` — instructs Excel to exit first, then releases reference
+
 - Never call `.Quit()` on a `ComObjActive()` instance — the script did not create that session and has no authority to terminate it; only release the reference with `ref := ""`.
+  - ✗ `xlApp := ComObjActive("Excel.Application") ; ... ; xlApp.Quit()` — terminates user's running session
+  - ✓ `xlApp := ComObjActive("Excel.Application") ; ... ; xlApp := ""` — release reference only
+
+- Use `ComObject()` in place of the removed `ComObjCreate()` — the v1 function name causes a NameError in v2 at every call site.
+  - ✗ `app := ComObjCreate("Word.Application")` — NameError: function removed in v2
+  - ✓ `app := ComObject("Word.Application")` — correct v2 function name
+
 - Use `ComObjArray()` for bulk COM data transfers instead of iterative writes — single-cell iteration crosses the COM boundary on every call (O(n) overhead); a single SafeArray assignment crosses once (O(1)). Note that `ComObjArray` indices are **0-based**, unlike all other AHK v2 collections.
-- Retrieve process exit codes from `RunWait()`'s return value — `ErrorLevel` is deprecated in v2 and always returns 0, silently discarding the exit code.
+  - ✗ `for i, v in arr { sheet.Cells(i,1).Value := v }` — O(n) COM boundary crossings
+  - ✓ Build `ComObjArray(12, arr.Length, 1)` then assign to `Range.Value` in one call — O(1) crossings
+
+- Retrieve process exit codes from `RunWait()`'s return value — `ErrorLevel` is deprecated in v2 and always returns 0, silently discarding the actual exit code.
+  - ✗ `RunWait(cmd) ; code := ErrorLevel` — ErrorLevel is always 0 in v2; actual exit code lost
+  - ✓ `code := RunWait(cmd)` — return value is the exit code
+
 - Use localization-independent numeric constants for Office COM (e.g., `-4135` for `xlCalculationManual`) rather than string names, which fail on non-English Office installations.
 
+- `EnvGet()` returns an empty string when a variable is absent — it does not throw. Always check `!= ""` before using the result.
+  - ✗ `if EnvGet("MY_VAR")` — evaluates as truthy for any non-empty string, silently passes on ""
+  - ✓ `val := EnvGet("MY_VAR") ; if val != "" { ... }` — explicit absence check
+
 Safe-access priority order for COM and system operations:
-  1. `ProcessExist()` / `WinExist()` before attaching — validates presence without exception overhead for predictable absent-process cases
-  2. `try { ref := ComObject(...) } catch as err` — COM creation failure is exceptional; the catch block receives the full error context for logging
+  1. `ProcessExist()` / `WinExist()` / `EnvGet() != ""` before attaching — validates presence without exception overhead for predictable absent cases
+  2. `try { ref := ComObject(...) } catch as err` — COM creation failure is exceptional; the catch block receives full error context for logging
   3. `try { comRef.Method() } catch as err` — wrap every individual COM method call; COM exceptions are non-resumable and carry diagnostic detail
   4. `finally { if ref { ref.Quit() } ; ref := "" }` — teardown always runs even on exception paths, preventing zombie processes
+
+Unset variable handling: always check `if !f` after `WinWait()` or `ProcessWait()` return values before acting — a 0 return value means timeout, not success.
+
+Resource lifecycle: every `ComObject()` call must have a corresponding `.Quit()` in a `finally` block, followed by `ref := ""` — `__Delete` timing is not guaranteed in AHK v2, so COM instances opened without an explicit `finally`-block teardown will leave zombie processes on exception paths.
+
+## AGENT QA CHECKLIST
+
+- [ ] Did I call `.Quit()` (or `.Close()`) on every `ComObject()` instance **before** assigning `""` to the reference?
+- [ ] Did I wrap every individual COM method call in its own `try/catch`, not just the initial `ComObject()` creation?
+- [ ] Did I avoid calling `.Quit()` on any `ComObjActive()` instance — releasing the reference with `ref := ""` only?
+- [ ] Did I capture the `RunWait()` exit code from its **return value**, not from the deprecated `ErrorLevel`?
+- [ ] Did I pass an explicit timeout to every `WinWait`, `WinWaitActive`, `ProcessWait`, and `ProcessWaitClose` call?
+
+## RUNTIME ERROR MAPPING
+
+| Exception Class | Trigger Condition | Detection Code | Fix |
+|----------------|-------------------|----------------|-----|
+| `Error` (non-resumable runtime crash) | COM method called after `ref := ""` drops the reference, or `ComObject()` fails and ref is 0 | `e.Message` contains HRESULT hex (e.g., `0x800A03EC`) or "Object expected" | Wrap every `ComObject()` in try/catch; guard method calls with `if ref` before invoking; use `finally` for teardown |
+| `OSError` | `RegRead()`, `RegWrite()`, or `RegDelete()` on a missing key or with insufficient permissions | `e.Message` contains registry key path; `A_LastError` holds Win32 error code | Wrap all registry calls in try/catch; provide a default value on catch for read operations; check `A_IsAdmin` before HKLM writes |
+| Silent zombie process (no exception thrown) | `xlApp := ""` before `xlApp.Quit()` — COM reference dropped before application told to exit | Hidden `Excel.exe` (or `WINWORD.EXE`, etc.) visible in Task Manager after script exits | Reverse the order: `try xlApp.Quit()` first, then `xlApp := ""` — enforce in `finally` block so exception paths cannot skip teardown |
 
 ## TIER 1 — Clipboard and Application Launch Fundamentals
 > METHODS COVERED: A_Clipboard · ClipWait · ClipboardAll · Run · WinWaitActive · Send
 
 Tier 1 covers the two most common OS integration primitives: clipboard-mediated text transfer and launching external applications. Both require explicit sequencing — `A_Clipboard` must be cleared before copying so `ClipWait` detects new content, and a launched application must be confirmed active via `WinWaitActive` before any input is sent.
+
 ```ahk
 ; ✓ Clear first so ClipWait detects the NEW copy, not leftover clipboard content
 A_Clipboard := ""
@@ -123,11 +194,12 @@ if WinWaitActive("ahk_exe notepad.exe",, 5) {   ; ✓ 5-second timeout guards ag
 ```
 
 ## TIER 2 — Registry Operations and Process Exit Codes
-> METHODS COVERED: RegWrite · RegDelete · RegRead · RunWait · A_ComSpec · A_ScriptFullPath
+> METHODS COVERED: RegWrite · RegDelete · RegRead · RunWait · A_ComSpec · A_ScriptFullPath · EnvGet · EnvSet
 
-Tier 2 covers OS mutation operations: modifying the Windows Registry and capturing the exit codes of spawned processes. Registry operations require try/catch because key absence and permission failures are common across different user environments. Exit codes must be captured from `RunWait()`'s return value — not from the deprecated `ErrorLevel`.
+Tier 2 covers OS mutation operations: modifying the Windows Registry, reading environment variables, and capturing the exit codes of spawned processes. Registry operations require try/catch because key absence and permission failures are common across different user environments. Exit codes must be captured from `RunWait()`'s return value — not from the deprecated `ErrorLevel`. `EnvGet()` returns an empty string (not an exception) for absent variables.
+
 ```ahk
-; ✓ Registry operations wrapped in try-catch — permissions vary by OS configuration
+; ✓ Registry operations wrapped in try/catch — permissions vary by OS configuration
 ManageStartupReg(enable) {
     keyName := "HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
     valName := "MyAHKScript"
@@ -162,15 +234,29 @@ GetRegistryValue(keyName, valueName, default := "") {
     try {
         return RegRead(keyName, valueName)
     } catch {
-        return default              ; ✓ return caller-supplied default on missing key
+        return default              ; ✓ Return caller-supplied default on missing key
     }
 }
+
+; ✓ EnvGet returns "" for absent variables — not an exception; check explicitly
+javaHome := EnvGet("JAVA_HOME")
+if javaHome != "" {
+    Run(javaHome . '\bin\java.exe -version',, "Hide")
+} else {
+    MsgBox("JAVA_HOME is not set in the environment.")
+}
+
+; ✓ EnvSet only affects the current process — not the system environment
+EnvSet("MY_APP_MODE", "debug")
+; ✗ Do not assume EnvSet affects the system registry or other processes
+; EnvSet("PATH", newPath)             ; → changes only this AHK process's PATH, not Explorer's
 ```
 
 ## TIER 3 — Process and Window State Validation
-> METHODS COVERED: ProcessExist · ProcessWait · ProcessClose · WinExist · WinActivate · WinWait · WinWaitActive
+> METHODS COVERED: ProcessExist · ProcessWait · ProcessWaitClose · ProcessClose · ProcessSetPriority · WinExist · WinActivate · WinWait · WinWaitActive
 
-Tier 3 covers querying and validating system states before acting on them. `ProcessExist()` guards against duplicate launches, and all Wait functions require explicit timeout parameters to prevent indefinite script hangs when a target never appears. `WinExist()` should precede `WinActivate()` to avoid acting on absent windows.
+Tier 3 covers querying and validating system states before acting on them. `ProcessExist()` guards against duplicate launches, and all Wait functions require explicit timeout parameters to prevent indefinite script hangs when a target never appears. `WinExist()` should precede `WinActivate()` to avoid acting on absent windows. `ProcessSetPriority()` returns 0 on failure — check the return value.
+
 ```ahk
 ; ✓ ProcessExist check prevents duplicate launches; WinWait with timeout prevents hang
 EnsureProcessRunning(exeName) {
@@ -200,6 +286,23 @@ ValidateWindowState(winTitle) {
     return false
 }
 
+; ✓ ProcessSetPriority returns 0 on failure — check return value
+SetHighPriority(pidOrName) {
+    result := ProcessSetPriority("High", pidOrName)
+    if (!result) {
+        MsgBox("Priority change failed — process not found or access denied.")
+    }
+    return result
+}
+
+; ✓ ProcessWaitClose with timeout — prevents hang when process is unresponsive
+GracefulTerminate(pidOrName) {
+    ProcessClose(pidOrName)
+    if (ProcessWaitClose(pidOrName, 5)) {   ; ✓ 5-second grace period; returns non-zero PID on timeout
+        MsgBox("Process did not close within 5 seconds.")
+    }
+}
+
 ; ✗ WinWait without timeout — hangs forever if process is headless or has already crashed
 ; WinWait("ahk_pid " . pid)               ; → indefinite hang with no recovery path
 ```
@@ -208,8 +311,9 @@ ValidateWindowState(winTitle) {
 > METHODS COVERED: ComObjGet · .ExecQuery · Map · Map.Has
 
 Tier 4 covers system data extraction via Windows Management Instrumentation (WMI). WMI is accessed through the COM layer using `ComObjGet()` with a moniker string. The returned COM collection is enumerable with `for-in`, and results should be transformed into an AHK v2 `Map` for safe downstream access. WMI permissions vary by OS configuration — always wrap in try/catch.
+
 ```ahk
-; ✓ Full WMI connection in try-catch — impersonationLevel required for service/hardware queries
+; ✓ Full WMI connection in try/catch — impersonationLevel required for service/hardware queries
 GetRunningServices() {
     servicesMap := Map()
     try {
@@ -241,9 +345,10 @@ if (running.Has("Themes")) {
 ```
 
 ## TIER 5 — COM Application Automation and Lifecycle Management
-> METHODS COVERED: ComObject · ComObjActive · .Workbooks.Add · .ActiveSheet · .Cells · .Range · .Value · .Quit · .Close · .AutoFit · .Font.Bold · .Visible · .Columns · ExportArrayToExcel
+> METHODS COVERED: ComObject · ComObjActive · .Workbooks.Add · .ActiveSheet · .Cells · .Range · .Value · .Quit · .Close · .AutoFit · .Font.Bold · .Visible · .Columns
 
 Tier 5 covers the two foundational COM lifecycle patterns and direct Excel automation. The teardown sequence is the single most critical correctness concern in this domain — the order of operations is non-negotiable. Pattern A applies when the script creates the COM instance (`ComObject`); Pattern B applies when the script attaches to an existing instance (`ComObjActive`). These patterns differ in one critical way: Pattern A calls `.Quit()`, Pattern B never does.
+
 ```ahk
 ; =============================================================================
 ; Pattern A: Script-owned instance (ComObject)
@@ -312,9 +417,8 @@ AttachedComLifecycle() {
 ; =============================================================================
 
 ExportArrayToExcel(dataArray) {
-    if (!IsObject(dataArray) || Type(dataArray) != "Array") {
-        throw Error("Input must be an array.")
-    }
+    if !(dataArray is Array)
+        throw TypeError("Input must be an AHK v2 Array.", -1)
 
     xlApp := ""
     wb    := ""
@@ -330,9 +434,6 @@ ExportArrayToExcel(dataArray) {
         } catch as initErr {
             throw Error("Failed to create workbook: " . initErr.Message)
         }
-
-        ; ✗ v1 loop syntax — parse error in v2
-        ; Loop % dataArray.Length()
 
         ; ✓ AHK v2 for-loop provides index and value in one expression
         for index, value in dataArray {
@@ -368,40 +469,54 @@ ExportArrayToExcel(dataArray) {
 
 COM interaction is fundamentally cross-process — every property read and method call crosses a process boundary and incurs marshalling overhead. For large datasets, the cost difference between iterative and bulk approaches is not constant-factor; it is architectural.
 
-**Iterative cell writes (O(n) COM boundary crossings):** Each `sheet.Cells(i, 1).Value := val` crosses the COM boundary once per row. For 1,000 rows this is 1,000 boundary crossings; for 10,000 rows it is 10,000. This is the correct approach only for small datasets where error-per-row handling is required.
+**Iterative cell writes (O(n) COM boundary crossings):** Each `sheet.Cells(i, 1).Value := val` crosses the COM boundary once per row. For 1,000 rows this is 1,000 boundary crossings; for 10,000 rows it is 10,000. Reserve this approach for small datasets where per-row error handling is required.
 
 **Bulk SafeArray write (O(1) COM boundary crossings):** Build a `ComObjArray` in AHK memory and assign the entire array to a `Range.Value` in a single call. The COM boundary is crossed once regardless of dataset size. Note that `ComObjArray` indices are **0-based** — unlike all other AHK v2 collections.
 
 **ScreenUpdating and Calculation:** Disabling these during bulk updates prevents Excel from recalculating and re-rendering after every cell write. Always restore both before returning — leaving them disabled makes the workbook appear frozen to the user.
+
 ```ahk
 ; ✓ Bulk SafeArray write — single COM boundary crossing for entire dataset
 WriteToExcelFast(dataMap) {
-    xlApp := ComObject("Excel.Application")
-    ; ✓ Disable ScreenUpdating and Calculation for bulk-write performance
-    xlApp.ScreenUpdating := false
-    xlApp.Calculation := -4135           ; xlCalculationManual (locale-independent numeric constant)
+    if !(dataMap is Map)
+        throw TypeError("WriteToExcelFast: dataMap must be a Map", -1)
 
-    wb    := xlApp.Workbooks.Add()
-    sheet := wb.ActiveSheet
+    xlApp := ""
+    wb    := ""
+    try {
+        xlApp := ComObject("Excel.Application")
 
-    ; ✓ ComObjArray(12, rows, cols) — 12 = VT_VARIANT; note 0-based indexing
-    safeArray := ComObjArray(12, dataMap.Count, 2)
+        ; ✓ Disable ScreenUpdating and Calculation for bulk-write performance
+        xlApp.ScreenUpdating := false
+        xlApp.Calculation := -4135           ; xlCalculationManual (locale-independent numeric constant)
 
-    rowIndex := 0
-    for key, val in dataMap {
-        safeArray[rowIndex, 0] := key    ; ✓ ComObjArray is 0-based — unlike AHK v2 Arrays
-        safeArray[rowIndex, 1] := val
-        rowIndex++
+        wb    := xlApp.Workbooks.Add()
+        sheet := wb.ActiveSheet
+
+        ; ✓ ComObjArray(12, rows, cols) — 12 = VT_VARIANT; note 0-based indexing
+        safeArray := ComObjArray(12, dataMap.Count, 2)
+
+        rowIndex := 0
+        for key, val in dataMap {
+            safeArray[rowIndex, 0] := key    ; ✓ ComObjArray is 0-based — unlike AHK v2 Arrays
+            safeArray[rowIndex, 1] := val
+            rowIndex++
+        }
+
+        ; ✓ Single COM boundary crossing writes the entire array
+        endCell := "B" . dataMap.Count
+        sheet.Range("A1:" . endCell).Value := safeArray
+
+        ; ✓ Always restore application state before returning — omission leaves Excel frozen
+        xlApp.Calculation := -4105           ; xlCalculationAutomatic
+        xlApp.ScreenUpdating := true
+        xlApp.Visible := true
+    } finally {
+        if xlApp
+            try xlApp.Quit()
+        wb    := ""
+        xlApp := ""
     }
-
-    ; ✓ Single COM boundary crossing writes the entire array
-    endCell := "B" . dataMap.Count
-    sheet.Range("A1:" . endCell).Value := safeArray
-
-    ; ✓ Always restore application state before returning — omission leaves Excel frozen
-    xlApp.Calculation := -4105           ; xlCalculationAutomatic
-    xlApp.ScreenUpdating := true
-    xlApp.Visible := true
 }
 ```
 
@@ -409,6 +524,7 @@ WriteToExcelFast(dataMap) {
 > METHODS COVERED: ComObjConnect · ComObjArray · .WorkbookBeforeClose · .SheetSelectionChange · .Workbooks.Open · .Sheets · ToolTip · SetTimer
 
 Tier 6 integrates event-driven COM automation and production-grade wrapper classes. `ComObjConnect()` binds a script class instance as an event sink — AHK routes incoming COM events to class methods whose names match the COM event names exactly. The `ExcelAutomation` wrapper class demonstrates the full lifecycle pattern as a reusable component with `__New` and `__Delete` meta-functions managing resource acquisition and teardown.
+
 ```ahk
 ; =============================================================================
 ; ExcelEventListener — COM event sinking via ComObjConnect
@@ -475,9 +591,8 @@ class ExcelAutomation {
     }
 
     OpenWorkbook(filePath) {
-        if (!FileExist(filePath)) {
-            throw Error("Workbook path does not exist: " . filePath)
-        }
+        if !(filePath is String) || filePath = ""
+            throw TypeError("OpenWorkbook: filePath must be a non-empty string", -1)
         ; ✓ Workbooks.Open wrapped separately — locked or corrupt files throw here, not in __New
         try {
             this.xlWorkbook := this.xlApp.Workbooks.Open(filePath)
@@ -513,20 +628,106 @@ class ExcelAutomation {
 }
 ```
 
+## DROP-IN RECIPES
+
+```ahk
+; =============================================================================
+; SafeRunProcess — launch a process, wait for its window, handle timeout robustly
+; Returns PID on success; throws descriptive Error on any failure path
+; =============================================================================
+SafeRunProcess(exePath, winTitle, timeoutSecs := 10) {
+    if !(exePath is String) || exePath = ""
+        throw TypeError("SafeRunProcess: exePath must be a non-empty string", -1)
+    if !(winTitle is String) || winTitle = ""
+        throw TypeError("SafeRunProcess: winTitle must be a non-empty string", -1)
+
+    ; ✓ Check for existing instance before launching to prevent duplicates
+    if (pid := ProcessExist(exePath))
+        return pid
+
+    try {
+        Run(exePath, , , &newPid)
+    } catch as runErr {
+        throw Error("SafeRunProcess: Run() failed for '" exePath "' — " runErr.Message, -1)
+    }
+
+    ; ✓ WinWait with timeout — no indefinite hang on headless or crashed processes
+    if !WinWait(winTitle,, timeoutSecs)
+        throw Error("SafeRunProcess: window '" winTitle "' did not appear within " timeoutSecs "s", -1)
+
+    return newPid
+}
+; Call site: pid := SafeRunProcess("notepad.exe", "ahk_exe notepad.exe", 8)
+
+; =============================================================================
+; SafeRegRead — registry read with typed fallback and permission guard
+; Returns the registry value or the default; never throws to the caller
+; =============================================================================
+SafeRegRead(keyName, valueName, default := "") {
+    if !(keyName is String) || keyName = ""
+        throw TypeError("SafeRegRead: keyName must be a non-empty string", -1)
+    try {
+        return RegRead(keyName, valueName)
+    } catch as e {
+        ; ✓ Return caller-supplied default — absence and permission failure are both handled
+        return default
+    }
+}
+; Call site: theme := SafeRegRead("HKCU\Software\Microsoft\Windows\CurrentVersion\Themes", "CurrentTheme", "unknown")
+
+; =============================================================================
+; SafeComRunner — generic COM create / use / teardown pattern
+; Accepts a closure that receives the COM object; guarantees Quit + ref release
+; regardless of whether the closure throws
+; =============================================================================
+SafeComRunner(progId, action) {
+    if !(progId is String) || progId = ""
+        throw TypeError("SafeComRunner: progId must be a non-empty string", -1)
+    if !(action is Func) && !(action is BoundFunc) && !(action is Closure)
+        throw TypeError("SafeComRunner: action must be a callable", -1)
+
+    comRef := ""
+    try {
+        comRef := ComObject(progId)         ; ✓ v2 syntax — ComObjCreate() is removed
+    } catch as createErr {
+        throw Error("SafeComRunner: ComObject('" progId "') failed — " createErr.Message, -1)
+    }
+
+    try {
+        action(comRef)                      ; ✓ caller performs all COM work inside the closure
+    } catch as workErr {
+        throw Error("SafeComRunner: action threw — " workErr.Message, -1)
+    } finally {
+        ; ✓ Quit BEFORE releasing reference — prevents zombie process regardless of exception path
+        try comRef.Quit()
+        comRef := ""
+    }
+}
+; Call site:
+; SafeComRunner("Excel.Application", (xl) {
+;     xl.Visible := false
+;     wb := xl.Workbooks.Add()
+;     wb.ActiveSheet.Range("A1").Value := "Done"
+;     wb.SaveAs("C:\out.xlsx")
+;     wb.Close()
+; })
+```
+
 ## ANTI-PATTERNS
 
 | Pattern | Wrong | Correct | LLM Common Cause |
 |---------|-------|---------|------------------|
-| v1 clipboard variable | `text := Clipboard` | `text := A_Clipboard` | AHK v1 training data; `Clipboard` was a valid built-in variable |
-| Clipboard race condition | `Send("^c") ; Sleep 200` | `A_Clipboard := "" ; Send("^c") ; ClipWait(2)` | Sleep-based polling is the default pattern in most language training data; ClipWait is AHK-specific |
+| v1 clipboard variable | `text := Clipboard` | `text := A_Clipboard` | AHK v1 training data; `Clipboard` was a valid built-in variable in v1 |
+| Clipboard race condition | `Send("^c") ; Sleep 200` | `A_Clipboard := "" ; Send("^c") ; ClipWait(2)` | Sleep-based polling is the default pattern in most language training data; `ClipWait` is AHK-specific |
 | Immediate WinActivate after Run | `Run(path) ; WinActivate(title)` | `Run(path) ; WinWaitActive(title,, 5)` | v1 scripts often omit the wait; cross-language models do not know about window appearance latency |
-| Wrong COM teardown order | `xlApp := "" ; xlApp.Quit()` | `xlApp.Quit() ; xlApp := ""` | Reference-before-teardown is harmless in GC languages; v2 is reference-counted and order-sensitive |
+| Wrong COM teardown order | `xlApp := "" ; xlApp.Quit()` | `xlApp.Quit() ; xlApp := ""` | Reference-before-teardown is harmless in GC languages; AHK v2 is reference-counted and order-sensitive |
 | Quit on attached instance | `xlApp := ComObjActive(...) ; xlApp.Quit()` | `xlApp := ComObjActive(...) ; xlApp := ""` | Models conflate owned and attached COM lifecycles; the distinction is AHK-specific |
 | Unguarded COM method call | `sheet.Range("A1").Value := x` | `try { sheet.Range("A1").Value := x } catch as e { ... }` | COM error handling is unusual compared to most language training data; models omit try by default |
 | v1 ComObjCreate | `ComObjCreate("Excel.Application")` | `ComObject("Excel.Application")` | v1 function name dominates mixed-version AHK training data; `ComObjCreate` is removed in v2 |
 | v1 RegRead command syntax | `RegRead, val, HKCU\..., Name` | `val := RegRead("HKCU\...", "Name")` | v1 command syntax is the dominant pattern in AHK training data |
-| ErrorLevel for exit code | `RunWait(cmd) ; code := ErrorLevel` | `code := RunWait(cmd)` | ErrorLevel was the v1 convention; models do not know it is deprecated and always 0 in v2 |
+| ErrorLevel for exit code | `RunWait(cmd) ; code := ErrorLevel` | `code := RunWait(cmd)` | `ErrorLevel` was the v1 convention; models do not know it is deprecated and always 0 in v2 |
 | Iterative COM writes for bulk data | `for i, v in arr { sheet.Cells(i,1).Value := v }` | Build `ComObjArray` then `sheet.Range(...).Value := safeArray` | Models default to iterative patterns without knowing the O(n) COM boundary cost |
+| EnvGet treated as boolean | `if EnvGet("VAR")` | `if EnvGet("VAR") != ""` | Most languages return null/undefined for missing env vars; EnvGet returns `""`, which is falsy but also the valid absent-key indicator |
 
 ## SEE ALSO
 

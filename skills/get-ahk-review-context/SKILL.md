@@ -82,22 +82,26 @@ finding the mandatory severity level (🔴 Critical / 🟠 Major / 🟡 Minor).
 > baseline (~120 lines). Then load only the TIER section(s) matching the dimension(s)
 > you are actively evaluating.
 
-### Module_CodeReview.md (1184 lines)
+### Module_CodeReview.md (1374 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| Severity classification table + six-dimension overview + report format | `## API QUICK-REFERENCE` | 79 |
-| Which operations throw (vs return falsy) — throwing ops reference | `### Throwing Operations Reference` | 15 |
-| Report output format template | `### Report Output Format` | 20 |
-| AHK v2 functions used in review patterns | `### AHK v2 Functions Referenced in Review Patterns` | 22 |
+| Severity classification table | `### Severity Classification` | 9 |
+| Six-dimension overview | `### Six Review Dimensions` | 11 |
+| Which operations throw (vs return falsy) — throwing ops reference | `### Throwing Operations Reference` | 16 |
+| Report output format template | `### Report Output Format` | 26 |
+| AHK v2 functions used in review patterns | `### AHK v2 Functions Referenced in Review Patterns` | 42 |
 | v1 → v2 breaking changes (review lens) | `## V1 → V2 BREAKING CHANGES` | 13 |
-| General constraints that must hold across all six dimensions | `## AHK V2 CONSTRAINTS` | 41 |
-| **Dimension 1** — Modern Syntax & v2 Compliance (`=` vs `:=`, `#Requires`, `%Var%`) | `## TIER 1 — Modern Syntax & v2 Compliance` | 66 |
-| **Dimension 2** — Error Handling & Type Safety (try/catch, empty catch, type guards) | `## TIER 2 — Error Handling & Type Safety` | 90 |
-| **Dimension 3** — Variable Scope, Architecture & SE Design Principles | `## TIER 3 — Variable Scope, Architecture & SE Design Principles` | 194 |
-| **Dimension 4** — GUI & Event Binding (`.Bind(this)`, `.OnEvent()`, g-label removal) | `## TIER 4 — GUI & Event Binding` | 96 |
-| **Dimension 5** — Performance, Security & Resource Management | `## TIER 5 — Performance, Security & Resource Management` | 220 |
-| **Dimension 6** — Clean Code, Over-Engineering & Composite (YAGNI, naming contracts) | `## TIER 6 — Clean Code, Over-Engineering & Composite Review` | 342 |
+| General constraints that must hold across all six dimensions | `## AHK V2 CONSTRAINTS` | 58 |
+| QA checklist before submitting review | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Dimension 1** — Modern Syntax & v2 Compliance (`=` vs `:=`, `#Requires`, `%Var%`) | `## TIER 1 — Modern Syntax & v2 Compliance` | 67 |
+| **Dimension 2** — Error Handling & Type Safety (try/catch, empty catch, type guards) | `## TIER 2 — Error Handling & Type Safety` | 91 |
+| **Dimension 3** — Variable Scope, Architecture & SE Design Principles | `## TIER 3 — Variable Scope, Architecture & SE Design Principles` | 195 |
+| **Dimension 4** — GUI & Event Binding (`.Bind(this)`, `.OnEvent()`, g-label removal) | `## TIER 4 — GUI & Event Binding` | 97 |
+| **Dimension 5** — Performance, Security & Resource Management | `## TIER 5 — Performance, Security & Resource Management` | 205 |
+| **Dimension 6** — Clean Code, Over-Engineering & Composite (YAGNI, naming contracts) | `## TIER 6 — Clean Code, Over-Engineering & Composite Review` | 345 |
+| Copy-paste review templates | `## DROP-IN RECIPES` | 122 |
 | Anti-patterns catalogue | `## ANTI-PATTERNS` | 24 |
 
 ---

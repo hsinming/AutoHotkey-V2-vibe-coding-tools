@@ -1,8 +1,8 @@
-﻿# Module_DataStructures.md
+# Module_DataStructures.md
 <!-- DOMAIN: Data Structures -->
 <!-- SCOPE: Deep copy via DeepClone, functional Map/Filter/Reduce helpers, Sort algorithms, and set operations (Union/Intersection/Difference) are not covered here — see Module_Arrays.md. -->
-<!-- TRIGGERS: Array, Map, Push, Pop, InsertAt, RemoveAt, Delete, Has, Get, Set, Clear, Clone, Count, Length, Capacity, CaseSense, Default, __Enum, "key-value", "dictionary", "list", "collection", "store ordered items", "store named settings", "iterate all elements", "check key existence", "case-insensitive lookup", "nested data", "data storage" -->
-<!-- CONSTRAINTS: Never use {key: val} object literals for data — {} creates an Object lacking Map's method set (.Has, .Get, .Count, .CaseSense, .Delete, .Clear, for-loop enumeration); use Map() exclusively. Array indices are 1-based (arr[0] always throws IndexError); negative indices are valid (arr[-1] = last element). Set Map.CaseSense before inserting any keys — changing it on a non-empty Map throws. Clone() is always shallow. -->
+<!-- TRIGGERS: Array, Map, Push, Pop, InsertAt, RemoveAt, Delete, Has, Get, Set, Clear, Clone, Count, Length, Capacity, CaseSense, Default, __Enum, "key-value", "dictionary", "hash", "list", "vector", "collection", "store ordered items", "store named settings", "iterate all elements", "check key existence", "case-insensitive lookup", "nested data", "data storage", "associative array" -->
+<!-- CONSTRAINTS: Never use {key: val} object literals for data — {} creates an Object lacking Map's method set (.Has, .Get, .Count, .CaseSense, .Delete, .Clear, for-loop enumeration); use Map() exclusively. Array indices are 1-based (arr[0] always throws IndexError); negative indices are valid (arr[-1] = last element). Set Map.CaseSense before inserting any keys — changing it on a non-empty Map throws. Clone() is always shallow — nested objects share the same reference. Map has no built-in .Keys() method — iterate with for k in map or extend via DefineProp. -->
 <!-- CROSS-REF: Module_Arrays.md, Module_Objects.md, Module_Classes.md, Module_Errors.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -12,7 +12,7 @@
 |----------------------------------|-----------------|-------------|
 | `{key: val}` as data container | `Map("key", val)` | Object lacks `.Has()`, `.Get()`, `.Count`, `.CaseSense`, `.Delete()`, `.Clear()`, and direct for-loop enumeration — silent data loss and runtime errors |
 | `arr[0]` zero-based first element | `arr[1]` or `arr[-1]` for last | `IndexError` always thrown — AHK v2 arrays are strictly 1-based with no zero slot |
-| `new Map()` / `new Array()` constructor | `Map()` / `Array()` / `[]` | `new` keyword is not used for built-in types in v2 — `TypeError` at runtime |
+| `new Map()` / `new Array()` constructor | `Map()` / `Array()` / `[]` | `new` keyword is not used for built-in types in v2 — `NameError` at runtime |
 | `val := m["key"]` without existence guard | `val := m.Get("key", default)` | `UnsetItemError` when key absent — v1 returned blank string; v2 throws |
 | `m.CaseSense := "Off"` after inserting keys | Set `CaseSense` on a freshly constructed empty Map before any key insertion | Exception thrown — the internal sorted array is built at insertion time; post-hoc reconfiguration is invalid |
 | Calling `m.Keys()` directly as built-in | `for k in m` or `Map.Prototype.DefineProp("Keys", ...)` | `Map` has no built-in `.Keys()` method — `MethodError` at runtime |
@@ -21,73 +21,97 @@
 ## API QUICK-REFERENCE
 
 ### Array
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `.Push()` | `.Push(val1, val2, ...)` | Append one or more values; no return value |
-| `.Pop()` | `.Pop()` | Remove and return last element; throws if empty |
-| `.InsertAt()` | `.InsertAt(index, val1, ...)` | Insert at position, shifting existing elements right |
-| `.RemoveAt()` | `.RemoveAt(index, length?)` | Remove one or more elements shifting left; returns removed value when length omitted |
-| `.Delete()` | `.Delete(index)` | Clear element value without changing Length — element becomes unset, not removed |
-| `.Has()` | `.Has(index)` | True only if index is within bounds AND the element has a value (not unset) |
-| `.Get()` | `.Get(index, default)` | Return default if element is unset (index must be in range); throws IndexError for zero or out-of-range index |
-| `.Clone()` | `.Clone()` | Shallow copy — nested Array/Map objects share the same reference |
-| `.Capacity` | `.Capacity` | Read or pre-set the number of allocated slots to avoid repeated reallocation |
-| `.Length` | `.Length` | Current element count (read-write — truncates or extends the array) |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `.Push()` | `.Push(val1, val2, ...)` | — | — | Append one or more values to the end |
+| `.Pop()` | `.Pop()` | Any (last element) | `Error` if array is empty | Removes and returns the last element |
+| `.InsertAt()` | `.InsertAt(index, val1, ...)` | — | `ValueError` if index out of range | Insert at position, shifting existing elements right |
+| `.RemoveAt()` | `.RemoveAt(index, length?)` | Removed value (length omitted); — (length given) | `ValueError` if range out of bounds | Shifts remaining elements left; shrinks array |
+| `.Delete()` | `.Delete(index)` | Former value (blank if none) | `ValueError` if index out of range | Clears element value without changing `.Length` — slot becomes unset |
+| `.Has()` | `.Has(index)` | Integer (1/0) | — | True only if index is in range AND element has a value (not unset) |
+| `.Get()` | `.Get(index, default?)` | Value or default | `IndexError` for zero or out-of-range index; `UnsetItemError` if unset and no default | Returns default only for in-range unset elements |
+| `.Clone()` | `.Clone()` | Array | — | Shallow copy — nested Array/Map objects share the same reference |
+| `.Capacity` | `.Capacity` | Integer | — | Read or pre-set the number of allocated slots; set before bulk Push to avoid repeated reallocation |
+| `.Length` | `.Length` | Integer | — | Read-write — truncates or extends the array; extension creates unset elements |
+| `.Default` | `.Default` | Any | — | Global fallback returned for any unset element access — eliminates `UnsetItemError` array-wide |
 
 ### Map
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `.Set()` | `.Set(key1, val1, ...)` | Batch-assign multiple key-value pairs; more efficient than repeated `m[k] := v` |
-| `.Get()` | `.Get(key, default)` | Return default if key absent; never throws — primary safe-access pattern |
-| `.Has()` | `.Has(key)` | True if key exists in the Map — use for branching logic that differs on presence vs absence |
-| `.Delete()` | `.Delete(key)` | Remove key; returns its former value |
-| `.Clear()` | `.Clear()` | Remove all key-value pairs; Count becomes 0 |
-| `.Clone()` | `.Clone()` | Shallow copy — nested objects share the same reference |
-| `.Count` | `.Count` | Number of key-value pairs currently stored (read-only) |
-| `.Capacity` | `.Capacity` | Read or pre-set allocated bucket count for bulk-insert performance |
-| `.CaseSense` | `"On" / "Off" / "Locale"` | Must be set before inserting any keys; "Locale" is 1–8× slower, handles Ä/ü/etc. |
-| `.Default` | `.Default` | Global fallback value returned for any absent key — eliminates UnsetItemError map-wide |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `.Set()` | `.Set(key1, val1, ...)` | Map (self) | — | Batch-assign multiple key-value pairs; adjusts Capacity automatically |
+| `.Get()` | `.Get(key, default?)` | Value or default | `UnsetItemError` if key absent and no default | Primary safe-access pattern — never throws when default is supplied |
+| `.Has()` | `.Has(key)` | Integer (1/0) | — | True if key exists in the Map — use for branching logic on presence vs absence |
+| `.Delete()` | `.Delete(key)` | Former value | — | Removes key; returns its former value (blank if key was absent) |
+| `.Clear()` | `.Clear()` | — | — | Removes all key-value pairs; `.Count` becomes 0 |
+| `.Clone()` | `.Clone()` | Map | — | Shallow copy — nested objects share the same reference |
+| `.Count` | `.Count` | Integer | — | Number of key-value pairs currently stored (read-only) |
+| `.Capacity` | `.Capacity` | Integer | — | Read or pre-set allocated bucket count; set before bulk `.Set()` loops |
+| `.CaseSense` | `"On" / "Off" / "Locale"` | String | Exception if set on non-empty Map | Must be set before inserting any keys; "Locale" is 1–8× slower |
+| `.Default` | `.Default` | Any | — | Global fallback value returned for any absent key — eliminates `UnsetItemError` map-wide |
 
 ### Prototype Extension (Map)
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `Map.Prototype.DefineProp()` | `.DefineProp(name, {Call: fn})` | Add utility methods (e.g., `.Keys()`) — property descriptor object literal `{}` is correct here |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `Map.Prototype.DefineProp()` | `.DefineProp(name, {Call: fn})` | — | — | Add utility methods (e.g., `.Keys()`) — the descriptor `{}` is a property descriptor Object, which is the correct use of an object literal |
 
 ## AHK V2 CONSTRAINTS
 
-- ✗ `{key: val}` — creates an Object instance, not a Map; Object lacks `.Has()`, `.Get()`, `.Count`, `.CaseSense`, `.Delete()`, `.Clear()`, and direct for-loop enumeration
+- ✗ `{key: val}` — creates an Object instance, not a Map; Object lacks `.Has()`, `.Get()`, `.Count`, `.CaseSense`, `.Delete()`, `.Clear()`, and direct for-loop enumeration — data operations silently fail or throw `MethodError`
 - ✓ `Map("key", val)` — the only correct key-value container with the full method set
 
 - ✗ `arr[0]` — `IndexError` always; zero is not a valid Array index in AHK v2
 - ✓ `arr[1]` for first element, `arr[-1]` for last — negative indices are valid and idiomatic
 
-- ✗ `m.CaseSense := "Off"` after key insertion — throws an exception; internal sorted array already built
+- ✗ `m.CaseSense := "Off"` after key insertion — throws an exception; the internal sorted array is already built at insertion time
 - ✓ Set `CaseSense` on an empty Map before the first key is inserted
 
-- ✗ `m["key"]` without a guard — `UnsetItemError` if key absent
-- ✓ `m.Get("key", default)` — safe, never throws
+- ✗ `m["key"]` without a guard — `UnsetItemError` if key absent and no `.Default` is set
+- ✓ `m.Get("key", default)` — safe, never throws when default is supplied
 
-- ✗ `arr.Clone()` then mutating nested Maps inside the copy — nested objects are shared references; mutations propagate to the original
+- ✗ `arr.Clone()` then mutating nested Maps inside the copy — nested objects are shared references; mutations propagate to the original, causing hard-to-trace bugs
 - ✓ Use `DeepClone` from Module_Arrays.md for true independent nested copies
 
-- Float keys in Map are silently converted to String — never rely on float key identity for equality checks (e.g., `m[1.0]` and `m["1.0"]` refer to the same slot)
+- Float keys in Map are silently converted to String — never rely on float key identity for equality checks (`m[1.0]` and `m["1.0"]` refer to the same slot, which is a silent correctness hazard)
 
 - `Array.Delete(index)` clears the element value but does NOT change `.Length` — the slot remains, now unset; use `.RemoveAt(index)` when you need the array to shrink
 
-- Map has no built-in `.Keys()` method — iterate with `for k in map` or add `.Keys()` via `Map.Prototype.DefineProp` as shown in TIER 4
+- Map has no built-in `.Keys()` method — iterate with `for k in map` or add `.Keys()` via `Map.Prototype.DefineProp` as shown in TIER 4 (calling `.Keys()` without extension throws `MethodError`)
 
 Safe-access priority order for Array and Map:
-  1. `.Get(key/index, default)` — one-line resolution; for Map, never throws; for Array, returns default only for in-range unset elements — still throws IndexError for out-of-range access; preferred default for unset-element access
+  1. `.Get(key/index, default)` — one-line resolution; for Map, never throws; for Array, returns default only for in-range unset elements — still throws `IndexError` for out-of-range access; preferred default for unset-element access
   2. `.Has(key/index)` — when if/else branch logic genuinely differs for present vs absent
   3. `.Default` — when the entire Map or Array needs a universal fallback for all absent accesses
   4. `try/catch IndexError / UnsetItemError` — only when the exception message itself carries diagnostic information not available otherwise
 
+Unset variable handling: always call `.Has(index)` or use `.Get(index, default)` before accessing an Array element that may be unset (e.g., after `.Delete()` or sparse construction); calling `.Has()` returns false for both out-of-range and unset-in-range cases.
+
+Resource lifecycle: Array and Map are reference-counted; circular references (Map that holds a reference to itself as a value) prevent automatic cleanup. Break cycles explicitly by calling `.Delete()` on the self-referencing key before the container goes out of scope.
+
+## AGENT QA CHECKLIST
+
+- [ ] Did I use `Map("key", val)` instead of `{key: val}` for all key-value data containers?
+- [ ] Did I use 1-based indexing (`arr[1]`, `arr[-1]`) for all Array access — never `arr[0]`?
+- [ ] Did I guard all Map key access with `.Get(key, default)` or `.Has(key)` to avoid `UnsetItemError`?
+- [ ] Did I set `Map.CaseSense` on an empty Map before inserting any keys?
+
+## RUNTIME ERROR MAPPING
+
+| Exception Class | Trigger Condition | Detection Code | Fix |
+|----------------|-------------------|----------------|-----|
+| `IndexError` | Accessing `arr[0]`, a negative index beyond bounds, or an index greater than `.Length` | `e.Message` contains "index" and the offending value | Use 1-based access; guard with `index >= 1 && index <= arr.Length` before direct bracket access |
+| `UnsetItemError` | Accessing `m["key"]` when key absent and no `.Default` set; or accessing an Array element after `.Delete()` | `e.Message` contains "key" (Map) or "index" (Array) | Replace with `m.Get("key", default)` for Map; use `arr.Get(index, default)` or guard with `.Has(index)` for Array |
+| `MethodError` | Calling `m.Keys()`, `m.Values()`, or similar methods that do not exist on the built-in Map type | `e.Message` contains "Keys" or the method name; `e.What` names the method | Replace with `for k in m` for key iteration; add via `Map.Prototype.DefineProp("Keys", {Call: fn})` if a method interface is required |
+
 ## TIER 1 — Data Storage Fundamentals: Map vs Object Literal; Choosing Array vs Map
-> METHODS COVERED: Map() · Array · [] literal
+> METHODS COVERED: Map() · Array() · [] literal
 
 AHK v2 provides two primary data-container types: `Array` (ordered, 1-based integer-indexed) and `Map` (unordered, any-typed key-value). Both extend `Object`. Object literals `{key: val}` create plain Object instances — not Maps — and must never be used as data containers. The only safe data-container literals are `[]` for Arrays and `Map()` for key-value data.
 
 Choose Array when access is positional (ordered sequence, push/pop stack); choose Map when access is by name or arbitrary key. Compose them freely for nested structures.
+
 ```ahk
 ; ✓ Map() is the only correct key-value container in AHK v2
 config := Map("width", 800, "height", 600)
@@ -115,9 +139,10 @@ class AppConfig {
 ```
 
 ## TIER 2 — Array Construction, Mutation, and Safe Access
-> METHODS COVERED: Push · Pop · InsertAt · RemoveAt · Delete · Has · Get · Clone · Capacity · Length
+> METHODS COVERED: Push · Pop · InsertAt · RemoveAt · Delete · Has · Get · Clone · Capacity · Length · Default
 
 Arrays are 1-based ordered sequences. Out-of-bounds access (including index 0) throws `IndexError`. Negative indices (`arr[-1]` = last, `arr[-2]` = second-last) are valid and idiomatic. `Delete()` unsets a value without shrinking the array; `RemoveAt()` shifts elements and shrinks.
+
 ```ahk
 ; ✓ Array literal and constructor — both are valid
 fruits := ["apple", "banana", "orange"]
@@ -190,6 +215,7 @@ Loop 1000
 > METHODS COVERED: Map() · Has · Get · Set · Delete · Clear · Clone · Capacity · Count · CaseSense · Default
 
 Maps are unordered key-value stores. Keys can be any Integer, String, or Object reference. Float keys are silently converted to String. Accessing a missing key throws `UnsetItemError` unless `.Default` is set or `.Get()` is used.
+
 ```ahk
 ; ✓ Inline construction — each pair is key then value
 colours := Map("red", "ff0000", "green", "00ff00", "blue", "0000ff")
@@ -279,6 +305,7 @@ Loop 500
 > METHODS COVERED: __Enum (via for-loop) · Map.Prototype.DefineProp
 
 AHK v2 `for` loops call `__Enum` on the container. Array `for` loops can capture value only or index + value; Map `for` loops capture key + value. Map enumeration order follows sorted alphanumeric key order — not insertion order. To preserve insertion order, maintain an auxiliary Array of keys alongside the Map.
+
 ```ahk
 ; --- Array iteration ---
 
@@ -318,7 +345,7 @@ for name in scores
     MsgBox("Player: " . name)
 
 ; ✓ Prototype extension — add a utility .Keys() method that Map does not provide natively
-Map.Prototype.DefineProp("Keys", { Call: _MapGetKeys })  ; descriptor {} is correct here
+Map.Prototype.DefineProp("Keys", { Call: _MapGetKeys })  ; descriptor {} is a property descriptor Object — correct here
 
 _MapGetKeys(mp) {
     keys := []
@@ -337,6 +364,7 @@ allKeys := scores.Keys()   ; ["Alice", "Bob", "Carol"]
 > METHODS COVERED: Push · Map() · static · Get
 
 Compose Arrays and Maps freely: use Array as the outer ordered container (rows) and Map as the inner named-field container (fields per row). This mirrors relational table rows and prevents silent positional-index bugs. Static Maps inside classes centralise configuration and error-code lookup tables. AHK v2 has no built-in functional methods (filter/map/reduce) — build them via for-loop accumulation.
+
 ```ahk
 ; --- Array of Maps — nested record structure ---
 
@@ -416,66 +444,11 @@ for n in numbers
     total += n   ; 45
 ```
 
-### Performance Notes
-
-**Capacity pre-allocation.** Set `.Capacity` before bulk `Push` or `Set` loops to avoid repeated internal reallocation. Each reallocation copies the entire backing array; a single pre-set eliminates all intermediate copies.
-```ahk
-; ✓ Pre-allocate Array Capacity before bulk Push — single allocation
-rows := Array()
-rows.Capacity := 5000
-Loop 5000
-    rows.Push(Map("id", A_Index, "value", A_Index * 2))
-
-; ✓ Pre-allocate Map Capacity before bulk Set — single bucket allocation
-lookup := Map()
-lookup.Capacity := 1000
-Loop 1000
-    lookup.Set("item" . A_Index, A_Index)
-```
-
-**Map for O(1) keyed lookup vs Array O(n) linear scan.** Build a Map index once and look up by key rather than scanning an Array on every access.
-```ahk
-; ✓ Build a Map index once — O(1) access by id thereafter
-index := Map()
-for i, user in users
-    index[user["id"]] := i
-row := users[index[targetId]]   ; O(1)
-
-; ✗ Linear scan every access — O(n) cost multiplied by access count
-; for i, user in users
-;     if (user["id"] = targetId)   ; → O(n) repeated scan
-;         result := user
-```
-
-**In-place mutation vs unnecessary Clone.** `RemoveAt` shifts in place without copying; cloning an Array solely to iterate read-only is always wasteful.
-```ahk
-; ✓ In-place RemoveAt — no copy, shifts in place
-arr.RemoveAt(badIndex)
-
-; ✗ Unnecessary Clone for read-only iteration — doubles memory, no benefit
-; copy := arr.Clone()
-; for v in copy   ; → clone wasted; iterate original directly
-;     MsgBox(v)
-
-; ✓ Iterate original directly when no mutation occurs during the loop
-for v in arr
-    MsgBox(v)
-```
-
-**Avoid repeated `.Length` calls in tight loops.** Cache the value once before the loop to avoid a property lookup on every iteration.
-```ahk
-; ✓ Cache Length before tight loop
-len := arr.Length
-Loop len
-    Process(arr[A_Index])
-```
-
-**Method preference.** Always prefer built-in methods (`.Push`, `.Set`, `.Get`, `.Has`) over custom reimplementations — built-ins are implemented in C++ and incur no AHK parse overhead.
-
 ## TIER 6 — Error Handling: IndexError, UnsetItemError, Defensive Guards
 > METHODS COVERED: Get · Has · Default · try/catch IndexError · UnsetItemError
 
 AHK v2 throws `IndexError` for out-of-bounds Array access (including index 0) and `UnsetItemError` for accessing an absent Map key or an unset Array element. Prefer `.Get(index/key, default)` over `try/catch` for simple fallback scenarios — it is faster and more readable. Use `try/catch` only when the exception message carries diagnostic information not otherwise available.
+
 ```ahk
 ; --- Array error handling ---
 
@@ -533,15 +506,136 @@ try {
 ; val := cfg["nonexistent"]   ; → UnsetItemError
 ```
 
+### Performance Notes
+
+**Capacity pre-allocation.** Set `.Capacity` before bulk `Push` or `Set` loops to avoid repeated internal reallocation. Each reallocation copies the entire backing array; a single pre-set eliminates all intermediate copies.
+
+```ahk
+; ✓ Pre-allocate Array Capacity before bulk Push — single allocation
+rows := Array()
+rows.Capacity := 5000
+Loop 5000
+    rows.Push(Map("id", A_Index, "value", A_Index * 2))
+
+; ✓ Pre-allocate Map Capacity before bulk Set — single bucket allocation
+lookup := Map()
+lookup.Capacity := 1000
+Loop 1000
+    lookup.Set("item" . A_Index, A_Index)
+```
+
+**Map for O(1) keyed lookup vs Array O(n) linear scan.** Build a Map index once and look up by key rather than scanning an Array on every access.
+
+```ahk
+; ✓ Build a Map index once — O(1) access by id thereafter
+index := Map()
+for i, user in users
+    index[user["id"]] := i
+row := users[index[targetId]]   ; O(1)
+
+; ✗ Linear scan every access — O(n) cost multiplied by access count
+; for i, user in users
+;     if (user["id"] = targetId)   ; → O(n) repeated scan
+;         result := user
+```
+
+**In-place mutation vs unnecessary Clone.** `RemoveAt` shifts in place without copying; cloning an Array solely to iterate read-only is always wasteful.
+
+```ahk
+; ✓ In-place RemoveAt — no copy, shifts in place
+arr.RemoveAt(badIndex)
+
+; ✗ Unnecessary Clone for read-only iteration — doubles memory, no benefit
+; copy := arr.Clone()
+; for v in copy   ; → clone wasted; iterate original directly
+;     MsgBox(v)
+
+; ✓ Iterate original directly when no mutation occurs during the loop
+for v in arr
+    MsgBox(v)
+```
+
+**Avoid repeated `.Length` calls in tight loops.** Cache the value once before the loop to avoid a property lookup on every iteration.
+
+```ahk
+; ✓ Cache Length before tight loop
+len := arr.Length
+Loop len
+    Process(arr[A_Index])
+```
+
+**Method preference.** Always prefer built-in methods (`.Push`, `.Set`, `.Get`, `.Has`) over custom reimplementations — built-ins are implemented in C++ and incur no AHK parse overhead. Map key lookup is O(1) amortised via internal hashing; Array index access is O(1) direct offset.
+
+## DROP-IN RECIPES
+
+```ahk
+; MapFromArrays — zip a keys Array and a values Array into a single Map
+; ✓ Validates both inputs are Arrays of equal length before construction — never silently produces a partial Map
+MapFromArrays(keys, values, caseSense := "On") {
+    if !(keys is Array)
+        throw TypeError("MapFromArrays: keys must be an Array", -1)
+    if !(values is Array)
+        throw TypeError("MapFromArrays: values must be an Array", -1)
+    if (keys.Length != values.Length)
+        throw ValueError("MapFromArrays: keys and values must have equal Length ("
+            . keys.Length . " vs " . values.Length . ")", -1)
+    result := Map()
+    result.CaseSense := caseSense   ; set before any key insertion
+    result.Capacity  := keys.Length
+    Loop keys.Length
+        result.Set(keys[A_Index], values[A_Index])
+    return result
+}
+; Call site: cfg := MapFromArrays(["host", "port", "user"], ["localhost", 5432, "admin"])
+
+
+; MapMerge — merge two Maps; override wins on duplicate keys
+; ✓ Returns a new Map — neither input is mutated; safe for re-use as a defaults/override pattern
+MapMerge(base, override) {
+    if !(base is Map)
+        throw TypeError("MapMerge: base must be a Map", -1)
+    if !(override is Map)
+        throw TypeError("MapMerge: override must be a Map", -1)
+    result := base.Clone()
+    for k, v in override
+        result[k] := v
+    return result
+}
+; Call site: effective := MapMerge(AppSettings.Defaults, userOverrides)
+
+
+; SafeArraySlice — return a new Array containing elements [startIndex..endIndex] (inclusive, 1-based)
+; ✓ Clamps indices to valid range — never throws IndexError for out-of-range slice requests
+SafeArraySlice(arr, startIndex, endIndex := 0) {
+    if !(arr is Array)
+        throw TypeError("SafeArraySlice: arr must be an Array", -1)
+    len := arr.Length
+    if (endIndex = 0 || endIndex > len)
+        endIndex := len
+    if (startIndex < 1)
+        startIndex := 1
+    result := []
+    if (startIndex > endIndex)
+        return result
+    result.Capacity := endIndex - startIndex + 1
+    Loop (endIndex - startIndex + 1) {
+        idx := startIndex + A_Index - 1
+        result.Push(arr.Has(idx) ? arr[idx] : arr.Get(idx, ""))
+    }
+    return result
+}
+; Call site: page := SafeArraySlice(allRows, 21, 40)   ; rows 21–40 of a result set
+```
+
 ## ANTI-PATTERNS
 
 | Pattern | Wrong | Correct | LLM Common Cause |
 |---------|-------|---------|------------------|
-| Object literal as data container | `config := {width: 800, height: 600}` | `config := Map("width", 800, "height", 600)` | AHK v1 training data — v1 object literals behaved more like Maps |
+| Object literal as data container | `config := {width: 800, height: 600}` | `config := Map("width", 800, "height", 600)` | AHK v1 training data — v1 object literals behaved more like Maps and supported key-value iteration |
 | Zero-based Array access | `arr[0]` | `arr[1]` for first element, `arr[-1]` for last | Dominant 0-based indexing habit from most language training data (C, Python, JS) |
-| Unguarded Map key access | `val := m["key"]` | `val := m.Get("key", default)` or `if m.Has("key")` | v1 returned blank string on missing key; v2 throws UnsetItemError — regression to v1 behaviour |
+| Unguarded Map key access | `val := m["key"]` | `val := m.Get("key", default)` or `if m.Has("key")` | v1 returned blank string on missing key; v2 throws `UnsetItemError` — regression to v1 behaviour |
 | CaseSense set after key insertion | `m["key"] := 1` then `m.CaseSense := "Off"` | Set `CaseSense` on an empty Map before the first key | Missing API knowledge — insertion-time constraint is not obvious from method names |
-| Assuming Clone() is deep | `deep := nested.Clone()` then mutating inner Maps | Use `DeepClone` from Module_Arrays.md | Cross-language habit — Python/JS `.copy()` / spread also produce shallow copies but the consequence is less visible |
+| Assuming Clone() is deep | `deep := nested.Clone()` then mutating inner Maps | Use `DeepClone` from Module_Arrays.md | Cross-language habit — Python `.copy()` / JS spread also produce shallow copies but the consequence is less visible in those languages |
 | Calling .Keys() as built-in | `m.Keys()` | `for k in m` or `Map.Prototype.DefineProp("Keys", ...)` | Missing v2 API knowledge — Python and JS both provide `.keys()` natively on their dict/Map types |
 
 ## SEE ALSO

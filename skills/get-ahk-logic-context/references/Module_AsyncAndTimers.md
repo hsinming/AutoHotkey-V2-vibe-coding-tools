@@ -1,4 +1,4 @@
-﻿# Module_AsyncAndTimers.md
+# Module_AsyncAndTimers.md
 <!-- DOMAIN: Async Operations and Timers -->
 <!-- SCOPE: True multithreading, COM-based async, and inter-process communication are not covered — see Module_SystemAndCOM.md -->
 <!-- TRIGGERS: SetTimer, Sleep, Critical, ObjBindMethod, "timer", "delay", "interval", "background task", "debounce", "throttle", "polling", "async", "run every N seconds", "one-off delay", "re-entrancy", "race condition", "shared state corruption", "class timer fails" -->
@@ -21,47 +21,53 @@
 ## API QUICK-REFERENCE
 
 ### SetTimer
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `SetTimer()` | `SetTimer(Function, Period, Priority)` | Positive period = repeating; negative = one-off auto-delete; 0 = cancel. Default 250 ms if new. |
-| `SetTimer(, 0)` | `SetTimer(, 0)` inside callback | Omit Function to self-cancel the currently running timer; invalid if called from outside a timer |
-| Priority | Integer, default 0 | Controls interrupt precedence relative to other AHK pseudo-threads |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `SetTimer()` | `SetTimer(Function, Period, Priority)` | — | TypeError if Period is non-integer or Function is empty string | Positive period = repeating; negative = one-off auto-delete; 0 = cancel. Default 250 ms if new. |
+| `SetTimer(, 0)` | `SetTimer(, 0)` inside callback | — | — | Omit Function to self-cancel the currently running timer; invalid if called from outside a timer context |
+| `Priority` | Integer parameter of SetTimer | — | — | Controls interrupt precedence; range -2147483648 to 2147483647; default 0 |
 
 ### Sleep
-| Function | Signature | Notes |
-|----------|-----------|-------|
-| `Sleep()` | `Sleep(N)` | Block current thread for N ms. **-1 = flush message queue immediately, NOT a delay.** |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `Sleep()` | `Sleep(N)` | — | — | Blocks current thread for N ms. **-1 = flush message queue immediately, NOT a delay.** |
 
 ### Critical
-| Keyword | Syntax | Notes |
-|---------|--------|-------|
-| `Critical` | `Critical` | Make current thread non-interruptible; queued events fire after release — nothing is discarded |
-| `Critical "Off"` | `Critical "Off"` | Release critical section; call immediately after the atomic block ends |
-| `Critical N` | `Critical N` (integer) | Set critical with explicit message-check interval N |
-| `A_IsCritical` | built-in variable | 0 if not critical; otherwise the message-check interval. Save before entering `Critical` in nestable functions. |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `Critical` | `Critical` | Integer (prev A_IsCritical) | — | Makes current thread non-interruptible; queued events fire after release — nothing is discarded |
+| `Critical "Off"` | `Critical "Off"` | Integer (prev A_IsCritical) | — | Release critical section; interruption occurs ~5 ms after call, not immediately |
+| `Critical N` | `Critical N` (positive integer) | Integer (prev A_IsCritical) | — | Enable Critical with explicit message-check interval N ms; default is 16 ms when on |
+| `A_IsCritical` | Built-in variable (read) | Integer | — | 0 if not critical; otherwise the message-check interval. Save before entering Critical in nestable functions |
 
 ### Binding Utilities
-| Method/Property | Signature | Notes |
-|----------------|-----------|-------|
-| `.Bind()` | `Func.Bind(arg1, arg2, ...)` | Returns a BoundFunc locking args at bind time; each call produces a distinct object |
-| `ObjBindMethod()` | `ObjBindMethod(Obj, Method, args*)` | Alternative to `.Bind()` — binds by method name string; useful for dynamic dispatch |
 
-### Time Display
-| Function | Signature | Notes |
-|----------|-----------|-------|
-| `FormatTime()` | `FormatTime(Timestamp?, Format?)` | Human-readable time output; use instead of `A_Now` (which returns raw YYYYMMDDHH24MISS) |
-| `A_TickCount` | built-in variable | Milliseconds since system start; use for elapsed-time measurements |
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `.Bind()` | `Func.Bind(arg1, arg2, ...)` | BoundFunc object | — | Locks args at bind time; each call produces a **distinct** object — store the reference, do not call again at cancel time |
+| `ObjBindMethod()` | `ObjBindMethod(Obj, MethodName, args*)` | BoundFunc object | — | Binds by method name string; useful for dynamic dispatch; each call also produces a distinct object |
+
+### Time and Measurement
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `FormatTime()` | `FormatTime(Timestamp?, Format?)` | String | ValueError on invalid timestamp | Human-readable time output; use instead of `A_Now` (which returns raw YYYYMMDDHH24MISS) |
+| `A_TickCount` | Built-in variable (read) | Integer (ms) | — | Milliseconds since system start; use for elapsed-time measurements; ~10 ms granularity |
 
 ### Supporting Built-ins Used in Examples
-| Function/Property | Signature | See |
-|-------------------|-----------|-----|
-| `ToolTip()` | `ToolTip(Text?, X?, Y?, Which?)` | Module_GUI.md |
-| `FileExist()` | `FileExist(Path)` | Module_FileSystem.md |
-| `FileRead()` | `FileRead(Filename, Options?)` | Module_FileSystem.md |
-| `Map.Has()` | `.Has(key)` | Module_Objects.md |
-| `Array.Push()` | `.Push(value*)` | Module_Arrays.md |
-| `Array.Length` | `.Length` | Module_Arrays.md |
-| `Min()` | `Min(Value*)` | Built-in math — no module required |
+
+| Method/Property | Signature | Returns | Throws | Notes |
+|----------------|-----------|---------|--------|-------|
+| `ToolTip()` | `ToolTip(Text?, X?, Y?, Which?)` | — | — | See Module_GUI.md |
+| `FileExist()` | `FileExist(Path)` | Attribute string or "" | — | See Module_FileSystem.md |
+| `FileRead()` | `FileRead(Filename, Options?)` | String | OSError | See Module_FileSystem.md |
+| `Map.Has()` | `.Has(Key)` | Integer (1 or 0) | — | See Module_Objects.md |
+| `Array.Push()` | `.Push(Value*)` | — | — | See Module_Arrays.md |
+| `Array.Length` | `.Length` | Integer | — | See Module_Arrays.md |
+| `Min()` | `Min(Value*)` | Number | — | Built-in math — no module required |
 
 ## AHK V2 CONSTRAINTS
 
@@ -89,6 +95,25 @@ Pairing rules:
 - ✓ `SetTimer(Callback, -5000)` — deferred execution without blocking
 - ✗ Rely on `Critical` alone to prevent re-entry — only delays the second firing until after `Critical "Off"`
 - ✓ `IsRunning` boolean guard released in `finally` — prevents true callback re-entry
+
+Unset variable handling: always verify `IsSet(this.BoundRef)` or that the bound reference property is initialized before calling `SetTimer`; calling `SetTimer` with an uninitialized variable raises TypeError.
+
+Resource lifecycle: every class-based timer that holds external resources (file handles, COM objects) must call `Stop()` in `__Delete`, and `Stop()` must guard against double-cancellation with an `IsRunning` check.
+
+## AGENT QA CHECKLIST
+
+- [ ] Did I store the BoundFunc in a class property and use **that same stored reference** for both the start call and the cancel call (`SetTimer(this.BoundRef, 0)`)?
+- [ ] Does every timer callback contain its own `try/catch` block — timer exceptions do not propagate and are silently discarded without one?
+- [ ] Did I release the `IsRunning` re-entrancy guard in a `finally` block, not only at the normal end of the callback?
+- [ ] Did I use a negative period (`SetTimer(cb, -ms)`) for one-shot delayed work instead of `Sleep`?
+
+## RUNTIME ERROR MAPPING
+
+| Exception Class | Trigger Condition | Detection Code | Fix |
+|----------------|-------------------|----------------|-----|
+| `TypeError` | Calling `SetTimer(this.Method, 1000)` without `.Bind(this)` — `this` is unset at callback time | `e.Message` contains "unset" or "this" | Store bound method: `this.BoundTick := this.Method.Bind(this)` then pass `this.BoundTick` |
+| Silent discard (no exception surfaced) | Uncaught exception thrown inside a timer callback | No visible error — callback stops silently; add `OutputDebug(e.Message)` in catch | Wrap entire callback body in `try { ... } catch as e { OutputDebug("Timer error: " e.Message) }` |
+| Silent leak (no exception) | `SetTimer(this.Method.Bind(this), 0)` at cancel time — fresh `.Bind()` creates a new object AHK cannot match | Timer continues firing; object is never garbage-collected; `KeyHistory` shows timer count not decreasing | Store the BoundFunc once in `__New`: `this.BoundRef := this.Method.Bind(this)` and cancel with `SetTimer(this.BoundRef, 0)` |
 
 ## TIER 1 — Basic Timer Creation and One-Off Delays
 > METHODS COVERED: SetTimer · FormatTime
@@ -411,16 +436,6 @@ UpdateDashboard(ctrl1, ctrl2, newVal1, newVal2) {
 ; }
 ```
 
-### Performance Notes
-
-`SetTimer` period is rounded up to the nearest OS clock resolution — typically 10 ms or 15.6 ms depending on hardware and power settings. Requesting a 1 ms timer does not achieve 1 ms cadence; periods below the resolution floor behave identically to that floor. Avoid designing timing logic that depends on sub-10 ms precision.
-
-Avoid tight loops with `Sleep` for batch processing. Instead, slice the dataset using a fast timer (10–15 ms cadence) and process a fixed chunk per tick. This yields control to the OS and other threads between chunks, keeping the script responsive. Calibrate chunk size so each tick completes well under the timer period — profiling the slowest chunk is required, not optional.
-
-For timer state lookups in a multi-timer registry, prefer `Map.Has(key)` O(1) lookup over iterating an Array to locate a callback reference. Storing callbacks in a `Map` keyed by name or ID eliminates linear scans as the registry grows.
-
-`Critical` carries measurable overhead: every thread that tries to interrupt a Critical block is queued and must be dispatched in sequence after `Critical "Off"`. Holding `Critical` over any I/O, `Sleep`, or long computation multiplies this cost across all waiting threads. Profile before widening a Critical section — the atomic block should contain only the minimum necessary statements.
-
 ## TIER 6 — Non-Blocking State Machines and Chunked Processing
 > METHODS COVERED: SetTimer · .Bind · Min
 
@@ -489,6 +504,72 @@ class HeavyProcessor {
         }
     }
 }
+```
+
+### Performance Notes
+
+`SetTimer` period is rounded up to the nearest OS clock resolution — typically 10 ms or 15.6 ms depending on hardware and power settings. Requesting a 1 ms timer does not achieve 1 ms cadence; periods below the resolution floor behave identically to that floor. Avoid designing timing logic that depends on sub-10 ms precision.
+
+Avoid tight loops with `Sleep` for batch processing. Instead, slice the dataset using a fast timer (10–15 ms cadence) and process a fixed chunk per tick. This yields control to the OS and other threads between chunks, keeping the script responsive. Calibrate chunk size so each tick completes well under the timer period — profiling the slowest chunk is required, not optional.
+
+For timer state lookups in a multi-timer registry, prefer `Map.Has(key)` O(1) lookup over iterating an Array to locate a callback reference. Storing callbacks in a `Map` keyed by name or ID eliminates linear scans as the registry grows.
+
+`Critical` carries measurable overhead: every thread that tries to interrupt a Critical block is queued and must be dispatched in sequence after `Critical "Off"`. Holding `Critical` over any I/O, `Sleep`, or long computation multiplies this cost across all waiting threads. Profile before widening a Critical section — the atomic block should contain only the minimum necessary statements.
+
+## DROP-IN RECIPES
+
+```ahk
+; SafeTimerCallback — wraps any function to isolate timer exceptions and route them to a handler
+; ✓ Prevents silent discard — without this wrapper, all exceptions inside SetTimer vanish
+; ✓ Returns a BoundFunc-compatible closure ready for direct use with SetTimer
+SafeTimerCallback(fn, onError := "") {
+    if !(fn is Func)
+        throw TypeError("SafeTimerCallback: fn must be a Func or BoundFunc", -1)
+
+    SafeWrapper() {
+        try {
+            fn()
+        } catch as e {
+            if (onError is Func)
+                onError(e)
+            else
+                OutputDebug("Timer exception [" fn.Name "]: " e.Message " @ " e.File ":" e.Line)
+        }
+    }
+
+    return SafeWrapper
+}
+; Call site (repeating timer with error isolation):
+;   SetTimer(SafeTimerCallback(MyCallback), 1000)
+; Call site (one-shot with custom error handler):
+;   SetTimer(SafeTimerCallback(MyCallback, (e) => MsgBox("Error: " e.Message)), -5000)
+
+
+; CreateThrottle — rate-limits a callback so it fires at most once per minIntervalMs
+; ✓ Unlike debounce, throttle guarantees the first call fires immediately, then enforces the gap
+; ✓ Uses A_TickCount for elapsed measurement — no additional timer registration required
+CreateThrottle(callback, minIntervalMs) {
+    if !(callback is Func)
+        throw TypeError("CreateThrottle: callback must be a Func or BoundFunc", -1)
+    if !(minIntervalMs is Integer) || minIntervalMs < 1
+        throw ValueError("CreateThrottle: minIntervalMs must be a positive Integer", -1)
+
+    lastFired := 0   ; ✓ Captured in closure — each CreateThrottle call has its own independent state
+
+    Throttled() {
+        now := A_TickCount
+        ; ✓ A_TickCount wraps at ~49.7 days; subtraction handles wrap-around correctly
+        if (now - lastFired >= minIntervalMs) {
+            lastFired := now
+            callback()
+        }
+    }
+
+    return Throttled
+}
+; Call site (fire at most once per 500 ms regardless of how often the timer fires):
+;   ThrottledUpdate := CreateThrottle(UpdateDisplay, 500)
+;   SetTimer(ThrottledUpdate, 16)   ; ~60 fps polling cadence, but callback capped at 2 Hz
 ```
 
 ## ANTI-PATTERNS

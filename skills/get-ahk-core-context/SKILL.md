@@ -83,142 +83,175 @@ appropriate tier; do not introduce patterns above the tier required by the task.
 
 ---
 
-### Functions (Module_Functions.md — 735 lines)
+### Functions (Module_Functions.md — 864 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All function API: parameter syntax, Func object, IsSet | `## API QUICK-REFERENCE` | 56 |
-| Parameter modifier keywords (`&`, `*`, default values) | `### Parameter Modifier Syntax` | 8 |
-| Parameter ordering rules (required → optional → variadic) | `### Parameter Order Rule` | 10 |
-| `local` / `global` / `static` scope keywords | `### Scope Declaration Keywords` | 7 |
-| `IsSet()` usage and unset parameter checking | `### IsSet` | 5 |
-| `Func` object, `.Bind()`, `.Call()` | `### Func Object (function references)` | 10 |
-| v1 → v2 breaking changes (functions) | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: scope traps, assignment vs comparison | `## AHK V2 CONSTRAINTS` | 47 |
-| **Working example** — basic declaration and calling | `## TIER 1 — Basic Declaration and Calling` | 84 |
-| **Working example** — local, global, static scope | `## TIER 2 — Variable Scope: Local, Global, Static` | 65 |
-| **Working example** — default, unset, variadic params | `## TIER 3 — Parameter Modifiers: Default, Unset, Variadic` | 76 |
-| **Working example** — ByRef output parameters | `## TIER 4 — ByRef Parameters: Output Params and In-Place Mutation` | 82 |
-| **Working example** — lexical closures + nested functions | `## TIER 5 — Nested Functions: Lexical Scope and Closures` | 168 |
-| **Working example** — multi-return + pure/side-effect separation | `## TIER 6 — Multi-Return and Pure vs Side-Effect Separation` | 111 |
+| All function API: parameter syntax, Func object, IsSet | `## API QUICK-REFERENCE` | 75 |
+| Parameter modifier keywords (`&`, `*`, default values) | `### Parameter Modifier Syntax` | 9 |
+| Parameter ordering rules (required → optional → variadic) | `### Parameter Order Rule` | 11 |
+| `local` / `global` / `static` scope keywords | `### Scope Declaration Keywords` | 8 |
+| `IsSet()` / `IsSetRef()` and unset parameter checking | `### IsSet / IsSetRef` | 7 |
+| `Func` object methods: `.Bind()`, `.Call()`, `.MaxParams` | `### Func Object — Methods` | 9 |
+| `Func` object properties: `.MinParams`, `.MaxParams`, `.IsBuiltIn` | `### Func Object — Properties` | 10 |
+| `Func()` constructor + factory helpers | `### Func Constructor` | 6 |
+| Built-in utility functions referenced in examples | `### Built-in Utility Functions Referenced in Examples` | 13 |
+| v1 → v2 breaking changes (functions) | `## V1 → V2 BREAKING CHANGES` | 13 |
+| Constraints: scope traps, assignment vs comparison | `## AHK V2 CONSTRAINTS` | 43 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — basic declaration and calling | `## TIER 1 — Basic Declaration and Calling` | 85 |
+| **Working example** — local, global, static scope | `## TIER 2 — Variable Scope: Local, Global, Static` | 66 |
+| **Working example** — default, unset, variadic params | `## TIER 3 — Parameter Modifiers: Default, Unset, Variadic` | 77 |
+| **Working example** — ByRef output parameters | `## TIER 4 — ByRef Parameters: Output Params and In-Place Mutation` | 83 |
+| **Working example** — lexical closures + nested functions | `## TIER 5 — Nested Functions: Lexical Scope, Closures, and Func Objects` | 190 |
+| **Working example** — multi-return + pure/side-effect separation | `## TIER 6 — Multi-Return and Pure vs Side-Effect Separation` | 112 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 71 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 15 |
 
 ---
 
-### Objects & Property Descriptors (Module_Objects.md — 555 lines)
+### Objects & Property Descriptors (Module_Objects.md — 663 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All object API: Any root, Object methods, Func/BoundFunc, type introspection | `## API QUICK-REFERENCE` | 40 |
-| `Any` root class methods (`HasProp`, `HasMethod`, `GetOwnPropDesc`) | `### Any Class (root — every AHK v2 value inherits these)` | 9 |
-| `Object` instance methods (`DefineProp`, `OwnProps`, `DeleteProp`) | `### Object (instance methods — available on plain objects and class instances)` | 8 |
-| `Func` / `BoundFunc` API | `### Func / BoundFunc` | 6 |
-| `Type()`, `IsObject()`, `instanceof` type introspection | `### Type Introspection` | 6 |
-| v1 → v2 breaking changes (objects) | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: DefineProp pitfalls, prototype chain rules | `## AHK V2 CONSTRAINTS` | 30 |
-| **Working example** — object fundamentals + Any root | `## TIER 1 — Object Fundamentals, Creation, and the Any Root` | 49 |
-| **Working example** — property descriptors: get/set/call + DefineProp | `## TIER 2 — Property Descriptors: get, set, call, and DefineProp` | 97 |
-| **Working example** — inheritance + prototype extension | `## TIER 3 — Class Inheritance and Prototype Extension` | 59 |
-| **Working example** — BoundFunc + callback context | `## TIER 4 — BoundFunc and Callback Context Management` | 64 |
-| **Working example** — dynamic properties + object composition | `## TIER 5 — Dynamic Properties and Object Composition` | 111 |
-| Anti-patterns to avoid | `## ANTI-PATTERNS` | 12 |
+| All object API: Any root, Object methods, Func/BoundFunc, type introspection | `## API QUICK-REFERENCE` | 47 |
+| `Any` root class methods (`HasProp`, `HasMethod`, `GetOwnPropDesc`) | `### Any (root — every AHK v2 value inherits these)` | 10 |
+| `Object` instance methods (`DefineProp`, `OwnProps`, `DeleteProp`) | `### Object (instance methods — available on plain objects and class instances)` | 11 |
+| `Func` / `BoundFunc` API | `### Func / BoundFunc` | 7 |
+| `Type()`, `IsObject()`, `instanceof` type introspection | `### Type Introspection` | 7 |
+| Supporting functions used in examples | `### Supporting Functions (referenced in examples — defined in other modules)` | 10 |
+| v1 → v2 breaking changes (objects) | `## V1 → V2 BREAKING CHANGES` | 13 |
+| Constraints: DefineProp pitfalls, prototype chain rules | `## AHK V2 CONSTRAINTS` | 42 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 8 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — object fundamentals + Any root | `## TIER 1 — Object Fundamentals, Creation, and the Any Root` | 50 |
+| **Working example** — property descriptors: get/set/call + DefineProp | `## TIER 2 — Property Descriptors: get, set, call, and DefineProp` | 107 |
+| **Working example** — inheritance + prototype extension | `## TIER 3 — Class Inheritance and Prototype Extension` | 66 |
+| **Working example** — BoundFunc + callback context | `## TIER 4 — BoundFunc and Callback Context Management` | 65 |
+| **Working example** — dynamic properties + object composition | `## TIER 5 — Dynamic Properties and Object Composition` | 104 |
+| **Working example** — validated objects + config patterns | `## TIER 6 — Validated Objects and Config Patterns` | 64 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 49 |
+| Anti-patterns to avoid | `## ANTI-PATTERNS` | 13 |
 
 ---
 
-### Classes (Module_Classes.md — 1050 lines)
+### Classes (Module_Classes.md — 1047 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All class API: meta-functions, instance methods, Map for state | `## API QUICK-REFERENCE` | 41 |
-| `__New`, `__Delete`, `__Call`, `__Get`, `__Set` signatures | `### Class Meta-Functions` | 11 |
-| `OwnProps()`, `HasOwnProp()`, `DeleteProp()` | `### Instance / Object Methods` | 11 |
-| Map as class state container (preferred pattern) | `### Map (preferred class state container)` | 10 |
+| All class API: meta-functions, instance methods, Map for state | `## API QUICK-REFERENCE` | 49 |
+| `__New`, `__Delete`, `__Call`, `__Get`, `__Set` signatures | `### Class Meta-Functions` | 12 |
+| `OwnProps()`, `HasOwnProp()`, `DeleteProp()` | `### Instance and Object Methods` | 14 |
+| Object utility functions (`Clone`, `DefineProp`, …) | `### Object Utility Functions` | 10 |
+| Map as class state container (preferred pattern) | `### Map (preferred class state container)` | 11 |
 | v1 → v2 breaking changes (classes) | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: `this` in callbacks, `new` removed, static vs instance | `## AHK V2 CONSTRAINTS` | 37 |
-| **Working example** — class fundamentals: constructor, properties, static | `## TIER 1 — Class Fundamentals: Constructors, Properties, and Static Members` | 133 |
-| **Working example** — inheritance + polymorphism | `## TIER 2 — Inheritance and Polymorphism` | 95 |
-| **Working example** — meta-functions + fluent interfaces | `## TIER 3 — Meta-Functions and Fluent Interfaces` | 163 |
-| **Working example** — nested classes + factory patterns | `## TIER 4 — Nested Classes and Factory Patterns` | 108 |
-| **Working example** — resource management + lifecycle | `## TIER 5 — Resource Management and Lifecycle` | 263 |
-| **Working example** — observer pattern + weak references | `## TIER 6 — Observer Pattern and Weak References` | 165 |
+| Constraints: `this` in callbacks, `new` removed, static vs instance | `## AHK V2 CONSTRAINTS` | 45 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 8 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — class fundamentals: constructor, properties, static | `## TIER 1 — Class Fundamentals: Constructors, Properties, and Static Members` | 134 |
+| **Working example** — inheritance + polymorphism | `## TIER 2 — Inheritance and Polymorphism` | 88 |
+| **Working example** — meta-functions + fluent interfaces | `## TIER 3 — Meta-Functions and Fluent Interfaces` | 164 |
+| **Working example** — nested classes + factory patterns | `## TIER 4 — Nested Classes and Factory Patterns` | 109 |
+| **Working example** — resource management + lifecycle | `## TIER 5 — Resource Management and Lifecycle` | 113 |
+| **Working example** — observer pattern + weak references | `## TIER 6 — Observer Pattern and Weak References` | 167 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 101 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 15 |
 
 ---
 
-### Arrays (Module_Arrays.md — 565 lines)
+### Arrays (Module_Arrays.md — 675 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All array API: built-in methods, utility functions | `## API QUICK-REFERENCE` | 53 |
-| Built-in Array methods (`Push`, `Pop`, `RemoveAt`, `Length`, …) | `### Array (built-in)` | 17 |
-| Global functions used with arrays (`Sort`, `Join`, …) | `### Global Functions Used with Arrays` | 8 |
-| Module utility functions (Map, Filter, Reduce, etc.) | `### Module Utility Functions (defined in this module)` | 26 |
+| All array API: built-in methods, utility functions | `## API QUICK-REFERENCE` | 58 |
+| Built-in Array methods (`Push`, `Pop`, `RemoveAt`, `Length`, …) | `### Array (built-in)` | 20 |
+| Global functions used with arrays (`Sort`, `Join`, …) | `### Global Functions Used with Arrays` | 9 |
+| Module utility functions (Map, Filter, Reduce, etc.) | `### Module Utility Functions (defined in this module)` | 27 |
 | v1 → v2 breaking changes (arrays) | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: 1-based indexing, iteration safety | `## AHK V2 CONSTRAINTS` | 29 |
-| **Working example** — creation, access, type verification | `## TIER 1 — Fundamentals: Creation, Access, and Type Verification` | 49 |
-| **Working example** — mutation: add, remove, clear | `## TIER 2 — Mutation: Add, Remove, and Clear` | 56 |
-| **Working example** — search, predicates, type guards | `## TIER 3 — Search, Predicates, and Type Guards` | 48 |
-| **Working example** — Map, Filter, Reduce transformations | `## TIER 4 — Transformations: Clone, DeepClone, Map, Filter, Reduce` | 78 |
-| **Working example** — sorting + deduplication | `## TIER 5 — Sorting, Deduplication, and Performance Patterns` | 121 |
-| **Working example** — set operations (diff, intersect, union) | `## TIER 6 — Set Operations: Difference, Intersection, Union, Without` | 89 |
+| Constraints: 1-based indexing, iteration safety | `## AHK V2 CONSTRAINTS` | 32 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — creation, access, type verification | `## TIER 1 — Fundamentals: Creation, Access, and Type Verification` | 61 |
+| **Working example** — mutation: add, remove, clear | `## TIER 2 — Mutation: Add, Remove, and Clear` | 66 |
+| **Working example** — search, predicates, type guards | `## TIER 3 — Search, Predicates, and Type Guards` | 49 |
+| **Working example** — Map, Filter, Reduce transformations | `## TIER 4 — Transformations: Clone, DeepClone, Map, Filter, Reduce` | 79 |
+| **Working example** — sorting + deduplication | `## TIER 5 — Sorting, Deduplication, and Performance Patterns` | 110 |
+| **Working example** — set operations (diff, intersect, union) | `## TIER 6 — Set Operations: Difference, Intersection, Union, Without` | 90 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 60 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 12 |
 
 ---
 
-### Data Structures — Map vs Array (Module_DataStructures.md — 556 lines)
+### Data Structures — Map vs Array (Module_DataStructures.md — 650 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| Array API summary | `### Array` | 14 |
-| Map API summary (`Has`, `Get`, `Set`, `Delete`, CaseSense, `__Enum`) | `### Map` | 14 |
+| Array API summary | `### Array` | 16 |
+| Map API summary (`Has`, `Get`, `Set`, `Delete`, CaseSense, `__Enum`) | `### Map` | 15 |
+| Map prototype extension methods | `### Prototype Extension (Map)` | 6 |
 | v1 → v2 breaking changes (data structures) | `## V1 → V2 BREAKING CHANGES` | 12 |
-| Constraints: when to use Map vs Object vs Array | `## AHK V2 CONSTRAINTS` | 29 |
-| **Working example** — choosing Map vs Array; storage fundamentals | `## TIER 1 — Data Storage Fundamentals: Map vs Object Literal; Choosing Array vs Map` | 32 |
-| **Working example** — Array construction, mutation, safe access | `## TIER 2 — Array Construction, Mutation, and Safe Access` | 72 |
-| **Working example** — Map construction, safe access, CaseSense | `## TIER 3 — Map Construction, Safe Access, Mutation, and CaseSense` | 89 |
-| **Working example** — iteration over Array and Map | `## TIER 4 — Iteration Patterns: Array and Map Enumeration` | 58 |
-| **Working example** — nested structures, static class Maps, filtering | `## TIER 5 — Advanced Patterns: Nested Structures, Static Class Maps, Filtering` | 139 |
-| **Working example** — IndexError / UnsetItemError defensive guards | `## TIER 6 — Error Handling: IndexError, UnsetItemError, Defensive Guards` | 61 |
+| Constraints: when to use Map vs Object vs Array | `## AHK V2 CONSTRAINTS` | 33 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — choosing Map vs Array; storage fundamentals | `## TIER 1 — Data Storage Fundamentals: Map vs Object Literal; Choosing Array vs Map` | 33 |
+| **Working example** — Array construction, mutation, safe access | `## TIER 2 — Array Construction, Mutation, and Safe Access` | 73 |
+| **Working example** — Map construction, safe access, CaseSense | `## TIER 3 — Map Construction, Safe Access, Mutation, and CaseSense` | 90 |
+| **Working example** — iteration over Array and Map | `## TIER 4 — Iteration Patterns: Array and Map Enumeration` | 59 |
+| **Working example** — nested structures, static class Maps, filtering | `## TIER 5 — Advanced Patterns: Nested Structures, Static Class Maps, Filtering` | 84 |
+| **Working example** — IndexError / UnsetItemError defensive guards | `## TIER 6 — Error Handling: IndexError, UnsetItemError, Defensive Guards` | 62 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 61 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 11 |
 
 ---
 
-### Closures & Dynamic Properties (Module_DynamicProperties.md — 396 lines)
+### Closures & Dynamic Properties (Module_DynamicProperties.md — 499 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All API: fat arrow forms, meta-functions, DefineProp, `.Bind()` | `## API QUICK-REFERENCE` | 43 |
-| Fat arrow syntax forms (short, returning, expression) | `### Fat Arrow Syntax Forms` | 10 |
-| `__Get` / `__Set` meta-functions | `### Meta-Functions (Dynamic Property Interception)` | 7 |
-| `DefineProp()` for programmatic property creation | `### DefineProp — Programmatic Property Definition` | 8 |
-| Functional utilities (`Bind`, `Partial`, `Curry`) | `### Functional Utilities` | 8 |
-| v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 11 |
-| Constraints: arrow vs named function, capture-by-reference | `## AHK V2 CONSTRAINTS` | 21 |
-| **Working example** — basic arrow function syntax | `## TIER 1 — Basic Arrow Function Syntax` | 33 |
-| **Working example** — named arrow functions + recursion | `## TIER 2 — Named Arrow Functions and Recursion` | 28 |
+| All API: fat arrow forms, meta-functions, DefineProp, `.Bind()` | `## API QUICK-REFERENCE` | 56 |
+| Fat arrow syntax forms (short, returning, expression) | `### Fat Arrow Syntax Forms` | 11 |
+| `__Get` / `__Set` meta-functions | `### Meta-Functions` | 8 |
+| `DefineProp()` for programmatic property creation | `### DefineProp — Programmatic Property Definition` | 10 |
+| Functional utilities (`Bind`, `Partial`, `Curry`) | `### Functional Utilities` | 9 |
+| Map backing-store methods used in meta-function examples | `### Map — Backing Store Methods Used in Meta-Function Examples` | 7 |
+| Built-in functions used in examples | `### Built-in Functions Used in Examples` | 9 |
+| v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 12 |
+| Constraints: arrow vs named function, capture-by-reference | `## AHK V2 CONSTRAINTS` | 26 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — basic arrow function syntax | `## TIER 1 — Basic Arrow Function Syntax` | 34 |
+| **Working example** — named arrow functions + recursion | `## TIER 2 — Named Arrow Functions and Recursion` | 30 |
 | **Working example** — closures + variable capture | `## TIER 3 — Closures and Variable Capture` | 41 |
-| **Working example** — fat arrow properties | `## TIER 4 — Fat Arrow Properties` | 45 |
-| **Working example** — dynamic properties + meta-functions | `## TIER 5 — Dynamic Properties and Meta-Functions` | 73 |
-| **Working example** — functional programming patterns | `## TIER 6 — Functional Programming Patterns` | 70 |
+| **Working example** — fat arrow properties | `## TIER 4 — Fat Arrow Properties` | 46 |
+| **Working example** — dynamic properties + meta-functions | `## TIER 5 — Dynamic Properties and Meta-Functions` | 74 |
+| **Working example** — functional programming patterns | `## TIER 6 — Functional Programming Patterns` | 71 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 63 |
 | Anti-patterns to avoid | `## ANTI-PATTERNS` | 11 |
 
 ---
 
-### Advanced: Runtime Class Prototyping (Module_ClassPrototyping.md — 356 lines)
+### Advanced: Runtime Class Prototyping (Module_ClassPrototyping.md — 538 lines)
 
 | Task | Grep for heading | ~Lines |
 |------|-----------------|--------|
-| All API: descriptor construction, DefineProp, Func binding, type inspection | `## API QUICK-REFERENCE` | 30 |
-| Descriptor object keys (`get`, `set`, `call`, `value`) | `### Descriptor Object Keys` | 8 |
-| v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 11 |
-| Constraints: descriptor pitfalls, prototype mutation order | `## AHK V2 CONSTRAINTS` | 24 |
-| **Working example** — descriptor fundamentals: dynamic call assignment | `## TIER 1 — Descriptor Object Fundamentals: Dynamic Call Assignment` | 27 |
-| **Working example** — dynamic getters/setters + validated properties | `## TIER 2 — Dynamic Getters and Setters: Computed and Validated Properties` | 40 |
-| **Working example** — existence guards: safe property/method validation | `## TIER 3 — Existence Guards: Safe Property and Method Validation` | 37 |
-| **Working example** — closure factories: context-aware properties | `## TIER 4 — Closure Factories: Context-Aware Properties Without State Pollution` | 32 |
-| **Working example** — method decorators: non-destructive interception | `## TIER 5 — Method Decorators: Non-Destructive Interception and Augmentation` | 72 |
-| **Working example** — runtime class generation (dynamic class factory) | `## TIER 6 — Runtime Class Generation: v2.0-Compatible Dynamic Class Factory` | 55 |
-| Anti-patterns to avoid | `## ANTI-PATTERNS` | 12 |
+| All API: descriptor construction, DefineProp, Func binding, type inspection | `## API QUICK-REFERENCE` | 39 |
+| Object descriptor construction + prototype manipulation | `### Object — Descriptor Construction and Prototype Manipulation` | 14 |
+| Descriptor object keys (`get`, `set`, `call`, `value`) | `### Descriptor Object Keys` | 9 |
+| `Func` binding + introspection helpers | `### Func — Binding and Introspection` | 7 |
+| Type inspection utilities | `### Type Inspection` | 7 |
+| v1 → v2 breaking changes | `## V1 → V2 BREAKING CHANGES` | 12 |
+| Constraints: descriptor pitfalls, prototype mutation order | `## AHK V2 CONSTRAINTS` | 45 |
+| QA checklist before submitting code | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `## RUNTIME ERROR MAPPING` | 8 |
+| **Working example** — descriptor fundamentals: dynamic call assignment | `## TIER 1 — Descriptor Object Fundamentals: Dynamic Call Assignment` | 31 |
+| **Working example** — dynamic getters/setters + validated properties | `## TIER 2 — Dynamic Getters and Setters: Computed and Validated Properties` | 42 |
+| **Working example** — existence guards: safe property/method validation | `## TIER 3 — Existence Guards: Safe Property and Method Validation` | 80 |
+| **Working example** — closure factories: context-aware properties | `## TIER 4 — Closure Factories: Context-Aware Properties Without State Pollution` | 33 |
+| **Working example** — method decorators: non-destructive interception | `## TIER 5 — Method Decorators: Non-Destructive Interception and Augmentation` | 58 |
+| **Working example** — runtime class generation (dynamic class factory) | `## TIER 6 — Runtime Class Generation: v2.0-Compatible Dynamic Class Factory` | 64 |
+| Copy-paste working snippets | `## DROP-IN RECIPES` | 56 |
+| Anti-patterns to avoid | `## ANTI-PATTERNS` | 13 |
 
 ---
 
