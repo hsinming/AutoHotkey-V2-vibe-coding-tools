@@ -6,10 +6,7 @@
       "mode": "primary",
       "color": "primary",
       "permission": {
-        "task": {
-          "*": "deny",
-          "ahk-*": "allow"
-        },
+        "task":      { "*": "deny", "ahk-*": "allow" },
         "read":      { "*": "allow" },
         "glob":      { "*": "allow" },
         "grep":      { "*": "allow" },
