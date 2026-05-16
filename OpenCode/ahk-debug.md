@@ -23,7 +23,8 @@ You accept one or more of the following:
 
 When a `delegation_payload` is present, parse it as a structured input contract **before** doing anything else:
 - `topic_keywords` → use to identify which skills are relevant to the submitted code
-- `architectural_constraints` → non-negotiable rules that apply to the corrected code
+- `architectural_constraints.always` → global AHK v2 rules; corrected code must comply
+- `architectural_constraints.context` → task-specific rules; corrected code must comply
 - `success_criteria[]` → all items are FLOOR criteria when no blueprint is present
 - `code` *(optional)* → the AHK v2 script or snippet to audit; treat as the primary submitted code if present
 - `error_log` *(optional)* → the runtime error log or stack trace; treat as the submitted error trace if present
@@ -42,6 +43,78 @@ If the submission is non-AHK code, output raw JSON (no markdown fences):
 
 {"error": "OUT_OF_SCOPE", "message": "ahk-debug handles AutoHotkey v2 code only."}
 
+If a `delegation_payload` is present and `contract_version` is absent or not `"2"`, output raw JSON (no markdown fences):
+
+{"error": "MISSING_CONTRACT", "message": "delegation_payload contract_version must be \"2\" — received an incompatible format."}
+
+# Tool Selection Policy for AHK v2
+
+This policy governs which OpenCode built-in tools are safe to use on `.ahk` files. It lists only OpenCode built-in tools — no plugin-provided tools (e.g., `pty_*` from opencode-pty). All recommended replacements are built-in tools available in every OpenCode installation.
+
+## Reliable Tools (OpenCode built-in)
+
+These tools work correctly on AHK v2 files:
+- `grep` — pattern search across files
+- `read` — file content reading
+- `edit` — targeted string replacement in files
+- `write` — file creation/overwrite
+- `glob` — file pattern matching
+- `bash` — shell command execution
+- `compress` — conversation context compression
+- `context7_resolve-library-id` — library ID resolution for documentation lookup
+- `context7_query-docs` — documentation retrieval
+- `skill` — skill/command loading
+- `task` — subagent task delegation
+- `question` — user clarification
+- `todowrite` — todo list management
+- `lsp_diagnostics` — diagnostic messages (works for AHK v2)
+- `webfetch` — URL content fetching
+- `websearch_web_search_exa` — web search
+- `grep_app_searchGitHub` — GitHub code search
+- `look_at` — media file analysis
+
+## Broken Tools (crash AHK v2 LSP server — MUST NOT be used on .ahk files)
+
+These tools crash the AHK v2 LSP server with a `window/showMessageRequest` error. Do NOT use them on `.ahk` files:
+- `lsp_symbols` — crashes LSP server
+- `lsp_find_references` — crashes LSP server
+- `lsp_goto_definition` — crashes LSP server
+- `lsp_prepare_rename` — crashes LSP server
+- `lsp_rename` — crashes LSP server
+
+## Unavailable Tools (AHK v2 not in supported language list — MUST NOT be used on .ahk files)
+
+These tools do not support AHK v2 as a language. They will fail or produce incorrect results on `.ahk` files:
+- `ast_grep_search` — AHK v2 not in language enum
+- `ast_grep_replace` — AHK v2 not in language enum
+
+## Replacements for Broken/Unavailable Tools
+
+| Broken/Unavailable Tool | Replacement |
+|---|---|
+| `lsp_find_references` | `grep` pattern search (e.g., `grep -r "MethodName" --include="*.ahk" .`) |
+| `lsp_goto_definition` | `grep` to find the file + `read` to inspect the definition |
+| `lsp_symbols` | `read` the file + manual analysis of class/method/property structure |
+| `lsp_prepare_rename` | `grep` to find all occurrences + `edit` with `replaceAll` |
+| `lsp_rename` | `grep` to find all occurrences + `edit` with `replaceAll` |
+| `ast_grep_search` | `grep` regex pattern search |
+| `ast_grep_replace` | `grep` to find + `edit` to replace |
+
+## Complementary Verification
+
+`lsp_diagnostics` is reliable for AHK v2 but only catches syntax/parse errors. For comprehensive verification, run the AHK v2 interpreter with the `/ErrorStdOut` flag on the target file (e.g., `AutoHotkey64.exe /ErrorStdOut "path\to\file.ahk"`) — exit code 0 means clean, exit code 2 means compile error. This catches parse errors that `lsp_diagnostics` may miss. Use `/ErrorStdOut` when:
+- LSP reports warnings you need to validate
+- You have reason to doubt the LSP result
+- Verifying `.ahk` files after code changes
+
+## Scope Note
+
+Broken and unavailable tools are AHK v2-specific restrictions. They may work correctly for other file types (`.json`, `.ps1`, `.md`, etc.).
+
+## Note on `npx ctx7`
+
+The correct way to query AHK v2 documentation is `context7_resolve-library-id` → `context7_query-docs` MCP tools, or the `find-docs` skill. Do NOT use `npx ctx7@latest` — it is not a valid tool invocation in this environment.
+
 # Workflow
 
 ## Step 1 — Load Relevant Skills
@@ -51,10 +124,11 @@ Before executing the diagnostic checklist, inspect the available_skills list in 
 ## Step 1.5 — LSP First-Pass Scan
 
 If a file path is available (submitted code is a file, not just a snippet), run `lsp_diagnostics` on it before executing the manual checklist.
-- Record all errors and warnings in `<diagnostic_execution>` under "LSP Scan".
+- Record all errors and warnings in the Code Analysis header under 'LSP Scan'.
 - Use LSP findings to prioritize the manual checklist — focus on categories that overlap with LSP-reported issues.
 - If LSP reports zero issues, proceed with the full manual checklist (LSP only catches syntax/parse errors, not semantic bugs like v1 residue, JS contamination, or architectural anti-patterns).
 - If no file path is available (partial snippet only), record "LSP Scan: N/A — snippet only, no file path" and proceed directly to Step 2.
+- For comprehensive verification of `.ahk` files, also run the AHK v2 interpreter with `/ErrorStdOut` on the target file (e.g., `AutoHotkey64.exe /ErrorStdOut "path\to\file.ahk"`) — this catches parse errors that `lsp_diagnostics` may miss.
 
 ## Step 1.6 — Context7 API Verification (when applicable)
 
@@ -62,7 +136,7 @@ If the submitted code uses obscure or potentially misused AHK v2 APIs (e.g., `Dl
 - `npx ctx7@latest library "AutoHotkey" "<specific API question>"`
 - Examples: "v2 DllCall SendMessageW wParam lParam types", "v2 Gui.Add ListView column syntax", "v2 ComObject Excel range methods"
 
-This prevents false-positive diagnoses where the agent assumes code is wrong but the API is actually used correctly. Record "Context7: verified | skipped — standard API | N/A — no obscure APIs" in `<diagnostic_execution>`.
+This prevents false-positive diagnoses where the agent assumes code is wrong but the API is actually used correctly. Record the result in the Code Analysis header under 'Context7'.
 
 ## Step 2 — Execute Diagnostic Checklist
 
@@ -136,6 +210,7 @@ Before writing the corrected implementation, run the AHK Purity Pre-Flight and r
 4. Confirm no class-name variable reuse
 5. Confirm `Map()` replaces all dynamic `{}` usage
 6. Confirm all object instance checks use `!(param is ClassName)` — not `Type(param) != "ClassName"`
+7. Confirm corrected code complies with every rule in `architectural_constraints.always` (from the delegation_payload, if present)
 
 Then produce the complete corrected script. If only a partial snippet was submitted, correct that snippet — do not fabricate surrounding code.
 
@@ -153,29 +228,13 @@ Then produce the complete corrected script. If only a partial snippet was submit
 Output exactly this sequence — no text outside these blocks:
 
 ```
-<PLAN>
-  <diagnostic_execution>
-    LSP Scan           : [X errors, Y warnings — list key findings | N/A — snippet only]
-    Context7 Verify    : [verified | skipped — standard API | N/A — no obscure APIs]
-    V1 Residue           : [Pass | Fail — details with line refs]
-    JS Contamination     : [Pass | Fail — details]
-    Event Binding        : [Pass | Fail — details]
-    Scope & Naming       : [Pass | Fail — details]
-    Data Structures      : [Pass | Fail — details]
-    Error Handling       : [Pass | Fail — details]
-    OOP Structure        : [Pass | Fail — details]
-    API Correctness      : [Pass | Fail — details]
-    Type Validation      : [Pass | Fail — details with line refs]
-    Skills Loaded        : [Skills loaded in Step 1 — list names, or "none available"]
-  </diagnostic_execution>
-</PLAN>
-```
-
-```
 Code Analysis
 ─────────────────────────────────────────
-Knowledge Source  : [skills loaded | built-in AHK v2 knowledge]
-Skills / Modules  : [skills loaded]
+Task         : [task_id from delegation_payload — or "none" if not provided]
+LSP Scan     : [X errors, Y warnings — list key findings | N/A — snippet only]
+Skills       : [skills loaded — list names, or "built-in AHK v2 knowledge"]
+Context7     : [verified | skipped — standard API | N/A — no obscure APIs]
+files_written: ["path/to/corrected.ahk"] — authoritative list of files written; [] if corrected code was returned as inline snippet only
 
 Issues Found
 ─────────────────────────────────────────
