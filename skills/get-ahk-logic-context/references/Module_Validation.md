@@ -1,4 +1,4 @@
-# Module_Validation.md
+﻿# Module_Validation.md
 <!-- DOMAIN: Defensive Programming and Parameter Validation -->
 <!-- SCOPE: Custom error class hierarchies, try/catch control flow structure, and validator base-class inheritance belong in Module_Errors.md and Module_Classes.md respectively — not here. -->
 <!-- TRIGGERS: validate, guard clause, type check, IsSet, is Integer, is Float, is Number, TypeError, ValueError, HasMethod, HasProp, duck typing, fail early, input validation, assert, precondition, defensive programming, sanitize input, fluent validator, parameter guard, pre-flight check, interface validation, type assertion, ?? operator, constructor guard, __New validation, unset parameter, optional parameter default, RegExMatch format check -->
@@ -21,54 +21,55 @@
 ## API QUICK-REFERENCE
 
 ### Type Detection Operators
-
-- **`is` operator** — Signature: `value is Integer` / `value is Float` / `value is Number` / `value is ClassName` | Returns: Boolean (1/0) | Throws: — | Covers Integer, Float, Number, Object, and class names including full inheritance chain; does NOT reliably detect String — `is String` always false for string primitives
-- **`Type()`** — Signature: `Type(value)` | Returns: `"Integer"`, `"Float"`, `"String"`, `"Object"`, or class name string | Throws: — | Only reliable string-type detection: `Type(x) = "String"`; use for class-name debugging, not capability checks
-- **`IsObject()`** — Signature: `IsObject(value)` | Returns: Boolean (1/0) | Throws: — | True for Array, Map, class instances, and all reference types; false for Integer, Float, String scalars
-- **`IsSet()`** — Signature: `IsSet(param)` | Returns: Boolean (1/0) | Throws: — | False only when an optional parameter was omitted by the caller; true for empty string, 0, or false — not a blank check
-- **`??` operator** — Signature: `value ?? fallback` | Returns: left operand if SET (any value including `""` or `0`); fallback if left is genuinely unset | Throws: — | Use AFTER guards, not inside them; never substitutes for an `IsSet()` guard
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `is` operator | `value is Integer` / `value is Float` / `value is Number` / `value is ClassName` | Covers Integer, Float, Number, Object, and class names (including full inheritance chain); does NOT reliably detect String — `is String` always false for string primitives |
+| `Type()` | `Type(value)` → `"Integer"`, `"Float"`, `"String"`, `"Object"`, class name | Only reliable string type detection: `Type(x) = "String"`; also use for class-name debugging, not for capability checks |
+| `IsObject()` | `IsObject(value)` → true/false | True for Array, Map, class instances, and all reference types; false for Integer, Float, String scalars |
+| `IsSet()` | `IsSet(param)` → true/false | False only when an optional parameter was omitted by the caller; true even for empty string or 0 — not a blank check |
+| `??` operator | `value ?? fallback` | Returns left operand if it is SET (any value including `""` or `0`); returns fallback only when left is genuinely unset; use AFTER guards, not inside them |
 
 ### Object Capability Probes
-
-- **`HasMethod()`** — Signature: `HasMethod(obj, methodName?, paramCount?)` | Returns: Boolean (1/0) | Throws: — | O(1) hash lookup; use before calling any method on an externally-supplied object; preferred over try/catch MethodError; optional `paramCount` triggers parameter-count validation
-- **`HasProp()`** — Signature: `HasProp(obj, propName)` | Returns: Boolean (1/0) | Throws: — | O(1); use before reading any property on an externally-supplied object; prevents PropertyError; does not detect `__Get` meta-function properties
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `HasMethod()` | `HasMethod(obj, methodName)` → true/false | O(1) hash lookup; use before calling any method on an externally-supplied object; preferred over try/catch MethodError |
+| `HasProp()` | `HasProp(obj, propName)` → true/false | O(1); use before reading any property on an externally-supplied object; prevents PropertyError |
 
 ### Error Constructors (Validation Context)
-
-- **`TypeError()`** — Signature: `throw TypeError(message, stackOffset)` | Returns: (thrown) | Throws: TypeError | Use for type mismatches — wrong type passed; always supply `-1` as stackOffset so AHK v2 reports the caller's line, not the guard helper's line
-- **`ValueError()`** — Signature: `throw ValueError(message, stackOffset)` | Returns: (thrown) | Throws: ValueError | Use for constraint violations — correct type but invalid value or range; always supply `-1`
-- **`OSError()`** — Signature: `throw OSError(code?)` | Returns: (thrown) | Throws: OSError | Wraps a Win32 error code; `code` is an optional integer (defaults to `A_LastError`); does NOT accept a string message — use `Error(message, -1)` for custom pre-flight failures
-- **`TargetError()`** — Signature: `throw TargetError(message, stackOffset)` | Returns: (thrown) | Throws: TargetError | Use for window/process pre-flight failures (WinExist false, ProcessExist false); always supply `-1`
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `TypeError()` | `throw TypeError(message, stackOffset)` | Use for type mismatches — wrong type passed; always supply `-1` as stackOffset so AHK v2 reports the caller's line |
+| `ValueError()` | `throw ValueError(message, stackOffset)` | Use for constraint violations — correct type but invalid value/range; always supply `-1` |
+| `OSError()` | `throw OSError(code?)` | Wraps a Win32 error code; `code` is an optional integer (defaults to `A_LastError`); does NOT accept a string message — use `Error(message, -1)` for custom pre-flight failure messages |
+| `TargetError()` | `throw TargetError(message, stackOffset)` | Use for window/process pre-flight failures (WinExist false, ProcessExist false) |
 
 ### Environment Pre-Flight Functions
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `FileExist()` | `FileExist(path)` → attribute string or `""` | Returns attribute string (e.g. `"A"`) if file exists, `""` if not — not a boolean; use `!= ""` for truthiness |
+| `DirExist()` | `DirExist(path)` → attribute string or `""` | Same return semantics as FileExist; use `!= ""` for truthiness |
+| `DirCreate()` | `DirCreate(path)` | Creates directory and all parent directories if they do not already exist; throws `OSError` on failure |
+| `WinExist()` | `WinExist(winTitle)` → HWND or `0` | Returns window handle if window exists, `0` if not; call before WinActivate / SendInput |
+| `ProcessExist()` | `ProcessExist(processName)` → PID or `0` | Returns PID if process is running, `0` if not; call before ProcessClose / window interaction |
 
-- **`FileExist()`** — Signature: `FileExist(path)` | Returns: attribute string (e.g. `"A"`, `"D"`) or `""` if absent | Throws: — | Not a boolean; use `!= ""` for truthiness; `"D"` is truthy but indicates a directory, not a file — check for that distinction when file-only access is needed
-- **`DirExist()`** — Signature: `DirExist(path)` | Returns: attribute string or `""` | Throws: — | Same return semantics as FileExist; use `!= ""` for truthiness
-- **`DirCreate()`** — Signature: `DirCreate(path)` | Returns: — | Throws: OSError on failure | Creates directory and all parent directories if they do not already exist; verify creation with a second `DirExist()` call after
-- **`WinExist()`** — Signature: `WinExist(winTitle)` | Returns: HWND (Integer) or `0` | Throws: — | Returns window handle if window exists, `0` if not; call before WinActivate / SendInput to prevent TargetError
-- **`ProcessExist()`** — Signature: `ProcessExist(processName)` | Returns: PID (Integer) or `0` | Throws: — | Returns PID if process is running, `0` if not; call before ProcessClose / window interaction
-
-### ValidationBuilder Methods
-
-- **`ValidationBuilder.For()`** — Signature: `ValidationBuilder.For(value, fieldName?)` | Returns: ValidationBuilder instance | Throws: — | Static factory; entry point for every fluent chain; fieldName is prefixed to all error messages
-- **`.Required()`** — Signature: `.Required()` | Returns: `this` | Throws: — | Pushes error if String value is blank after Trim; does not throw — accumulates to error list
-- **`.IsInteger()`** — Signature: `.IsInteger()` | Returns: `this` | Throws: — | Pushes error if value is not Integer type
-- **`.IsString()`** — Signature: `.IsString()` | Returns: `this` | Throws: — | Pushes error if `Type(value) ≠ "String"`; uses `Type()` not `is` operator
-- **`.InRange()`** — Signature: `.InRange(minVal, maxVal)` | Returns: `this` | Throws: — | Pushes error if Integer value is outside [minVal, maxVal]; only evaluates when value is Integer
-- **`.MinLength()`** — Signature: `.MinLength(n)` | Returns: `this` | Throws: — | Pushes error if String length < n; only evaluates when value is String
-- **`.MaxLength()`** — Signature: `.MaxLength(n)` | Returns: `this` | Throws: — | Pushes error if String length > n; only evaluates when value is String
-- **`.Matches()`** — Signature: `.Matches(pattern, description?)` | Returns: `this` | Throws: — | Pushes error if String does not match RegEx pattern; only evaluates when value is String
-- **`.Satisfies()`** — Signature: `.Satisfies(predFn, description?)` | Returns: `this` | Throws: TypeError | Pushes error if callable predFn returns false; validates predFn with HasMethod() first — throws TypeError if predFn is not callable
-- **`.Validate()`** — Signature: `.Validate()` | Returns: `true` if no errors | Throws: ValueError combining all collected errors | Terminal operation — throws a single ValueError listing every accumulated failure
-- **`.GetErrors()`** — Signature: `.GetErrors()` | Returns: Array of error strings | Throws: — | Terminal — returns error Array without throwing; use with FormValidator aggregation
-- **`.HasErrors()`** — Signature: `.HasErrors()` | Returns: Boolean (true/false) | Throws: — | Non-throwing status check; does not consume the error list
-
-### FormValidator Methods
-
-- **`FormValidator.Add()`** — Signature: `.Add(builder)` | Returns: `this` | Throws: — | Register a ValidationBuilder with the form aggregator; returns `this` for chaining
-- **`.GetAllErrors()`** — Signature: `.GetAllErrors()` | Returns: Array of all error strings across all builders | Throws: — | Iterates builders once in O(n) total error count
-- **`.IsValid()`** — Signature: `.IsValid()` | Returns: Boolean (true/false) | Throws: — | True only if every registered builder has zero errors
-- **`.Validate()`** — Signature: `.Validate()` | Returns: `true` if no errors | Throws: ValueError with combined multi-field error message | Throws a single ValueError listing all failures from all registered builders
+### ValidationBuilder / FormValidator Methods
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `ValidationBuilder.For()` | `ValidationBuilder.For(value, fieldName?)` → instance | Static factory; entry point for every fluent chain |
+| `.Required()` | `.Required()` → this | Pushes error if String value is blank after Trim; returns `this` for chaining |
+| `.IsInteger()` | `.IsInteger()` → this | Pushes error if value is not Integer |
+| `.IsString()` | `.IsString()` → this | Pushes error if Type(value) ≠ "String" |
+| `.InRange()` | `.InRange(minVal, maxVal)` → this | Pushes error if Integer value is outside [minVal, maxVal] |
+| `.MinLength()` | `.MinLength(n)` → this | Pushes error if String length < n |
+| `.MaxLength()` | `.MaxLength(n)` → this | Pushes error if String length > n |
+| `.Matches()` | `.Matches(pattern, description?)` → this | Pushes error if String does not match RegEx pattern |
+| `.Satisfies()` | `.Satisfies(predFn, description?)` → this | Pushes error if callable predFn returns false; validates predFn with HasMethod() first |
+| `.Validate()` | `.Validate()` → true or throws ValueError | Terminal — throws ValueError combining all collected errors; returns true if none |
+| `.GetErrors()` | `.GetErrors()` → Array | Terminal — returns error Array without throwing; use with FormValidator |
+| `.HasErrors()` | `.HasErrors()` → true/false | Non-throwing status check |
+| `FormValidator.Add()` | `.Add(builder)` → this | Register a ValidationBuilder with the form aggregator |
+| `.GetAllErrors()` | `.GetAllErrors()` → Array | Collect errors across all registered builders |
+| `.IsValid()` | `.IsValid()` → true/false | True only if every registered builder has zero errors |
 
 ## AHK V2 CONSTRAINTS
 
@@ -76,22 +77,12 @@
 - `is` works correctly for `Integer`, `Float`, `Number`, `Object`, and class names (including full inheritance chain) — use it for all numeric checks and class membership.
 - `IsSet(param)` and `param = ""` are not equivalent — `IsSet()` returns false only when the caller omitted the argument entirely; empty string, 0, and false all return true from `IsSet()` — never substitute empty-string comparison for an unset check.
 - `??` is a default resolver, not a guard — `param ?? fallback` silently swallows an unset state without throwing — use `!IsSet(param)` inside the guard block first, then use `??` on the assignment line that follows.
-  - ✗ `param ?? throw TypeError(...)` — `??` never throws; unset is silently consumed
-  - ✓ `if !IsSet(param)  throw TypeError(...)` then `val := param ?? fallback`
-- Always supply `-1` as the stack offset in every `throw` call — without it, AHK v2 reports the throw line inside the guard helper rather than the caller's line, making error dialogs misleading.
-  - ✗ `throw TypeError("bad type")` — reports the helper's line number
-  - ✓ `throw TypeError("x must be Integer, got " Type(x), -1)` — reports caller's line
+- Always supply `-1` as the stack offset in every `throw` call — without it, AHK v2 reports the throw line inside the guard helper rather than the caller's line, making error dialogs misleading — `throw TypeError("msg", -1)`.
 - Throw `TypeError` for type mismatches, `ValueError` for constraint violations (correct type, wrong value), `TargetError` for window/process failures — for custom pre-flight failure messages where no Win32 error code applies, throw `Error("msg", -1)`; `OSError(code?)` only accepts a numeric OS error code and is intended for wrapping actual Win32 failures.
-  - ✗ `throw Error("bad type")` — base Error class; callers cannot `catch TypeError` specifically
-  - ✓ `throw TypeError("x must be Integer, got " Type(x), -1)`
 - Every thrown error message must include the actual value and the expected type or range — a message like `"bad type"` is not actionable; `"x must be Integer, got Float (value: 3.14)"` is.
 - Place every guard clause at the very top of the function before the first logic statement — guard clauses placed after logic allow corrupted internal state to accumulate before the throw fires.
 - In `__New`, complete the full guard block before the first `this.Prop :=` assignment — a `TypeError` thrown mid-assignment leaves the object partially initialised; `__New`-level guards prevent a corrupt object from ever existing.
-  - ✗ `this.Name := name` before type checks — partially-initialised object escapes if guard throws
-  - ✓ Full guard block at top of `__New`, then all `this.Prop :=` assignments
 - Use `HasMethod(obj, "Method")` and `HasProp(obj, "Prop")` for external object validation — never compare `Type(obj)` to a class name string; that breaks all valid subclasses and polymorphic implementors.
-  - ✗ `if Type(obj) = "MyClass"` — rejects every valid subclass
-  - ✓ `if !HasMethod(obj, "Process")` — accepts any conforming implementor
 - Reserve guard clauses for public and external API boundaries — over-guarding private internal helpers adds noise without safety benefit.
 
 Safe-access priority order for validation selection:
@@ -101,30 +92,10 @@ Safe-access priority order for validation selection:
   4. `RegExMatch()` — O(n) pattern match; only after type and length screening pass
   5. `FileExist()` / `WinExist()` / `ProcessExist()` — one OS syscall each; last, after all cheaper checks
 
-Unset variable handling: always call `IsSet(param)` before accessing an optional parameter — accessing an unset variable raises `UnsetError`; using `?? fallback` without an `IsSet()` guard first silently discards the unset state rather than rejecting it.
-
-Resource lifecycle: `FileOpen()` used inside validation helpers (e.g., TIER 5 `SafeReadFile`) must call `.Close()` inside a `finally` block — AHK v2 does not guarantee `__Delete` timing, so an exception during `.Read()` or `.Write()` will leak the handle without an explicit `finally` close.
-
-## AGENT QA CHECKLIST
-
-- [ ] Did I use `Type(x) = "String"` (not `x is String`) for every string type check?
-- [ ] Did every `throw` call include `-1` as the second argument to report the caller's line?
-- [ ] Are all guard clauses placed at the very top of the function before any logic executes — including inside `__New` before any `this.Prop :=` assignment?
-- [ ] Did I use `HasMethod()` / `HasProp()` instead of `Type(obj) = "ClassName"` for all externally-supplied object validation?
-
-## RUNTIME ERROR MAPPING
-
-| Exception Class | Trigger Condition | Detection Code | Fix |
-|----------------|-------------------|----------------|-----|
-| `UnsetError` | Accessing an optional parameter that was omitted by the caller, without an `IsSet()` guard | `e.Message` contains "unset" | Wrap access in `if IsSet(param)` before use, or provide a default via `param ?? fallback` after an `IsSet()` guard |
-| `MethodError` | Calling a method on an object parameter without a `HasMethod()` pre-flight check — method does not exist on that object | `e.Message` contains method name | Replace `try { obj.Method() } catch MethodError` with `if !HasMethod(obj, "Method")  throw TypeError(...)` before the call |
-| `PropertyError` | Reading a property on an externally-supplied object that does not have it, without a `HasProp()` guard | `e.Message` contains property name | Add `if !HasProp(obj, "Prop")  throw TypeError(...)` before the property access |
-
 ## TIER 1 — Type and Null Fundamentals
 > METHODS COVERED: `is` operator · `Type()` · `IsSet()` · `IsObject()` · `??` operator · `StrLen()` · `RegExMatch()`
 
 TIER 1 covers the foundational building blocks of every validation strategy in AHK v2: using the `is` operator for numeric types, `Type()` for string detection, `IsSet()` for optional parameter presence checks, the `??` nullish coalescing operator for compact default merging, and `IsObject()` to distinguish scalars from objects. Mastering these primitives is a prerequisite for every higher tier — guards in TIER 2 through TIER 6 are assembled from exactly these calls. Use `IsSet()` to detect and reject unset states; use `??` to resolve defaults after guards have already passed.
-
 ```ahk
 ; --- AHK v2 TYPE DETECTION REFERENCE ---
 ;
@@ -158,7 +129,7 @@ CheckNumericTypes(val) {
 CheckStringType(val) {
     if Type(val) = "String"  ; ✓ only reliable string type check in AHK v2
         return "string, length: " StrLen(val)
-    ; if val is String       ; ✗ always returns false for string primitives in AHK v2 → silent guard bypass
+    ; if val is String       ; ✗ always returns false for string primitives in AHK v2
     return "not a string, type: " Type(val)
 }
 
@@ -185,7 +156,7 @@ CheckClassMembership(val) {
 ProcessData(data, options?) {
     if !IsSet(options)       ; ✓ IsSet() detects unset optional params
         options := Map("mode", "default")
-    ; if options = ""        ; ✗ unset variable ≠ empty string — silently passes unset → silent logic error
+    ; if options = ""        ; ✗ unset variable ≠ empty string — silently passes unset
     MsgBox("Processing with " options.Count " option(s)")
 }
 
@@ -220,7 +191,7 @@ ApplyDefaults(title?, timeout?, items?) {
     resolvedTimeout := timeout ?? 3000         ; ✓ 3000 ms if timeout was omitted
     resolvedItems   := items   ?? []           ; ✓ empty array if items was omitted
 
-    ; if title = ""   ; ✗ "" is SET, not UNSET — ?? would return "" here, not "Untitled" → logic error
+    ; if title = ""   ; ✗ "" is SET, not UNSET — ?? would return "" here, not "Untitled"
     ; if !IsSet(title) ; ✓ correct guard form when you need to REJECT unset
 
     MsgBox(resolvedTitle " | " resolvedTimeout " ms | "
@@ -250,7 +221,6 @@ MsgBox(GetDisplayName(, , "Guest"))    ; → "Guest" (first two unset)
 > METHODS COVERED: `throw TypeError()` · `throw ValueError()` · `IsSet()` · `Type()` · `is` operator · `StrLen()` · `Trim()` · `.Length` (Array)
 
 TIER 2 assembles TIER 1 primitives into complete guard clause blocks placed at the top of every function that accepts external input. The key discipline is separating `TypeError` (wrong type passed) from `ValueError` (right type, wrong value or constraint), and providing descriptive messages that include both the actual value and the expected contract so callers can diagnose failures without reading source code. `__New` is an API boundary — every constructor must contain a complete guard block before the first property assignment.
-
 ```ahk
 ; --- TIER 2: Guard Clauses — Function-top Parameter Defence ---
 
@@ -292,40 +262,69 @@ RenderWidget(content, color?, fontSize?) {
         throw TypeError("fontSize must be Integer when provided, got " Type(fontSize), -1)
 
     if IsSet(fontSize) && fontSize < 1
-        throw ValueError("fontSize must be >= 1, got " fontSize, -1)
+        throw ValueError("fontSize must be >= 1 when provided, got " fontSize, -1)
 
-    resolvedColor    := color    ?? "#000000"
-    resolvedFontSize := fontSize ?? 14
-    MsgBox("Rendering: " content " | color: " resolvedColor
-        " | size: " resolvedFontSize)
+    ; Resolve defaults after all guards pass
+    resolvedColor    := IsSet(color)    ? color    : "black"
+    resolvedFontSize := IsSet(fontSize) ? fontSize : 12
+    MsgBox("Rendering: '" content "' [" resolvedColor ", " resolvedFontSize "px]")
 }
 
-; ARRAY PARAMETER GUARD — type + non-empty length check
-ProcessItems(items) {
-    if !IsObject(items) || !(items is Array)
+; ARRAY PARAMETER GUARD — type, class, and length checks stacked
+ProcessBatch(items) {
+    if !IsObject(items)
         throw TypeError("items must be an Array, got " Type(items), -1)
+    if !(items is Array)
+        throw TypeError("items must be Array (not Map or other Object), got "
+            Type(items), -1)
     if items.Length = 0
-        throw ValueError("items must not be empty", -1)
+        throw ValueError("items array must not be empty", -1)
+    if items.Length > 1000
+        throw ValueError("items exceeds max batch size of 1000 (got "
+            items.Length ")", -1)
 
-    for i, item in items
-        MsgBox("Item " i ": " item)
+    for item in items
+        MsgBox("Processing: " item)
 }
 
-; MAP PARAMETER GUARD — IsObject + duck-type capability
-ProcessConfig(cfg) {
-    if !IsObject(cfg)
-        throw TypeError("cfg must be an Object, got " Type(cfg), -1)
-    if !HasMethod(cfg, "Has")
-        throw TypeError("cfg must be a Map-like object (missing Has method)", -1)
-    if !cfg.Has("mode")
-        throw ValueError("cfg must contain 'mode' key", -1)
-    MsgBox("Mode: " cfg["mode"])
+; ERROR MESSAGE QUALITY — always include actual vs expected in the message
+BadGuard(x) {
+    if !(x is Integer)
+        throw TypeError("bad type")             ; ✗ unhelpful — no context
 }
 
-; __NEW GUARD BLOCK — complete guard BEFORE first property assignment
+GoodGuard(x) {
+    if !(x is Integer)
+        throw TypeError(                        ; ✓ includes actual value and type
+            "x must be Integer, got " Type(x) " (value: " x ")", -1)
+}
+
+; THE -1 STACK OFFSET — required for AHK v2 to report caller line in error dialog
+; throw TypeError("msg")      ; ✗ reports error at the throw line (inside guard)
+; throw TypeError("msg", -1)  ; ✓ reports error at the caller's line
+
+; USAGE
+try {
+    SetVolume(150)              ; triggers ValueError: out of range
+} catch ValueError as e {
+    MsgBox("Caught: " e.Message)
+}
+
+try {
+    SetVolume(80, "")           ; triggers ValueError: blank channel
+} catch ValueError as e {
+    MsgBox("Caught: " e.Message)
+}
+
+; CLASS CONSTRUCTOR GUARD — type assertions in __New prevent partially-constructed objects
+; __New is an API boundary: validate every external parameter before writing any state.
 class UserRecord {
+    Name  := ""
+    Age   := 0
+    Email := ""
+
     __New(name, age, email?) {
-        ; === BEGIN GUARD BLOCK — no property assignments above this line ===
+        ; === CONSTRUCTOR GUARD BLOCK (before any property assignment) ===
         if !(Type(name) = "String") || StrLen(Trim(name)) = 0
             throw TypeError("name must be a non-empty String, got "
                 Type(name), -1)
@@ -372,7 +371,6 @@ MsgBox(valid.Describe())            ; → "Bob (age 30) <bob@example.com>"
 > METHODS COVERED: `RegExMatch()` · `StrLen()` · `Trim()` · `throw TypeError()` · `throw ValueError()` · `.Push()` · `.Length`
 
 TIER 3 extends guard clauses into domain-specific rules: email formats, password strength, filename safety, and numeric ranges with multiple constraints. This tier introduces the collect-all error pattern for single-field multi-rule validation, where every rule is checked even after an earlier rule fails, and all errors are reported together in a single `ValueError`.
-
 ```ahk
 ; --- TIER 3: String and Business Logic Validation ---
 
@@ -474,7 +472,6 @@ try {
 > METHODS COVERED: `HasMethod()` · `HasProp()` · `IsObject()` · `throw TypeError()`
 
 TIER 4 covers validation of object parameters whose class identity is unknown or intentionally polymorphic. Duck-type validation via `HasMethod()` and `HasProp()` checks that an object fulfils a behavioural contract rather than asserting a class name, which breaks when valid subclasses or unrelated implementors are passed. This tier prevents `MethodError` and `PropertyError` at call sites without sacrificing polymorphic flexibility.
-
 ```ahk
 ; --- TIER 4: Object and Interface Validation (Duck Typing) ---
 
@@ -487,10 +484,9 @@ SafeProcess(processor) {
     processor.Process()
 }
 
-; ✗ Class-name assertion breaks polymorphism — wrong pattern shown for contrast
 BadCapabilityCheck(obj) {
     if Type(obj) != "MyProcessor"   ; ✗ breaks subclasses and polymorphic callers
-        throw TypeError("must be MyProcessor", -1)
+        throw TypeError("must be MyProcessor")
 }
 
 ; MULTI-CAPABILITY INTERFACE VALIDATOR
@@ -579,7 +575,6 @@ MsgBox(SafeGetName(TextRenderer()))     ; → "TextRenderer"
 > METHODS COVERED: `FileExist()` · `DirExist()` · `DirCreate()` · `WinExist()` · `WinActivate()` · `ProcessExist()` · `ProcessClose()` · `FileOpen()` · `FileAppend()` · `FileCopy()` · `SplitPath()` · `throw Error()` · `throw TargetError()`
 
 TIER 5 covers pre-flight checks against external state that AHK v2 cannot guarantee through type or capability probing alone: file existence, directory presence, window availability, and process state. Skipping these checks causes AHK v2 to throw `OSError`, `TargetError`, or return silent failures from file operations, making post-hoc diagnosis difficult. Pre-flight guards make every failure explicit and attributable before any destructive or irreversible action is attempted.
-
 ```ahk
 ; --- TIER 5: State and External Environment Pre-flight Checks ---
 
@@ -587,17 +582,12 @@ TIER 5 covers pre-flight checks against external state that AHK v2 cannot guaran
 SafeReadFile(path) {
     if !(Type(path) = "String") || StrLen(Trim(path)) = 0
         throw ValueError("path must be a non-empty String", -1)
-    if FileExist(path) = ""
+    if !FileExist(path)                         ; ✓ pre-flight: verify before open
         throw Error("file not found: '" path "'", -1)
-    ; ✓ FileOpen can still fail transiently even after FileExist passes — always check return
-    f := FileOpen(path, "r", "UTF-8")
-    if !f
-        throw Error("FileOpen failed: '" path "'", -1)
-    try {
-        content := f.Read()
-    } finally {
-        f.Close()
-    }
+    ; File confirmed to exist — FileOpen will not throw unexpectedly
+    f       := FileOpen(path, "r", "UTF-8")
+    content := f.Read()
+    f.Close()
     return content
 }
 
@@ -608,9 +598,9 @@ SafeWriteToDir(dirPath, filename, content) {
     if !(Type(filename) = "String") || StrLen(Trim(filename)) = 0
         throw ValueError("filename must be a non-empty String", -1)
 
-    if DirExist(dirPath) = "" {
+    if !DirExist(dirPath) {
         DirCreate(dirPath)
-        if DirExist(dirPath) = ""               ; verify creation succeeded
+        if !DirExist(dirPath)                   ; verify creation succeeded
             throw Error("could not create directory: '" dirPath "'", -1)
     }
     FileAppend(content, dirPath "\" filename, "UTF-8")
@@ -644,19 +634,19 @@ SafeCloseProcess(processName) {
 
 ; COMPOSITE PRE-FLIGHT — multi-condition guard before destructive file operation
 SafeReplaceFile(sourcePath, destPath) {
-    if FileExist(sourcePath) = ""
+    if !FileExist(sourcePath)
         throw Error("source file missing: '" sourcePath "'", -1)
     if !(Type(destPath) = "String") || StrLen(Trim(destPath)) = 0
         throw ValueError("destPath must be a non-empty String", -1)
 
     ; Warn if destination exists — policy decision left to caller
-    if FileExist(destPath) != ""
+    if FileExist(destPath)
         MsgBox("Warning: destination will be overwritten: '" destPath "'")
 
     FileCopy(sourcePath, destPath, true)
 
     ; Post-flight: FileCopy can fail silently — verify the result
-    if FileExist(destPath) = ""
+    if !FileExist(destPath)
         throw Error("FileCopy silently failed: '" destPath "'", -1)
     return true
 }
@@ -693,7 +683,6 @@ Operation cost tiers:
 **ValidationBuilder lifecycle** — build chains once and call `.Validate()` once at submit time. Do not rebuild a `ValidationBuilder` on every keystroke in a live form; store the builder instance and add rules once during form initialisation.
 
 **FormValidator scale** — `GetAllErrors()` iterates builders once in O(n) total error count with no nested scanning; the aggregation pattern remains performant even for forms with many fields.
-
 ```ahk
 ; --- PERFORMANCE GUIDELINES ---
 
@@ -720,7 +709,7 @@ EfficientGuard(val, pattern) {
 EfficientCapabilityCheck(obj) {
     if !HasMethod(obj, "Process")   ; ✓ O(1) probe
         throw TypeError("missing Process()", -1)
-    ; NOT: try { obj.Process() } catch MethodError  ; ✗ slower on miss path
+    ; NOT: try { obj.Process() } catch MethodError  ; ✗ slower on miss
     obj.Process()
 }
 
@@ -731,7 +720,7 @@ SafeBatchWrite(paths, content) {
         SplitPath(path,, &dir)
         if !dirCache.Has(dir)
             dirCache[dir] := DirExist(dir)      ; ✓ one OS call per unique directory
-        if dirCache[dir] = ""
+        if !dirCache[dir]
             throw Error("directory missing: '" dir "'", -1)
         FileAppend(content, path, "UTF-8")
     }
@@ -764,7 +753,6 @@ ValidateEmailFast(email) {
 > METHODS COVERED: `ValidationBuilder.For()` · `.Required()` · `.IsInteger()` · `.IsString()` · `.InRange()` · `.MinLength()` · `.MaxLength()` · `.Matches()` · `.Satisfies()` · `.Validate()` · `.GetErrors()` · `.HasErrors()` · `FormValidator()` · `.Add()` · `.GetAllErrors()` · `.IsValid()`
 
 TIER 6 provides a production-ready `ValidationBuilder` class implementing a fluent interface for accumulating validation errors without throwing on the first failure, and a `FormValidator` aggregator for GUI form scenarios where users require seeing all field errors and reporting them together in a single combined error — the pattern that users require to fix all form issues in one round trip.
-
 ```ahk
 ; --- TIER 6: Fluent Validator Framework ---
 
@@ -945,160 +933,6 @@ EnsureCallable(handler, name := "handler") {
     if !HasMethod(handler, "Call")
         throw TypeError(name " must be callable (missing Call method)", -1)
     return true
-}
-```
-
-## DROP-IN RECIPES
-
-```ahk
-; ─────────────────────────────────────────────────────────────────────────────
-; RECIPE 1: AssertParams — multi-parameter batch guard with collect-all errors
-;
-; Accepts an Array of spec objects. Each spec object must contain:
-;   "name"     → String  field name for error messages
-;   "value"    → Any     the value to validate
-;   "type"     → String  "String" | "Integer" | "Float" | "Number" | "Object"
-;   "required" → Boolean true = must be set; false = optional (skip if unset)
-;   "nonblank" → Boolean (optional) true = reject blank/whitespace strings
-;
-; Throws ValueError listing every violation found; returns true on full pass.
-; ✓ Validates all params in one call — avoids scattered guards in long functions
-; ✓ Uses IsSet() semantics via the "required" flag rather than empty-string check
-; ✓ Uses Type() for String checks, 'is' operator for numeric checks
-; ─────────────────────────────────────────────────────────────────────────────
-AssertParams(specs) {
-    if !(specs is Array) || specs.Length = 0
-        throw TypeError("AssertParams: specs must be a non-empty Array", -1)
-
-    errors := []
-    for spec in specs {
-        if !IsObject(spec) || !HasProp(spec, "name") || !HasProp(spec, "value")
-            || !HasProp(spec, "type") || !HasProp(spec, "required")
-            throw TypeError("AssertParams: each spec must have name/value/type/required", -1)
-
-        name     := spec.name
-        val      := spec.value
-        expected := spec.type
-        required := spec.required
-
-        ; ✓ Use IsSet semantics — check HasProp("value") on the spec itself
-        ;   The value field IS set (could be "" or 0); the "required" flag
-        ;   means we reject the semantically-unset case.
-
-        ; Type check — string uses Type(), all others use 'is' via match
-        ok := false
-        if expected = "String"
-            ok := Type(val) = "String"
-        else if expected = "Integer"
-            ok := val is Integer
-        else if expected = "Float"
-            ok := val is Float
-        else if expected = "Number"
-            ok := val is Number
-        else if expected = "Object"
-            ok := IsObject(val)
-        else
-            errors.Push(name ": unknown type spec '" expected "'")
-
-        if !ok
-            errors.Push(name ": must be " expected ", got " Type(val))
-
-        ; Non-blank string check after type passes
-        if ok && expected = "String" && spec.HasProp("nonblank") && spec.nonblank
-            if StrLen(Trim(val)) = 0
-                errors.Push(name ": must not be blank")
-    }
-
-    if errors.Length > 0 {
-        msg := ""
-        for i, e in errors
-            msg .= (i > 1 ? "`n" : "") "- " e
-        throw ValueError("Parameter validation failed:`n" msg, -1)
-    }
-    return true
-}
-; Call site:
-AssertParams([
-    {name: "userId", value: 42,      type: "Integer", required: true},
-    {name: "label",  value: "Hello", type: "String",  required: true, nonblank: true},
-    {name: "rate",   value: 3.14,    type: "Float",   required: false}
-])
-
-; ─────────────────────────────────────────────────────────────────────────────
-; RECIPE 2: EnsureInterface — robust duck-type contract enforcer
-;
-; Verifies an object satisfies all required methods AND properties before
-; any code calls into it. Throws TypeError with specific missing-member detail.
-; ✓ Accepts any conforming class including subclasses — never asserts Type()
-; ✓ Handles non-object input with a clear TypeError before the loop
-; ✓ Reports the first missing method and first missing property separately
-; ─────────────────────────────────────────────────────────────────────────────
-EnsureInterface(obj, requiredMethods, requiredProps := []) {
-    if !IsObject(obj)
-        throw TypeError("EnsureInterface: obj must be an Object, got " Type(obj), -1)
-    if !(requiredMethods is Array)
-        throw TypeError("EnsureInterface: requiredMethods must be an Array", -1)
-    if !(requiredProps is Array)
-        throw TypeError("EnsureInterface: requiredProps must be an Array", -1)
-
-    missing := []
-    for method in requiredMethods
-        if !HasMethod(obj, method)
-            missing.Push("method '" method "'")
-    for prop in requiredProps
-        if !HasProp(obj, prop)
-            missing.Push("property '" prop "'")
-
-    if missing.Length > 0 {
-        list := ""
-        for i, m in missing
-            list .= (i > 1 ? ", " : "") m
-        throw TypeError(Type(obj) " is missing: " list, -1)
-    }
-    return true
-}
-; Call site:
-EnsureInterface(myRenderer, ["Render", "Reset", "Dispose"], ["Name", "Width", "Height"])
-
-; ─────────────────────────────────────────────────────────────────────────────
-; RECIPE 3: ValidatePassword — collect-all password strength checker
-;
-; Returns true on pass; throws ValueError listing every unmet rule.
-; ✓ Checks all rules even after earlier rules fail — full error report in one throw
-; ✓ Uses Type() for string check, StrLen() before RegExMatch() (O(1) before O(n))
-; ✓ Static Patterns class avoids per-call regex string allocation
-; ─────────────────────────────────────────────────────────────────────────────
-ValidatePassword(pw, minLength := 8) {
-    if !(Type(pw) = "String")
-        throw TypeError("ValidatePassword: pw must be String, got " Type(pw), -1)
-    if !(minLength is Integer) || minLength < 1
-        throw ValueError("ValidatePassword: minLength must be a positive Integer", -1)
-
-    errors := []
-    if StrLen(pw) < minLength
-        errors.Push("must be at least " minLength " characters (got " StrLen(pw) ")")
-    if !RegExMatch(pw, "[A-Z]")
-        errors.Push("must contain at least one uppercase letter")
-    if !RegExMatch(pw, "[a-z]")
-        errors.Push("must contain at least one lowercase letter")
-    if !RegExMatch(pw, "[0-9]")
-        errors.Push("must contain at least one digit")
-    if !RegExMatch(pw, "[^a-zA-Z0-9]")
-        errors.Push("must contain at least one special character")
-
-    if errors.Length > 0 {
-        msg := ""
-        for i, e in errors
-            msg .= (i > 1 ? "`n" : "") "- " e
-        throw ValueError("Password requirements not met:`n" msg, -1)
-    }
-    return true
-}
-; Call site:
-try {
-    ValidatePassword(newPw, 12)
-} catch ValueError as e {
-    MsgBox("Password too weak:`n" e.Message)
 }
 ```
 

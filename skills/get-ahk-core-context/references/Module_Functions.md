@@ -1,8 +1,8 @@
-# Module_Functions.md
+﻿# Module_Functions.md
 <!-- DOMAIN: Functions — named function declaration, parameterization, variable scoping, and encapsulation in AHK v2 -->
 <!-- SCOPE: OOP method definitions, class-based encapsulation, and DLL/COM callback function pointers are not covered — see Module_Classes.md and Module_DllCallAndMemory.md -->
-<!-- TRIGGERS: function, IsSet(), IsSetRef(), ByRef, &, variadic, static, global, Func(), Bind(), "define function", "declare function", "return value", "optional param", "by reference", "variable scope", "closure", "nested function", "multi-return", "output param", "unset param", "spread args", "function reference", "partial application" -->
-<!-- CONSTRAINTS: No space may appear between a function name and its `(` at any call site — AHK v2 parses `Name (...)` as a variable dereference, not a function call. `=>` fat-arrow is single-expression only and must never be combined with `{ }` braces. All function-body variables are local by default; writing to an outer global requires explicit `global VarName` before first assignment. ByRef `&` must appear at both the definition and the call site — omitting it at the call site throws TypeError, not a silent copy. `?` unset parameters must be guarded with `IsSet()` before any access or UnsetError is thrown. -->
+<!-- TRIGGERS: function, IsSet(), ByRef, &, variadic, static, global, "define function", "declare function", "return value", "optional param", "by reference", "variable scope", "closure", "nested function", "multi-return", "output param", "unset param", "spread args" -->
+<!-- CONSTRAINTS: No space may appear between a function name and its `(` at any call site — AHK v2 parses `Name (...)` as a variable dereference, not a function call. `=>` fat-arrow is single-expression only and must never be combined with `{ }` braces. All function-body variables are local by default; writing to an outer global requires explicit `global VarName` before first assignment. ByRef `&` must appear at both the definition and the call site — omitting it at the call site throws TypeError, not a silent copy. -->
 <!-- CROSS-REF: Module_Classes.md, Module_Errors.md, Module_Arrays.md, Module_Objects.md, Module_DllCallAndMemory.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -17,23 +17,18 @@
 | Variadic via legacy `args` Object without `*` syntax | `args*` suffix on last parameter in definition; `arr*` spread at call site | v1 variadic used a different object structure; v2 collects into a typed 1-based Array via `*` |
 | `return` on one line, expression on next line (continuation style) | `return expression` on a single line | Bare `return` exits immediately returning ""; value on next line is dead code — silent wrong return |
 | `f := (a) => { return a + 1 }` fat-arrow with brace block | `f(a) { return a + 1 }` — named function with `{ }` body | AHK v2 grammar forbids `=> { }`; load-time parse failure with no deferred error |
-| `fn.Call(args)` on a non-Func value (assuming it is always safe) | Guard with `if fn is Func` before calling | Calling `.Call()` on a non-Func value throws a MethodError at runtime |
 
 ## API QUICK-REFERENCE
 
 ### Parameter Modifier Syntax
-
-| Modifier | Form | Returns | Throws | Notes |
-|----------|------|---------|--------|-------|
-| Default value | `param := expr` | — | — | Caller may omit; default expression evaluated at call time when argument is absent |
-| Unset / optional | `param?` | — | UnsetError if accessed without `IsSet()` guard | Caller may omit entirely; **must** guard with `IsSet(param)` before any access |
-| Variadic collector | `param*` | — | — | Collects all extra arguments into a typed 1-based Array; must be the last parameter |
-| ByRef output | `&param` | — | TypeError if caller omits `&` | Allows function to write back into caller's variable; `&` required at both definition and every call site |
+| Modifier | Form | Notes |
+|----------|------|-------|
+| Default value | `param := expr` | Caller may omit; default expression is evaluated at call time when the argument is absent |
+| Unset / optional | `param?` | Caller may omit entirely; **must** guard with `IsSet(param)` before any access or throws UnsetError |
+| Variadic collector | `param*` | Collects all extra arguments into a typed 1-based Array; must be the last parameter in the list |
+| ByRef output | `&param` | Allows function to write back into caller's variable; `&` required at both definition and every call site |
 
 ### Parameter Order Rule
-
-Placing a required parameter after an optional one, or placing `*` before the last position, is a load-time parse error. The relative order of `:=` and `?` parameters is not enforced — both are optional and may be interleaved freely.
-
 | Position | Modifier | Example |
 |----------|----------|---------|
 | 1st | Required (no modifier) | `req` |
@@ -41,86 +36,61 @@ Placing a required parameter after an optional one, or placing `*` before the la
 | 3rd | Unset optional | `maybe?` |
 | Last | Variadic | `rest*` |
 
+Any other order causes a load-time parse error.
+
 ### Scope Declaration Keywords
+| Keyword | Form | Notes |
+|---------|------|-------|
+| `global` | `global VarName` | Required before first **write** to an outer global inside a function body; declare at top |
+| `static` | `static VarName := init` | Persists across calls; initializer runs exactly once on first invocation — never use for values that must reset per call |
+| `local` | `local VarName` | Redundant (local is the default) but legal for clarity |
 
-| Keyword | Form | Returns | Throws | Notes |
-|---------|------|---------|--------|-------|
-| `global` | `global VarName` | — | — | Required before first **write** to an outer global inside a function body; declare at top |
-| `static` | `static VarName := init` | — | — | Persists across calls; initializer runs exactly once on first invocation — never use for values that must reset per call |
-| `local` | `local VarName` | — | — | Redundant (local is the default) but legal for documentation of intent |
+### IsSet
+| Function | Signature | Notes |
+|----------|-----------|-------|
+| `IsSet()` | `IsSet(var)` | Returns 1 if `var` has a value; 0 if unset — mandatory guard before accessing any `?` parameter |
 
-### IsSet / IsSetRef
+### Func Object (function references)
+| Property / Constructor | Signature | Notes |
+|-----------------------|-----------|-------|
+| `Func()` | `Func(name)` | Retrieve a Func reference object by name string |
+| `.Name` | `.Name` | The function's name as declared |
+| `.MinParams` | `.MinParams` | Minimum number of arguments required |
+| `.MaxParams` | `.MaxParams` | Number of formally-declared parameters for user-defined functions (excluding the variadic collector); for variadic functions, parameters above this count overflow into the collector |
+| `.IsVariadic` | `.IsVariadic` | 1 if the function is variadic, 0 otherwise; use this — not MaxParams — to detect when there is no fixed upper bound on parameter count |
+| `.IsBuiltIn` | `.IsBuiltIn` | 1 for built-in functions; 0 for user-defined |
 
-| Function | Signature | Returns | Throws | Notes |
-|----------|-----------|---------|--------|-------|
-| `IsSet()` | `IsSet(var)` | 1 or 0 | — | Returns 1 if `var` has a value; 0 if unset — mandatory guard before accessing any `?` parameter |
-| `IsSetRef()` | `IsSetRef(varRef)` | 1 or 0 | — | Checks a VarRef target variable; use inside ByRef functions to test if the referenced variable is set |
-
-### Func Object — Methods
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `.Call()` | `FuncObj.Call(Param1, ...)` | Any (defined by function) | Any (defined by function) | Explicit call form; `FuncObj(params*)` is shorthand and equivalent |
-| `.Bind()` | `FuncObj.Bind(Param1, ...)` | BoundFunc object | — | Binds one or more positional parameters; unbound positions are filled by the caller at invocation |
-| `.IsByRef()` | `FuncObj.IsByRef(ParamIndex?)` | 1 or 0 | Error (invalid index) | Omit index to test whether the function has *any* ByRef parameter; provide 1-based index to test a specific parameter |
-| `.IsOptional()` | `FuncObj.IsOptional(ParamIndex?)` | 1 or 0 | Error (invalid index) | Omit index to test whether the function has *any* optional parameter; built-in functions are supported |
-
-### Func Object — Properties
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `.Name` | `.Name` | String | — | The function's name as declared |
-| `.MinParams` | `.MinParams` | Integer | — | Number of required parameters; 0 for functions with all-optional or variadic signatures |
-| `.MaxParams` | `.MaxParams` | Integer | — | Formally-declared parameter count (excluding the variadic collector); for variadic functions this is the count before overflow |
-| `.IsVariadic` | `.IsVariadic` | 1 or 0 | — | Use this — not `.MaxParams` — to detect when there is no fixed upper bound on argument count |
-| `.IsBuiltIn` | `.IsBuiltIn` | 1 or 0 | — | 1 for built-in functions; 0 for user-defined |
-
-### Func Constructor
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `Func()` | `Func(name)` | Func object | — | Retrieves a Func reference by name string; prefer reading the function's implicit variable directly where the name is known at write time |
-
-### Built-in Utility Functions Referenced in Examples
-
-| Function | Signature | Returns | Throws | Notes |
-|----------|-----------|---------|--------|-------|
-| `StrSplit()` | `StrSplit(str, delims?, omit?, maxParts?)` | Array | — | Returns a typed 1-based Array of substrings |
-| `Integer()` | `Integer(val)` | Integer | ValueError | Converts a value to an integer; throws on non-numeric input |
-| `Float()` | `Float(val)` | Float | ValueError | Converts a value to a floating-point number |
-| `Trim()` | `Trim(str, chars?)` | String | — | Removes leading/trailing characters (space by default) |
-| `Mod()` | `Mod(dividend, divisor)` | Number | — | Returns remainder; works with floats |
-| `Map()` | `Map(key, val, ...)` | Map | — | Creates a Map object — used for multi-return and Func-reference containers |
-| `FileAppend()` | `FileAppend(text, path, encoding?)` | — | OSError | Appends text to file; encoding should always be explicit |
-| `A_Now` | Built-in var | String | — | Current local date-time in YYYYMMDDHH24MISS format |
+### Built-in Utility Functions Used in Examples
+| Function | Signature | Notes |
+|----------|-----------|-------|
+| `MsgBox()` | `MsgBox(text)` | Used throughout as output demonstration — not a Functions-domain API |
+| `IsSet()` | `IsSet(var)` | See IsSet section above |
+| `StrSplit()` | `StrSplit(str, delims?, omit?, maxParts?)` | Returns a typed 1-based Array of substrings |
+| `Integer()` | `Integer(val)` | Converts a value to an integer; throws ValueError on non-numeric input |
+| `Float()` | `Float(val)` | Converts a value to a floating-point number |
+| `Trim()` | `Trim(str, chars?)` | Removes leading/trailing characters (space by default) |
+| `Mod()` | `Mod(dividend, divisor)` | Returns remainder; works with floats |
+| `Map()` | `Map(key, val, ...)` | Creates a Map object — used for multi-return and Func-reference containers |
+| `FileAppend()` | `FileAppend(text, path, encoding?)` | Appends text to file; encoding should always be explicit |
+| `A_Now` | Built-in var | Current local date-time in YYYYMMDDHH24MISS format |
 
 ## AHK V2 CONSTRAINTS
 
 - **No space between function name and `(`** — `MyFunc (x)` is parsed as a variable dereference followed by a parenthesized expression, not a function call; this produces a silent logic error or a NameError depending on context. This rule applies at every call site: definitions, nested calls, and method chains — zero whitespace between name and `(` without exception.
-  - ✗ `MyFunc (x)` — parsed as variable dereference, not a function call; silent wrong behavior
-  - ✓ `MyFunc(x)` — name and `(` adjacent is the only valid call form
 
 - **`=>` fat-arrow is single-expression only** — never pair `=>` with `{ }` braces. For any multi-statement logic, define a standard named function with `FuncName(params) { body }`. Combining `=>` with `{ }` is a hard AHK v2 grammar constraint; the parser fails at load time with no deferred error.
-  - ✗ `f := (a) => { return a + 1 }` — load-time parse failure
-  - ✓ `f(a) { return a + 1 }` — named function with `{ }` body for any multi-statement logic
 
 - **All function-body variables are local by default** — writing to an outer global without `global VarName` declared first creates a silent local shadow. The outer variable appears unchanged and no error is raised, making this the most common source of scope bugs. Declare `global VarName` at the top of the function body, before the first access.
-  - ✗ Assigning to outer global name inside function without `global` declaration — silent local shadow
-  - ✓ `global gVar` declared at the top of the function body before first write
 
 - **ByRef `&` must appear at both the definition and every call site** — omitting `&` at the call site throws a TypeError at runtime rather than silently passing a copy. AHK v2 requires explicit opt-in from the caller; it does not fall back to copy semantics.
-  - ✗ `Swap(x, y)` when Swap defines `(&a, &b)` — throws TypeError at call site
-  - ✓ `Swap(&x, &y)` — `&` mirrored at every call site
 
 - **`return` and its value must be on the same line** — a bare `return` immediately exits the function returning an empty string; any expression on a subsequent line becomes dead code. There is no implicit return of the last expression.
-  - ✗ `return` on one line, computed value on the next — bare return exits; value is dead code
-  - ✓ `return computedValue` — return and value on the same line
 
 - **`?` unset parameters must be guarded with `IsSet()` before any access** — touching an unset parameter without a guard throws an UnsetError. Always place `if !IsSet(param)` before the first use of any `?`-declared parameter.
 
 - **`static` variables initialize exactly once** — the initializer (`:= value`) executes only on the very first invocation of the function. Never use `static` for values that must reset per call; use a regular local variable instead.
 
-- **Parameter order rule: required → optional (`:=` and `?` freely interleaved) → variadic `*`** — placing a required parameter after any optional one is a load-time parse error; `*` must always be last. The relative ordering of `:=` and `?` parameters is not enforced by the parser.
+- **Parameter order is mandatory: required → default → unset `?` → variadic `*`** — placing a required parameter after a defaulted or optional one is a load-time parse error.
 
 Safe-access priority order for optional / absent parameters:
   1. `:=` default value — caller omits the argument; the known safe default fills in automatically, no guard needed
@@ -128,35 +98,33 @@ Safe-access priority order for optional / absent parameters:
   3. `&param := default` — optional ByRef output parameter; caller may omit with a defined fallback
   4. `try/catch` around the call site — only when the exception message itself carries diagnostic information needed by the caller
 
+Paired prohibitions and their positive alternatives:
+- ✗ `MyFunc (x)` — parsed as variable dereference, not a function call; silent wrong behavior
+- ✓ `MyFunc(x)` — name and `(` adjacent is the only valid call form
+
+- ✗ `f := (a) => { return a + 1 }` — load-time parse failure
+- ✓ `f(a) { return a + 1 }` — named function with `{ }` body for any multi-statement logic
+
+- ✗ Assigning to outer global name inside function without `global` declaration — silent local shadow
+- ✓ `global gVar` declared at the top of the function body before first write
+
+- ✗ `Swap(x, y)` when Swap defines `(&a, &b)` — throws TypeError at call site
+- ✓ `Swap(&x, &y)` — `&` mirrored at every call site
+
+- ✗ `return` on one line, computed value on the next — bare return exits; value is dead code
+- ✓ `return computedValue` — return and value on the same line
+
 **Function naming contracts — enforced at review time:**
-- **`Get*` / `Fetch*` / `Read*` prefix → side-effect-free** — any function carrying one of these prefixes must not write to global state, call `FileAppend()`, `RegWrite()`, `Send()`, or any other mutating operation. Callers rely on these prefixes to know the call is safe to repeat, safe to cache, and safe to invoke in a conditional without observable side effects. Violation severity: **Major**.
-- **`Check*` / `Is*` / `Has*` prefix → pure boolean predicate** — must return `true`/`false` (or `1`/`0`) and must not mutate any variable in the enclosing or global scope. Violation severity: **Major**.
+- **`Get*` / `Fetch*` / `Read*` prefix → side-effect-free** — any function carrying one of these prefixes must not write to global state, call `FileAppend()`, `RegWrite()`, `Send()`, or any other mutating operation. Callers rely on these prefixes to know the call is safe to repeat, safe to cache, and safe to invoke in a conditional without observable side effects. Violation severity: **Major** — callers cannot reason about safety without reading the entire implementation.
+- **`Check*` / `Is*` / `Has*` prefix → pure boolean predicate** — must return `true`/`false` (or `1`/`0`) and must not mutate any variable in the enclosing or global scope. A `Check*` that zeroes a counter or appends a log entry has contradictory semantics: callers treat it as a query but it silently acts as a command. Violation severity: **Major**.
 - **`Set*` / `Reset*` / `Clear*` / `Log*` / `Write*` / `Update*` prefix → mutation explicit** — any function that modifies external state must carry one of these verb prefixes so that mutation sites are identifiable during review without reading the body.
-  - ✗ `GetUser(id)` that calls `FileAppend(id, "log.txt")` inside — `Get*` with side effect; rename to `LogAndGetUser()` or split into `GetUser()` + `LogAccess()`
-  - ✓ `GetUser(id)` that returns `users.Get(id, "")` — pure read, no external interaction; safe to call in any context
-
-Unset variable handling: always guard every `?` parameter with `IsSet()` before first access — touching an unset parameter throws UnsetError immediately, not a default empty-string result.
-
-## AGENT QA CHECKLIST
-
-- [ ] Does every call site place the function name immediately adjacent to `(` with no whitespace between them?
-- [ ] Is every `?`-declared parameter guarded with `if !IsSet(param)` before its first use in the function body?
-- [ ] Does every call to a ByRef function mirror `&` at the call site for each ByRef parameter?
-- [ ] Is `return` and its value expression on the same single line — no bare `return` followed by a value on the next line?
-
-## RUNTIME ERROR MAPPING
-
-| Exception Class | Trigger Condition | Detection Code | Fix |
-|----------------|-------------------|----------------|-----|
-| `UnsetError` | Accessing a `?` parameter inside a function body without an `IsSet()` guard when the caller omitted that argument | `e.Message` contains the parameter name; `e.What` is the function name | Add `if !IsSet(param)` guard before every access to any `?`-declared parameter |
-| `TypeError` | Calling a function that declares `(&param)` without providing `&var` at the call site | `e.Message` contains "Expected a VarRef" | Mirror `&` at the call site: `MyFunc(&x)` not `MyFunc(x)` |
-| `MethodError` | Calling `.Call()` or invoking a stored Func reference that holds a non-Func value (e.g., an unset Map key) | `e.Message` contains "Call" and the variable name | Guard with `if fn is Func` before calling any dynamically-stored Func reference |
+- ✗ `GetUser(id)` that calls `FileAppend(id, "log.txt")` inside — `Get*` with side effect; rename to `LogAndGetUser()` or split into `GetUser()` + `LogAccess()`
+- ✓ `GetUser(id)` that returns `users.Get(id, "")` — pure read, no external interaction; safe to call in any context
 
 ## TIER 1 — Basic Declaration and Calling
 > METHODS COVERED: named function definition · `return` · `MsgBox()` · `StrSplit()` · `IsSet()`
 
 A named function in AHK v2 consists of a name immediately adjacent to `(` (zero whitespace), a parameter list, a brace-enclosed body, and `return expr` on a single line. Functions defined at file scope are hoisted — call order relative to definition does not matter. A function with no explicit `return`, or with a bare `return`, yields an empty string, not `0` or `undefined`. The declaration template below shows all parameter modifier forms together; each form is covered in depth in TIER 3.
-
 ```ahk
 ; ============================================================
 ; TIER 1 — Basic Declaration and Calling
@@ -241,7 +209,6 @@ Double(x) {
 > METHODS COVERED: `global` declaration · `static` declaration · `local` declaration
 
 Every variable inside a function is local by default — it does not share state with any outer variable of the same name. Writing to an outer global requires `global VarName` declared before the first assignment inside the function body. Static variables persist across calls but are scoped to the function; their initializer runs exactly once on first invocation. Independent functions each have their own independent static state even if they declare statics with the same name.
-
 ```ahk
 ; ============================================================
 ; TIER 2 — Variable Scope: Local, Global, Static
@@ -307,7 +274,6 @@ Explicit() {
 > METHODS COVERED: `:=` default value · `?` unset marker · `*` variadic collector · `arr*` spread · `IsSet()` · `StrSplit()` · `Trim()`
 
 AHK v2 provides three parameter modifier syntaxes with a mandatory positional order: required parameters first, then defaulted (`:=`), then unset (`?`), then the variadic collector (`*`) last. The `?` modifier marks a parameter as optionally omittable but does not provide a fallback — `IsSet()` must guard every access to a `?` parameter. The `*` modifier at the call site (`arr*`) spreads an Array into individual arguments with zero copy overhead.
-
 ```ahk
 ; ============================================================
 ; TIER 3 — Parameter Modifiers: Default, Unset, Variadic
@@ -336,7 +302,7 @@ MsgBox(Describe("Bob", 30))      ; Bob age 30
 
 ; ✗ Accessing unset param without IsSet guard throws UnsetError at runtime — never omit the guard
 ; BadDescribe(name, age?) {
-;     return name " " age        ; ✗ → UnsetError if age not passed
+;     return name " " age        ; ✗ if age not passed → UnsetError
 ; }
 
 ; ---- VARIADIC PARAMETER with * ----
@@ -365,7 +331,7 @@ args := [7, 8, 9]
 MsgBox(Sum(args*))   ; 24  — array contents spread into variadic params
 
 ; ---- PARAMETER ORDER RULE ----
-; ✓ required → default → unset(?) → variadic(*) — required-after-optional is a load-time parse error
+; ✓ required → default → unset(?) → variadic(*) — any other order is a load-time parse error
 Combined(req, opt := 0, maybe?, rest*) {
     result := req + opt
     if IsSet(maybe)
@@ -381,10 +347,9 @@ MsgBox(Combined(10, 5, 3, 1, 2))   ; 21
 ```
 
 ## TIER 4 — ByRef Parameters: Output Params and In-Place Mutation
-> METHODS COVERED: `&` ByRef definition · `&` ByRef call site · `IsSetRef()` · `StrSplit()` · `Integer()` · `Float()`
+> METHODS COVERED: `&` ByRef definition · `&` ByRef call site · `StrSplit()` · `Integer()` · `Float()`
 
-ByRef allows a function to write back into the caller's variable. Both the function definition and every call site must carry `&`; omitting `&` at the call site throws a TypeError at runtime — it does not silently pass a copy. ByRef is the primary AHK v2 strategy for output parameters (returning a status flag AND populating result data simultaneously) and for in-place reassignment of caller-owned variables. Use `IsSetRef()` inside a ByRef function body to test whether the referenced variable itself has a value before dereferencing.
-
+ByRef allows a function to write back into the caller's variable. Both the function definition and every call site must carry `&`; omitting `&` at the call site throws a TypeError at runtime — it does not silently pass a copy. ByRef is the primary AHK v2 strategy for output parameters (returning a status flag AND populating result data simultaneously) and for in-place reassignment of caller-owned variables.
 ```ahk
 ; ============================================================
 ; TIER 4 — ByRef Parameters: Output Params and In-Place Mutation
@@ -463,14 +428,13 @@ GetBounds([3, 1, 4, 1, 5, 9], &mn, &mx)
 MsgBox(mn " to " mx)   ; 1 to 9
 ```
 
-## TIER 5 — Nested Functions: Lexical Scope, Closures, and Func Objects
-> METHODS COVERED: nested function declaration · lexical capture · closure factory pattern · `Func()` · `.Bind()` · `.IsByRef()` · `.IsOptional()` · `.Name` · `.MinParams` · `.MaxParams` · `.IsVariadic` · `Map()` · `MsgBox()`
+## TIER 5 — Nested Functions: Lexical Scope and Closures
+> METHODS COVERED: nested function declaration · lexical capture · closure factory pattern · `Map()` (Func reference container) · `FileAppend()` · `StrSplit()` · static memoization · `MsgBox()`
 
-AHK v2 nested (inner) functions have lexical scope: they can read and write the enclosing function's local variables by name without any special syntax. An outer function may return a reference to an inner function, creating a closure where each invocation of the outer function produces an independent inner Func with its own captured copy of the enclosing locals. The Func object API (`Bind()`, `IsByRef()`, `IsOptional()`) allows runtime introspection and partial application — these are particularly useful when building generic dispatchers or callback validators.
-
+AHK v2 nested (inner) functions have lexical scope: they can read and write the enclosing function's local variables by name without any special syntax. An outer function may return a reference to an inner function, creating a closure where each invocation of the outer function produces an independent inner Func with its own captured copy of the enclosing locals. Nested functions are invisible outside the enclosing function, keeping the public API surface small and preventing name collisions.
 ```ahk
 ; ============================================================
-; TIER 5 — Nested Functions: Lexical Scope, Closures, and Func Objects
+; TIER 5 — Nested Functions: Lexical Scope and Closures
 ; ============================================================
 
 ; ---- NESTED HELPER: scope isolation ----
@@ -542,24 +506,6 @@ MsgBox(acc["get"]())   ; 35
 
 ; ✗ Nested functions are NOT accessible outside the enclosing function
 ; Validate("x")   ; ✗ → NameError — Validate only exists inside ProcessPositive()
-
-; ---- FUNC OBJECT: runtime introspection ----
-; ✓ Func() retrieves a Func reference by name for dynamic dispatch and introspection
-fn := Func("Sum")
-MsgBox(fn.Name)          ; Sum
-MsgBox(fn.IsVariadic)    ; 1  — Sum uses params*
-MsgBox(fn.MinParams)     ; 0  — all parameters are optional (variadic)
-
-; ✓ .Bind() partially applies arguments — unbound positions are filled by caller
-AddTen := fn.Bind(10)   ; pre-binds the first argument to 10 — acts as a BoundFunc
-; (note: Sum is variadic so this binds the first value; remaining args add to it)
-
-; ✓ .IsByRef() and .IsOptional() allow callback validators to reject wrong signatures
-CheckSwapSig(f) {
-    if !f.IsByRef(1) || !f.IsByRef(2)
-        throw Error("CheckSwapSig: handler must declare (&a, &b)", -1)
-}
-CheckSwapSig(Func("Swap"))   ; passes — Swap declares (&a, &b)
 ```
 
 ### Performance Notes
@@ -575,7 +521,6 @@ CheckSwapSig(Func("Swap"))   ; passes — Swap declares (&a, &b)
 **Prefer built-in methods over custom AHK loops:** `StrSplit()`, `RegExMatch()`, `Sort()` are implemented in native C and outperform equivalent AHK-script loops for the vast majority of input sizes. Reach for them before writing manual character-iteration loops.
 
 **Static constant tables:** Initialize lookup Maps with `static m := Map(...)` — the Map is constructed once on the first call and reused at O(1) cost for all subsequent lookups.
-
 ```ahk
 ; ============================================================
 ; TIER 5 — Performance Patterns
@@ -608,10 +553,8 @@ ProcessLargeArray(arr) {
     return arr
 }
 
-; ---- ByRef FOR LARGE STRINGS: avoids copying string primitive values ----
-; ✓ ByRef on a Map parameter: only needed when the function must reassign the caller's
-;   variable binding — Map objects are reference types; no content copy occurs with or
-;   without ByRef. For large string arguments, ByRef eliminates the per-call string copy.
+; ---- ByRef FOR LARGE STRINGS: avoids copying primitive values ----
+; ✓ ByRef: no copy overhead — the reference pointer is passed, not the content
 SumValues(&bigMap) {
     total := 0
     for , v in bigMap
@@ -619,8 +562,8 @@ SumValues(&bigMap) {
     return total
 }
 
-; ✓ Passing a Map without ByRef copies only the object reference — no content copy overhead
-; SumValuesCopy(bigMap) { ... }   ; ✓ for Map/Array, reference pointer is copied either way
+; ✗ Without ByRef — entire string/primitive is copied on each call for primitive types
+; SumValuesCopy(bigMap) { ... }   ; ✗ full copy of primitive value on every call
 
 ; ---- VARIADIC SPREAD: zero-copy argument forwarding ----
 ; ✓ segments* expands the Array contents without creating any intermediate copy
@@ -628,7 +571,7 @@ Log(level, parts*) {
     line := level ": "
     for p in parts
         line .= p
-    FileAppend(line "`n", "app.log", "UTF-8")
+    FileAppend(line "`n", "app.log")
 }
 
 segments := ["user=", "alice", " action=", "login"]
@@ -657,7 +600,6 @@ MsgBox(GetDayName(3))   ; Wed
 > METHODS COVERED: `Map()` multi-return · Array multi-return · `StrSplit()` · `FileAppend()` · `A_Now` · `Mod()` · `MsgBox()` · pure function pattern · side-effect wrapper pattern
 
 Returning more than one value uses either a Map (preferred for 3+ named fields — consumer uses self-documenting key access) or an Array (best for exactly 2–3 positional values). The complementary architectural discipline is separating pure functions (deterministic, no external interaction, safely memoizable) from side-effect functions (explicitly named, isolated, returning a success flag). Pure cores can be independently tested and statically cached; side-effect wrappers cannot.
-
 ```ahk
 ; ============================================================
 ; TIER 6 — Multi-Return and Pure vs Side-Effect Separation
@@ -724,7 +666,7 @@ SaveRecord(&record, filePath) {
     ; Side effects: stamps record with timestamp, appends to disk
     record["savedAt"] := A_Now
     try {
-        FileAppend(record["data"] "`n", filePath, "UTF-8")
+        FileAppend(record["data"] "`n", filePath)
         return true
     } catch OSError as e {
         return false
@@ -740,7 +682,7 @@ FormatLogLine(level, msg) {
 ; ✓ WriteLog is the side-effect wrapper — all external interaction is isolated here
 WriteLog(level, msg, logPath) {
     line := FormatLogLine(level, msg)   ; ✓ pure computation isolated
-    FileAppend(line "`n", logPath, "UTF-8")   ; ✓ side effect isolated here
+    FileAppend(line "`n", logPath)       ; ✓ side effect isolated here
 }
 
 ; ---- COMBINING Map multi-return with ByRef (TIER 4+6 composite) ----
@@ -763,77 +705,6 @@ raw := [1, 2, 3, 4]
 info := NormalizeAndReport(raw, &wasChanged)
 MsgBox("modified=" wasChanged " status=" info["status"])
 ; modified=1 status=ok
-```
-
-## DROP-IN RECIPES
-
-```ahk
-; ============================================================
-; DROP-IN RECIPE 1: Memoize
-; Wraps any pure function with a static cache; subsequent calls with
-; identical arguments return the cached result at O(1) cost.
-; ✓ Works with any pure Func reference; key serializes all argument values
-; ✓ Input validated — throws TypeError if fn is not a Func object
-; ============================================================
-Memoize(fn) {
-    if !(fn is Func)
-        throw TypeError("Memoize: fn must be a Func object, got " Type(fn), -1)
-    cache := Map()
-    Cached(args*) {
-        key := ""
-        for a in args
-            key .= "|" a
-        if cache.Has(key)
-            return cache[key]
-        result := fn(args*)
-        cache[key] := result
-        return result
-    }
-    return Cached
-}
-; Call site: fastFib := Memoize(Func("Fibonacci"))   then: MsgBox(fastFib(35))
-
-; ============================================================
-; DROP-IN RECIPE 2: TrySafeCall
-; Safely invokes any Func reference, capturing exceptions into &outResult.
-; Returns true on success (outResult holds the return value);
-; returns false on failure (outResult holds the error message string).
-; ✓ Guards against non-Func values stored in Maps or arrays of handlers
-; ✓ Caller never needs try/catch at the dispatch site
-; ============================================================
-TrySafeCall(fn, &outResult, params*) {
-    if !(fn is Func)
-        throw TypeError("TrySafeCall: fn must be a Func object, got " Type(fn), -1)
-    try {
-        outResult := fn(params*)
-        return true
-    } catch Error as e {
-        outResult := e.Message
-        return false
-    }
-}
-; Call site: if TrySafeCall(myHandler, &result, arg1, arg2)   MsgBox(result)
-
-; ============================================================
-; DROP-IN RECIPE 3: DispatchFn
-; Type-safe dispatcher through a Map of Func references keyed by string.
-; Validates that the Map exists, the key is registered, and the handler
-; is a Func before forwarding the call — fails loudly on any misconfiguration.
-; ✓ Prevents silent no-ops when a key is absent or a handler was never registered
-; ============================================================
-DispatchFn(handlers, key, params*) {
-    if !(handlers is Map)
-        throw TypeError("DispatchFn: handlers must be a Map, got " Type(handlers), -1)
-    if !handlers.Has(key)
-        throw Error("DispatchFn: no handler registered for key '" key "'", -1)
-    fn := handlers[key]
-    if !(fn is Func)
-        throw TypeError("DispatchFn: handler for '" key "' must be a Func, got " Type(fn), -1)
-    return fn(params*)
-}
-; Call site:
-;   actions := Map("save", SaveFn, "load", LoadFn)
-;   result  := DispatchFn(actions, "save", &record, "data.txt")
 ```
 
 ## ANTI-PATTERNS

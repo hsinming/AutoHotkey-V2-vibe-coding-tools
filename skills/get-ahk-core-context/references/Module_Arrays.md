@@ -1,8 +1,8 @@
-# Module_Arrays.md
+﻿# Module_Arrays.md
 <!-- DOMAIN: Arrays -->
 <!-- SCOPE: Key-value storage with Map(), deep-clone of circular-reference graphs, GUI control binding, and file-path batch operations are not covered — see Module_Objects.md, Module_GUI.md, and Module_FileSystem.md respectively. -->
-<!-- TRIGGERS: Array(), Push(), Pop(), InsertAt(), RemoveAt(), Clone(), Get(), Has(), Delete(), "store multiple values", "iterate collection", "list", "vector", "remove duplicates", "deep copy", "transform elements", ArrayMap, QuickSort, Unique, IndexOf, Filter, Reduce -->
-<!-- CONSTRAINTS: Arrays are 1-based — arr[0] always throws IndexError; arr[-1] is the last element (reverse indexing). Array objects have NO built-in .Sort() method; use a custom QuickSort() with a comparator callback. Array(N) does NOT pre-allocate N slots — it creates [N] (one element whose value is N); use arr.Capacity := N instead. Fat-arrow functions with block bodies `(x) => { return x }` are invalid in AHK v2.0; use named nested functions for multi-statement callbacks. Never name a user function "Map" — it shadows the built-in Map class globally. -->
+<!-- TRIGGERS: array, list, collection, sort, filter, reduce, "store multiple values", "iterate collection", "remove duplicates", "deep copy", "transform elements", ArrayMap, QuickSort, Unique, IndexOf -->
+<!-- CONSTRAINTS: Arrays are 1-based — arr[0] is never the first element (it throws or returns unset). Array objects have NO built-in .Sort() method; use a custom QuickSort() with a comparator callback. Array(N) does NOT pre-allocate N slots — it creates [N] (an array containing the value N); use arr.Capacity := N instead. Fat-arrow functions with block bodies `(x) => { return x }` are invalid in AHK v2.0; use named nested functions for multi-statement callbacks. -->
 <!-- CROSS-REF: Module_Objects.md, Module_Errors.md, Module_GUI.md, Module_Functions.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -13,7 +13,7 @@
 | `array[0]` for first element | `array[1]` | Throws `IndexError` — 0 is not a valid Array index in v2 |
 | `array.Sort()` called directly | Custom `QuickSort(array, comparator?)` | `TypeError` — Array objects have no built-in `.Sort()` method in v2 |
 | `Array(10)` to pre-allocate 10 slots | `arr := [], arr.Capacity := 10` | Creates `[10]` — a one-element array containing the value `10`, not 10 empty slots |
-| `new Array()` constructor syntax | `Array()` or `[]` literal | `NameError` — `new` is treated as an unresolved variable reference at runtime in AHK v2 |
+| `new Array()` constructor syntax | `Array()` or `[]` literal | `SyntaxError` — `new` keyword was dropped for built-in types in v2 |
 | `(x) => { return x * 2 }` fat-arrow block body | Named nested function inside the caller | `SyntaxError` in v2.0 — block bodies on fat-arrow functions are a v2.1 alpha feature only |
 | `for i, v in array` assuming `i` starts at 0 | `i` starts at `1` — first iteration yields `i = 1` | Off-by-one logic errors throughout loop body |
 | User-defined function named `Map` | Rename to `ArrayMap` | Shadows the built-in `Map` class — `Map()` calls in scope will fail with `TypeError` |
@@ -21,113 +21,89 @@
 ## API QUICK-REFERENCE
 
 ### Array (built-in)
-
-| Method / Property | Signature | Returns | Throws | Notes |
-|-------------------|-----------|---------|--------|-------|
-| `[]` literal | `[val1, val2, ...]` | Array | — | Preferred creation syntax for known values |
-| `Array()` | `Array(val*)` | Array | — | `Array()` with no args creates empty array; `Array(N)` creates `[N]`, not N slots |
-| `.Push()` | `.Push(val*)` | — | — | Appends one or more values; no return value |
-| `.Pop()` | `.Pop()` | Any (removed value) | Error (if empty) | Equivalent to `.RemoveAt(-1)` |
-| `.InsertAt()` | `.InsertAt(index, val*)` | — | ValueError (index out of bounds) | Negative index counts from end; index 0 is same as Length+1 |
-| `.RemoveAt()` | `.RemoveAt(index, Length?)` | Any (removed value, if Length omitted) | ValueError (range out of bounds) | Negative index counts from end; elements shift left |
-| `.Get()` | `.Get(index, default?)` | Any | IndexError (out of range); UnsetItemError (no value & no default & no `.Default`) | Safe access; omitting default is equivalent to direct bracket access |
-| `.Has()` | `.Has(index)` | Integer (non-zero if valid and set) | — | Returns 0 for valid-range but `.Delete()`d slots |
-| `.Delete()` | `.Delete(index)` | Any (removed value, blank if none) | ValueError (index out of range) | Does NOT shift elements or change `.Length` |
-| `.Clone()` | `.Clone()` | Array (shallow copy) | — | Nested objects are shared references, not duplicated |
-| `.Length` | `.Length` | Integer | — | Readable and writable; setting lower truncates, setting higher adds unset slots |
-| `.Capacity` | `.Capacity` | Integer | — | Pre-allocate backing storage without adding elements; avoids repeated realloc on `.Push()` |
-| `.Default` | `.Default := value` | Any | — | When set, returned instead of throwing UnsetItemError for unset slots; does not suppress IndexError |
-| `.__Item` | `arr[index]` / `arr.__Item[index]` | Any | IndexError (out of bounds) | Invoked implicitly by bracket notation; override to customise indexing behaviour |
-| `__Enum` | `for index, value in array` | Enumerator | — | 2-var form yields 1-based index and value; `for value in array` yields value only; unset slots still enumerated (value becomes uninitialized) |
+| Method / Property | Signature | Notes |
+|-------------------|-----------|-------|
+| `[]` literal | `[val1, val2, ...]` | Preferred creation syntax for known values |
+| `Array()` | `Array(val*)` | Constructor; `Array()` with no args creates empty array — `Array(N)` creates `[N]`, not N slots |
+| `.Push()` | `.Push(val*)` | Appends one or more values; no return value |
+| `.Pop()` | `.Pop()` | Removes and returns the last element; throws if empty |
+| `.InsertAt()` | `.InsertAt(index, val*)` | Inserts at 1-based position; negative index counts from end |
+| `.RemoveAt()` | `.RemoveAt(index, Length?)` | Removes `Length` elements starting at `index`; returns removed value when `Length` omitted |
+| `.Get()` | `.Get(index, default?)` | Safe access — returns `default` if index is unset; omitting `default` throws on missing |
+| `.Has()` | `.Has(index)` | Returns `true` if index exists and is not unset |
+| `.Delete()` | `.Delete(index)` | Marks element at index as unset without shifting other elements |
+| `.Clone()` | `.Clone()` | Shallow copy — nested objects are shared, not duplicated |
+| `.Length` | `.Length` | Readable and writable; setting lower truncates, setting higher adds unset slots |
+| `.Capacity` | `.Capacity` | Pre-allocate backing storage without adding elements; avoids repeated realloc on `.Push()` |
+| `__Enum` | `for index, value in array` | 2-var enumeration yields 1-based index and value; `for value in array` yields value only |
 
 ### Global Functions Used with Arrays
-
-| Function | Signature | Returns | Throws | Notes |
-|----------|-----------|---------|--------|-------|
-| `Type()` | `Type(obj)` | String | — | Returns `"Array"` for Array objects — canonical type guard |
-| `IsObject()` | `IsObject(val)` | Integer (0/1) | — | Returns `1` for any object including Array, Map, user classes |
-| `IsSet()` | `IsSet(var)` | Integer (0/1) | — | Tests whether a variable or optional parameter was assigned a value |
-| `Mod()` | `Mod(dividend, divisor)` | Integer/Float | ZeroDivisionError | Integer modulus — used in filter predicates and chunking |
+| Function | Signature | Notes |
+|----------|-----------|-------|
+| `Type()` | `Type(obj)` | Returns `"Array"` for Array objects — the canonical type guard |
+| `IsObject()` | `IsObject(val)` | Returns `true` for any object including Array, Map, user classes |
+| `IsSet()` | `IsSet(var)` | Tests whether a variable or optional parameter was assigned a value |
+| `Mod()` | `Mod(dividend, divisor)` | Integer modulus — used in filter predicates and chunking |
 
 ### Module Utility Functions (defined in this module)
-
-| Function | Signature | Returns | Throws | Notes |
-|----------|-----------|---------|--------|-------|
-| `IsValidIndex()` | `IsValidIndex(array, index)` | Integer (0/1) | — | Returns `1` if `index` is in the 1-based valid range |
-| `GetRange()` | `GetRange(array, start, end)` | Array | — | Returns a new array slice from `start` to `end` (inclusive, 1-based) |
-| `SafeInsert()` | `SafeInsert(array, index, value)` | Array | — | Clamps `index` to valid range then calls `.InsertAt()` |
-| `RemoveValue()` | `RemoveValue(array, value)` | Array | — | Removes all occurrences of `value` in-place; returns the mutated array |
-| `IndexOf()` | `IndexOf(array, value, fromIndex?)` | Integer | — | Returns 1-based index or `0` if not found |
-| `LastIndexOf()` | `LastIndexOf(array, value)` | Integer | — | Scans right-to-left; returns 1-based index or `0` |
-| `Contains()` | `Contains(array, value)` | Integer (0/1) | — | Boolean wrapper around `IndexOf()` |
-| `FindIndex()` | `FindIndex(array, callback)` | Integer | — | Returns first index where `callback(value, index, array)` is truthy, else `0` |
-| `ArrayMap()` | `ArrayMap(array, callback)` | Array | — | Returns new array of `callback(value, index, array)` results — immutable style |
-| `Filter()` | `Filter(array, callback)` | Array | — | Returns new array of elements where `callback(value, index, array)` is truthy |
-| `Reduce()` | `Reduce(array, callback, initialValue?)` | Any | Error (empty array with no initialValue) | Folds array into single value |
-| `DeepClone()` | `DeepClone(obj)` | Array/Map/Object | — | Recursively copies Array, Map, and Object graphs — does not handle circular references |
-| `QuickSort()` | `QuickSort(array, callback?, left?, right?)` | Array | — | In-place sort; `callback(a, b)` returns negative/zero/positive |
-| `SortBy()` | `SortBy(array, fields*)` | Array | — | Multi-field sort on arrays of Map objects |
-| `Unique()` | `Unique(array)` | Array | — | Returns new array with duplicates removed, preserving first-seen order |
-| `UniqueBy()` | `UniqueBy(array, keyFunc)` | Array | — | Deduplication using a custom key extractor callback |
-| `FastContains()` | `FastContains(array, value)` | Integer (0/1) | — | Builds a Map lookup for O(1) membership test — use when querying the same array repeatedly |
-| `ModifyInPlace()` | `ModifyInPlace(array, modifier)` | Array | — | Applies `modifier(value)` to every element without allocating a new array |
-| `Difference()` | `Difference(array1, array2)` | Array | — | Elements in `array1` not present in `array2` |
-| `Intersection()` | `Intersection(array1, array2)` | Array | — | Elements present in both arrays; each pair matched once |
-| `Union()` | `Union(arrays*)` | Array | — | Merged unique elements from all input arrays |
-| `Without()` | `Without(array, excludeValues*)` | Array | — | Array minus the explicitly listed values |
+| Function | Signature | Notes |
+|----------|-----------|-------|
+| `IsValidIndex()` | `IsValidIndex(array, index)` | Returns `true` if `index` is in the 1-based valid range |
+| `GetRange()` | `GetRange(array, start, end)` | Returns a new array slice from `start` to `end` (inclusive, 1-based) |
+| `SafeInsert()` | `SafeInsert(array, index, value)` | Clamps `index` to valid range then calls `.InsertAt()` |
+| `RemoveValue()` | `RemoveValue(array, value)` | Removes all occurrences of `value` in-place; returns the mutated array |
+| `IndexOf()` | `IndexOf(array, value, fromIndex?)` | Returns 1-based index or `0` if not found |
+| `LastIndexOf()` | `LastIndexOf(array, value)` | Scans right-to-left; returns 1-based index or `0` |
+| `Contains()` | `Contains(array, value)` | Boolean wrapper around `IndexOf()` |
+| `FindIndex()` | `FindIndex(array, callback)` | Returns first index where `callback(value, index, array)` is truthy, else `0` |
+| `ArrayMap()` | `ArrayMap(array, callback)` | Returns new array of `callback(value, index, array)` results — immutable style |
+| `Filter()` | `Filter(array, callback)` | Returns new array of elements where `callback(value, index, array)` is truthy |
+| `Reduce()` | `Reduce(array, callback, initialValue?)` | Folds array into single value; throws if array empty and no `initialValue` |
+| `DeepClone()` | `DeepClone(obj)` | Recursively copies Array, Map, and Object graphs — does not handle circular references |
+| `QuickSort()` | `QuickSort(array, callback?, left?, right?)` | In-place sort; `callback(a, b)` returns negative/zero/positive |
+| `SortBy()` | `SortBy(array, fields*)` | Multi-field sort on arrays of Map objects |
+| `Unique()` | `Unique(array)` | Returns new array with duplicates removed, preserving first-seen order |
+| `UniqueBy()` | `UniqueBy(array, keyFunc)` | Deduplication using a custom key extractor callback |
+| `FastContains()` | `FastContains(array, value)` | Builds a Map lookup for O(1) membership test — use when querying the same array repeatedly |
+| `ModifyInPlace()` | `ModifyInPlace(array, modifier)` | Applies `modifier(value)` to every element without allocating a new array |
+| `Difference()` | `Difference(array1, array2)` | Elements in `array1` not present in `array2` |
+| `Intersection()` | `Intersection(array1, array2)` | Elements present in both arrays; each pair matched once |
+| `Union()` | `Union(arrays*)` | Merged unique elements from all input arrays |
+| `Without()` | `Without(array, excludeValues*)` | Array minus the explicitly listed values |
 
 ## AHK V2 CONSTRAINTS
 
-- **1-based indexing is mandatory** — `array[1]` is the first element; `array[0]` is always wrong and always throws `IndexError` — every loop counter, range boundary, and index calculation must start from 1. Negative indices are valid and count from the end (`array[-1]` is the last element).
+- **1-based indexing is mandatory** — `array[1]` is the first element; `array[0]` is always wrong and always throws `IndexError` — every loop counter, range boundary, and index calculation must start from 1.
 - **No built-in `.Sort()`** — calling `array.Sort()` throws `TypeError`; use the module's `QuickSort(array, comparator?)` with an optional `(a, b) => a - b` numeric comparator or `(a, b) => b - a` for reverse.
 - **`Array(N)` ≠ pre-allocation** — `Array(10)` creates a one-element array `[10]`; pre-allocate with `arr := [], arr.Capacity := 10` to reserve backing storage without inserting elements.
 - **No fat-arrow block bodies in v2.0** — `(x) => { return x * 2 }` is a v2.1 alpha construct; any multi-statement callback must be a named nested function (closure) defined inside the calling function.
 - **Never name a user function `Map`** — this shadows the built-in `Map` class globally within scope, breaking all `Map()` constructor calls with `TypeError`.
 - **`.Clone()` is shallow** — nested arrays or Map objects share the same reference; mutating a nested element in the clone also mutates the original — use `DeepClone()` for full independence.
-- **Do not add or remove elements while iterating with `for`** — calling `.RemoveAt()` or `.Push()` inside `for index, value in array` corrupts the enumeration; use a `while`-loop with manual index management or iterate over `.Clone()`. (Modifying values at existing indices via `array[index] := x` is safe.)
+- **Do not modify an array while iterating it with `for`** — removing elements during `for index, value in array` corrupts the enumeration; use a `while`-loop with manual index management or iterate over `.Clone()`.
 
 Safe-access priority order for Array elements:
-  1. `.Get(index, default)` — optional slot, one-line resolution, never throws `UnsetItemError`; `IndexError` still applies for out-of-range indices
-  2. `.Has(index)` — when the present/absent branch logic differs meaningfully
-  3. `arr.Length` guard via `IsValidIndex()` — when a bounds check before direct access is clearest
-  4. `try/catch` — only when the exception itself carries diagnostic information
+```
+1. .Get(index, default)   — optional slot, one-line resolution, never throws
+2. .Has(index)            — when the present/absent branch logic differs meaningfully
+3. arr.Length guard       — when IsValidIndex check before direct access is clearest
+4. try/catch              — only when the exception itself carries diagnostic information
+```
 
 Pair every prohibition with its consequence and positive alternative:
 
-- ✗ `val := array[idx]` — `UnsetItemError` if the slot was `.Delete()`d or never set
-- ✓ `val := array.Get(idx, "fallback")` — safe for unset slots, never throws `UnsetItemError`, one line
+- ✗ `val := array[idx]` — `UnsetItemError` if the slot was `.Delete()`d or never set  
+- ✓ `val := array.Get(idx, "fallback")` — safe, never throws, one line
 
-- ✗ `arr.Sort()` — `TypeError`: no such method on Array
+- ✗ `arr.Sort()` — `TypeError`: no such method on Array  
 - ✓ `QuickSort(arr)` or `QuickSort(arr, (a,b) => a - b)` for numeric order
 
-- ✗ `arr := Array(10)` — creates `[10]`, not 10 empty slots
+- ✗ `arr := Array(10)` — creates `[10]`, not 10 empty slots  
 - ✓ `arr := [], arr.Capacity := 10` — reserves 10 slots, `.Length` stays 0
 
-- ✗ `for i, v in arr { arr.RemoveAt(i) }` — corrupts enumeration, may skip elements
-- ✓ Use `while`-loop with manual index management (see `RemoveValue()` in TIER 2)
-
-Unset variable handling: always call `.Has(index)` or `.Get(index, default)` before accessing a slot that may have been `.Delete()`d — deleted slots are within the valid index range but have no value, so bracket access throws `UnsetItemError`.
-
-## AGENT QA CHECKLIST
-
-- [ ] Did I use 1-based indexing for all array access and loop counters (no `arr[0]` anywhere)?
-- [ ] Did I use `.Get(idx, default)` or guard with `.Has(idx)` before accessing any slot that may be unset or deleted?
-- [ ] Did I avoid fat-arrow block bodies — are all multi-statement callbacks written as named nested functions?
-- [ ] Did I avoid naming any helper function `Map`, `Filter`, or any other built-in class name that could be shadowed?
-
-## RUNTIME ERROR MAPPING
-
-| Exception Class | Trigger Condition | Detection Code | Fix |
-|----------------|-------------------|----------------|-----|
-| `IndexError` | Accessing `arr[0]`, `arr[arr.Length + 1]`, or any index whose absolute value exceeds `.Length` | `e.Message` contains "Index" | Switch to 1-based index; use `IsValidIndex(arr, idx)` guard before access |
-| `UnsetItemError` | Accessing `arr[idx]` after `.Delete(idx)` was called, or when an unset sparse slot is read directly | `e.Message` contains "no value" | Replace with `arr.Get(idx, default)` or guard with `arr.Has(idx)` |
-| `Error` | Calling `.Pop()` on an empty array (`.Length = 0`) | `e.Message` contains "empty" | Guard with `if arr.Length > 0` before `.Pop()`; or check the length and handle the empty case explicitly |
-
 ## TIER 1 — Fundamentals: Creation, Access, and Type Verification
-> METHODS COVERED: `[]` · `Array()` · `.Length` · `.Capacity` · `.Get()` · `.Has()` · `.Default` · `Type()` · `IsValidIndex()` · `GetRange()`
+> METHODS COVERED: `[]` · `Array()` · `.Length` · `.Capacity` · `.Get()` · `Type()` · `IsValidIndex()` · `GetRange()`
 
-Arrays are 1-based dynamic collections that hold variant-typed values. Use `[]` literals for known values and `Array()` for programmatic construction. Pre-allocate backing storage with `.Capacity` when the final size is known; this avoids repeated heap reallocation during sequential `.Push()` calls. Always verify type with `Type(obj) = "Array"` — never rely on duck typing or `IsObject()` alone when the code path must reject Maps and plain Objects. The `.Default` property can be set to suppress `UnsetItemError` for unset slots while still throwing `IndexError` for truly out-of-range access.
-
+Arrays are 1-based dynamic collections that hold variant-typed values. Use `[]` literals for known values and `Array()` for programmatic construction. Pre-allocate backing storage with `.Capacity` when the final size is known; this avoids repeated heap reallocation during sequential `.Push()` calls. Always verify type with `Type(obj) = "Array"` — never rely on duck typing or `IsObject()` alone when the code path must reject Maps and plain Objects.
 ```ahk
 ; ✓ [] literal is the canonical v2 creation syntax for known values
 numbers := [1, 2, 3, 4, 5]
@@ -153,22 +129,11 @@ first  := numbers[1]
 last   := numbers[numbers.Length]
 middle := numbers[numbers.Length // 2]
 
-; ✓ Negative index counts from end — [-1] is the last element
-lastViaReverse := numbers[-1]
-secondToLast   := numbers[-2]
+; ✓ .Get() provides safe access with a fallback — never throws on missing index
+safe := numbers.Get(10, "default")
 
-; ✓ .Get() provides safe access for unset in-range slots — never throws UnsetItemError; IndexError still applies for out-of-range indices
-sparseTest := [1, , 3]                  ; index 2 is unset
-safe := sparseTest.Get(2, "default")    ; returns "default" — no UnsetItemError
-
-; ✗ Direct access on an unset in-range slot throws UnsetItemError — use .Get() or .Has() instead
-; val := sparseTest[2]                  ; → UnsetItemError
-
-; ✓ .Default suppresses UnsetItemError for unset slots — IndexError still fires for out-of-range
-sparse := ["a", , "c"]                  ; index 2 is unset
-sparse.Default := "N/A"
-MsgBox sparse[2]                        ; "N/A" — no exception
-; MsgBox sparse[99]                     ; → IndexError — Default does not suppress out-of-range
+; ✗ Direct index access on an unset slot throws UnsetItemError
+; val := numbers[99]                    ; → UnsetItemError if slot absent
 
 IsValidIndex(array, index) {
     return index >= 1 && index <= array.Length
@@ -185,36 +150,26 @@ GetRange(array, start, end) {
 ```
 
 ## TIER 2 — Mutation: Add, Remove, and Clear
-> METHODS COVERED: `.Push()` · `.Pop()` · `.InsertAt()` · `.RemoveAt()` · `.Delete()` · `.Length` (setter) · `SafeInsert()` · `RemoveValue()`
+> METHODS COVERED: `.Push()` · `.Pop()` · `.InsertAt()` · `.RemoveAt()` · `.Length` (setter) · `SafeInsert()` · `RemoveValue()`
 
-All built-in mutation methods operate in-place and shift elements automatically. `.Push()` and `.Pop()` are O(1) amortised at the tail. `.InsertAt()` and `.RemoveAt()` are O(n) because they shift subsequent elements. Setting `.Length := 0` clears in-place (preferred over reassignment when other references to the same array must also see it emptied). `.Delete()` marks a slot as unset without shifting — use it only when sparse arrays are intentional.
-
+All built-in mutation methods operate in-place and shift elements automatically. `.Push()` and `.Pop()` are O(1) amortised at the tail. `.InsertAt()` and `.RemoveAt()` are O(n) because they shift subsequent elements. Setting `.Length := 0` clears in-place (preferred over reassignment when other references to the same array must also see it emptied).
 ```ahk
 ; ✓ Push appends one or multiple values in a single call
 array.Push(value)
 array.Push(val1, val2, val3)
 
-; ✓ InsertAt uses 1-based position; negative index counts from end; 0 appends
+; ✓ InsertAt uses 1-based position; negative index counts from end
 array.InsertAt(1, "first")          ; prepend
 array.InsertAt(3, "middle")         ; insert before index 3
 array.InsertAt(-1, "beforeLast")    ; insert before last element
-array.InsertAt(0, "append")         ; 0 is same as Length+1 — appends
 
 ; ✓ Pop removes and returns the last element — use for stack patterns
-if array.Length > 0
-    lastItem := array.Pop()
-
-; ✗ Pop on empty array throws Error — always guard with .Length check
-; lastItem := emptyArray.Pop()      ; → Error: "Array is empty"
+lastItem := array.Pop()
 
 ; ✓ RemoveAt with count removes a range in one call
 array.RemoveAt(1)                   ; remove first element
 array.RemoveAt(3, 2)                ; remove elements at index 3 and 4
 array.RemoveAt(-1)                  ; remove last element
-
-; ✓ Delete marks slot as unset without shifting — for intentional sparse arrays
-array.Delete(2)                     ; index 2 is now unset; .Length unchanged
-; array[2]                          ; → UnsetItemError — use .Has(2) or .Get(2, default) first
 
 ; ✓ Length := 0 clears in-place — other references to the same array also see empty
 array.Length := 0
@@ -251,10 +206,9 @@ RemoveValue(array, value) {
 ```
 
 ## TIER 3 — Search, Predicates, and Type Guards
-> METHODS COVERED: `IndexOf()` · `LastIndexOf()` · `Contains()` · `FindIndex()` · `.Has()` · `IsSet()` · `Type()`
+> METHODS COVERED: `IndexOf()` · `LastIndexOf()` · `Contains()` · `FindIndex()` · `IsSet()` · `Type()`
 
 AHK v2 Array objects have no built-in search method. These module functions implement the standard search contract: return a 1-based index on success, `0` on failure — never `-1`, which is the v1/JavaScript convention. `FindIndex()` accepts a predicate callback, enabling arbitrary search criteria without writing a custom loop at the call site.
-
 ```ahk
 ; ✓ IndexOf returns 1-based index or 0 — never -1 (not the AHK v2 convention)
 IndexOf(array, value, fromIndex := 1) {
@@ -303,7 +257,6 @@ firstLargeIndex  := FindIndex(numbers, predicate)
 > METHODS COVERED: `.Clone()` · `DeepClone()` · `ArrayMap()` · `Filter()` · `Reduce()` · `IsObject()` · `IsSet()` · `Type()`
 
 `.Clone()` produces a shallow copy — sufficient when nested objects are read-only. `DeepClone()` recursively copies Array, Map, and plain Object graphs; it does not handle circular references. `ArrayMap()`, `Filter()`, and `Reduce()` follow an immutable style, each returning a new array rather than mutating the input. Name the map function `ArrayMap` — never `Map` — to avoid shadowing the built-in `Map` class.
-
 ```ahk
 ; ✓ .Clone() is the built-in shallow copy — prefer it over manual loop copies
 shallowCopy := array.Clone()
@@ -382,7 +335,6 @@ sum     := Reduce(numbers, (acc, x) => acc + x)
 > METHODS COVERED: `QuickSort()` · `SortBy()` · `Unique()` · `UniqueBy()` · `Map.Has()` · `Map.Delete()` · `FastContains()` · `ModifyInPlace()`
 
 Array objects have no built-in sort. `QuickSort()` sorts in-place using the Lomuto partition scheme; the optional comparator `(a, b)` must return negative for a-before-b, zero for equal, positive for b-before-a. `Unique()` and `UniqueBy()` use a Map as a seen-set, giving O(n) deduplication rather than O(n²) nested loops.
-
 ```ahk
 QuickSort(array, callback := "", left := 1, right := unset) {
     if !IsSet(right)
@@ -488,11 +440,22 @@ ModifyInPlace(array, modifier) {
 }
 ```
 
+### Performance Notes
+
+**O(1) vs O(n) access:**  `.Push()` and `.Pop()` at the tail are O(1) amortised. `.InsertAt(1, …)` and `.RemoveAt(1)` at the head are O(n) — avoid them in tight loops on large arrays. Membership testing with a bare loop (`Contains()`) is O(n) per call; if the same array is queried repeatedly, build a `Map` lookup once (`FastContains()`) for O(1) per subsequent test.
+
+**In-place vs copy:** `ArrayMap()`, `Filter()`, and `Reduce()` always allocate a new array — appropriate for pipelines where the original must be preserved. When the original is no longer needed, `ModifyInPlace()` eliminates the allocation. For sorting, `QuickSort()` always sorts in-place; call `array.Clone()` first if the original order must be preserved.
+
+**Pre-allocation:** Set `arr.Capacity := expectedSize` before a loop that calls `.Push()` repeatedly. This avoids the exponential reallocation series that occurs when `.Capacity` is allowed to grow automatically. The `.Length` remains 0 until elements are actually pushed.
+
+**DeepClone cost:** `DeepClone()` is O(n) in total graph nodes and allocates one new container per node. Avoid calling it in hot loops or on large nested structures — share read-only sub-arrays as references using `.Clone()` when the nested data will not be mutated.
+
+**Map-backed deduplication:** `Unique()` and set operations (`Difference`, `Intersection`, `Union`) all build a Map as their seen-set, giving O(n + m) total complexity rather than O(n × m) for naive nested-loop implementations. This is the preferred pattern for any uniqueness or membership operation on arrays larger than a handful of elements.
+
 ## TIER 6 — Set Operations: Difference, Intersection, Union, Without
 > METHODS COVERED: `Difference()` · `Intersection()` · `Union()` · `Without()` · `Map.Has()` · `Map.Delete()`
 
 Set operations are implemented with Map-backed seen-sets rather than nested loops, keeping time complexity O(n + m). `Intersection()` calls `.Delete()` on the seen-set after each match to prevent the same element from being counted twice when duplicates appear in `array2`. `Union()` accepts a variadic argument list so any number of arrays can be merged in one call.
-
 ```ahk
 ; ✓ Difference: elements in array1 that do not appear in array2 — O(n + m)
 Difference(array1, array2) {
@@ -578,83 +541,11 @@ filtered := Without(arr1, 2, 4)         ; [1, 3]
 ; }
 ```
 
-### Performance Notes
-
-**O(1) vs O(n) access:** `.Push()` and `.Pop()` at the tail are O(1) amortised. `.InsertAt(1, …)` and `.RemoveAt(1)` at the head are O(n) — avoid them in tight loops on large arrays. Membership testing with a bare loop (`Contains()`) is O(n) per call; if the same array is queried repeatedly, build a `Map` lookup once (`FastContains()`) for O(1) per subsequent test.
-
-**In-place vs copy:** `ArrayMap()`, `Filter()`, and `Reduce()` always allocate a new array — appropriate for pipelines where the original must be preserved. When the original is no longer needed, `ModifyInPlace()` eliminates the allocation. For sorting, `QuickSort()` always sorts in-place; call `array.Clone()` first if the original order must be preserved.
-
-**Pre-allocation:** Set `arr.Capacity := expectedSize` before a loop that calls `.Push()` repeatedly. This avoids the exponential reallocation series that occurs when `.Capacity` is allowed to grow automatically. The `.Length` remains 0 until elements are actually pushed.
-
-**DeepClone cost:** `DeepClone()` is O(n) in total graph nodes and allocates one new container per node. Avoid calling it in hot loops or on large nested structures — share read-only sub-arrays as references using `.Clone()` when the nested data will not be mutated.
-
-**Map-backed deduplication:** `Unique()` and set operations (`Difference`, `Intersection`, `Union`) all build a Map as their seen-set, giving O(n + m) total complexity rather than O(n × m) for naive nested-loop implementations. This is the preferred pattern for any uniqueness or membership operation on arrays larger than a handful of elements.
-
-## DROP-IN RECIPES
-
-```ahk
-; SafePop — guarded pop that returns a default instead of throwing on empty array
-; ✓ Handles the empty-array case in one call; no caller-side length check required
-SafePop(array, default := unset) {
-    if !(array is Array)
-        throw TypeError("SafePop: expected Array, got " Type(array), -1)
-    if array.Length > 0
-        return array.Pop()
-    if IsSet(default)
-        return default
-    throw Error("SafePop: array is empty and no default was provided", -1)
-}
-; Call site: last := SafePop(queue, "")
-
-; ChunkArray — splits an array into sub-arrays of at most `size` elements
-; ✓ Returns an array of arrays; last chunk may be smaller than `size`
-ChunkArray(array, size) {
-    if !(array is Array)
-        throw TypeError("ChunkArray: expected Array, got " Type(array), -1)
-    if !(size is Integer) || size < 1
-        throw ValueError("ChunkArray: size must be a positive integer", -1)
-    chunks := []
-    chunk  := []
-    chunks.Capacity := Ceil(array.Length / size)
-    for index, value in array {
-        chunk.Push(value)
-        if Mod(index, size) = 0 {
-            chunks.Push(chunk)
-            chunk := []
-        }
-    }
-    if chunk.Length > 0
-        chunks.Push(chunk)          ; push the final partial chunk
-    return chunks
-}
-; Call site: pages := ChunkArray(allRows, 50)
-
-; Flatten — recursively flattens nested arrays up to `depth` levels
-; ✓ depth := 1 flattens one level; depth := -1 flattens all levels
-Flatten(array, depth := 1) {
-    if !(array is Array)
-        throw TypeError("Flatten: expected Array, got " Type(array), -1)
-    result := []
-    FlattenInto(array, result, depth)
-    return result
-
-    FlattenInto(src, dest, remaining) {
-        for item in src {
-            if (item is Array) && remaining != 0
-                FlattenInto(item, dest, remaining - 1)
-            else
-                dest.Push(item)
-        }
-    }
-}
-; Call site: flat := Flatten([[1, 2], [3, [4, 5]]], 1)  ; → [1, 2, 3, [4, 5]]
-```
-
 ## ANTI-PATTERNS
 
 | Pattern | Wrong | Correct | LLM Common Cause |
 |---------|-------|---------|------------------|
-| Zero-based indexing | `array[0]` | `array[1]` / `array[-1]` for last | Dominant habit from JavaScript, Python, C training data |
+| Zero-based indexing | `array[0]` | `array[1]` / `array[array.Length]` | Dominant habit from JavaScript, Python, C training data |
 | Built-in sort assumed | `arr.Sort()` | `QuickSort(arr, (a,b) => a - b)` | Missing v2 API knowledge — LLM infers `.Sort()` by analogy with String |
 | Array(N) pre-allocation | `Array(10)` | `arr := [], arr.Capacity := 10` | Missing v2 constructor semantics — `Array(N)` parallels `Array(val)` not `new Array(n)` |
 | Fat-arrow block body | `(x) => { return x * 2 }` | Named nested function inside caller | AHK v1 / other-language habit; block bodies are v2.1 alpha only |

@@ -1,4 +1,4 @@
-# Module_WindowAndControl.md
+﻿# Module_WindowAndControl.md
 <!-- DOMAIN: Window and Control Interaction -->
 <!-- SCOPE: Pixel/image searching, async I/O, and IStream COM streaming are not covered — see Module_GraphicsAndScreen.md and Module_SystemAndCOM.md -->
 <!-- TRIGGERS: WinExist, WinActivate, WinClose, WinWait, WinGetPos, WinGetList, WinMove, WinHide, WinShow, ControlClick, ControlSend, ControlGetText, ControlGetItems, ControlChooseIndex, ControlGetHwnd, GroupAdd, GroupActivate, SetWinEventHook, CallbackCreate, CoordMode, ahk_id, ahk_class, ahk_exe, HWND, "window handle", "check if window is open", "click button in background", "detect when window opens", "send keys to background window", "batch minimize windows", "passive window monitoring", "window group cycling" -->
@@ -21,114 +21,93 @@
 ## API QUICK-REFERENCE
 
 ### Window State Functions
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `WinExist()` | `WinExist(WinTitle?, WinText?, ExcludeTitle?, ExcludeText?)` | Integer HWND or 0 | — | Dual-purpose: existence check + handle capture in one call |
-| `WinActive()` | `WinActive(WinTitle?, ...)` | Integer HWND or 0 | — | Returns HWND if matched window is the current foreground; 0 otherwise |
-| `WinActivate()` | `WinActivate(WinTitle?)` | — | TargetError | Brings window to foreground; throws if not found |
-| `WinClose()` | `WinClose(WinTitle?, WinText?, SecondsToWait?)` | — | TargetError | Sends close signal; throws if not found |
-| `WinWait()` | `WinWait(WinTitle?, WinText?, Timeout?)` | Integer HWND or 0 | — | Blocks until window appears; 0 on timeout |
-| `WinWaitActive()` | `WinWaitActive(WinTitle?, WinText?, Timeout?)` | Integer HWND or 0 | — | Blocks until window is active; 0 on timeout |
-| `WinWaitClose()` | `WinWaitClose(WinTitle?, WinText?, Timeout?)` | 1 (closed) or 0 (timeout) | — | Returns immediately with 1 if no matching window exists; never throws TargetError |
-| `WinGetMinMax()` | `WinGetMinMax(WinTitle?)` | Integer: -1/0/1 | TargetError | -1 = minimized, 0 = normal, 1 = maximized |
-| `WinMinimize()` | `WinMinimize(WinTitle?)` | — | TargetError | Minimizes the target window |
-| `WinMaximize()` | `WinMaximize(WinTitle?)` | — | TargetError | Maximizes the target window |
-| `WinRestore()` | `WinRestore(WinTitle?)` | — | TargetError | Restores a minimized or maximized window to normal state |
-| `WinHide()` | `WinHide(WinTitle?)` | — | TargetError | Hides the window from taskbar and screen without closing |
-| `WinShow()` | `WinShow(WinTitle?)` | — | TargetError | Makes a hidden window visible again |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `WinExist()` | `WinExist(WinTitle?, WinText?, ExcludeTitle?, ExcludeText?)` | Returns Integer HWND or 0; dual-purpose: existence check + handle capture |
+| `WinActive()` | `WinActive(WinTitle?, ...)` | Returns HWND if the matched window is currently the foreground window; 0 otherwise |
+| `WinActivate()` | `WinActivate(WinTitle?)` | Brings window to foreground; throws TargetError if not found |
+| `WinClose()` | `WinClose(WinTitle?, WinText?, SecondsToWait?)` | Sends close signal; throws TargetError if not found |
+| `WinWait()` | `WinWait(WinTitle?, WinText?, Timeout?)` | Blocks until window appears; returns HWND or 0 on timeout |
+| `WinWaitActive()` | `WinWaitActive(WinTitle?, WinText?, Timeout?)` | Blocks until window is active; returns HWND or 0 on timeout |
+| `WinWaitClose()` | `WinWaitClose(WinTitle?, WinText?, Timeout?)` | Blocks until window disappears; returns 1 if window was gone or closed, 0 on timeout; never throws TargetError |
+| `WinGetMinMax()` | `WinGetMinMax(WinTitle?)` | Returns `-1` minimized, `0` normal, `1` maximized |
+| `WinMinimize()` | `WinMinimize(WinTitle?)` | Minimizes the target window |
+| `WinMaximize()` | `WinMaximize(WinTitle?)` | Maximizes the target window |
+| `WinRestore()` | `WinRestore(WinTitle?)` | Restores a minimized or maximized window to normal state |
+| `WinHide()` | `WinHide(WinTitle?)` | Hides the window from taskbar and screen without closing |
+| `WinShow()` | `WinShow(WinTitle?)` | Makes a hidden window visible again |
 
 ### Window Metadata Functions
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `WinGetTitle()` | `WinGetTitle(WinTitle?)` | String | TargetError | Returns window title string |
-| `WinGetClass()` | `WinGetClass(WinTitle?)` | String | TargetError | Returns class name; stable across app versions and locales |
-| `WinGetProcessName()` | `WinGetProcessName(WinTitle?)` | String | TargetError | Returns executable filename (e.g., `"notepad.exe"`) |
-| `WinGetPID()` | `WinGetPID(WinTitle?)` | Integer PID | TargetError | Returns Integer process ID |
-| `WinGetID()` | `WinGetID(WinTitle?)` | Integer HWND | TargetError | Returns HWND of first matching window; prefer `WinExist()` when existence check is also needed |
-| `WinGetPos()` | `WinGetPos(&x, &y, &w, &h, WinTitle?)` | — (fills refs) | TargetError | Fills output variables by reference; throws if window absent |
-| `WinGetList()` | `WinGetList(WinTitle?)` | 1-based Array of Integer HWNDs | — | Returns Array for all matching windows; empty Array if none found |
-| `WinGetStyle()` | `WinGetStyle(WinTitle?)` | Integer bitmask | TargetError | Returns window style bits; combine with `&` to test individual flags |
-| `WinGetExStyle()` | `WinGetExStyle(WinTitle?)` | Integer bitmask | TargetError | Returns extended style bits (WS_EX_* constants) |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `WinGetTitle()` | `WinGetTitle(WinTitle?)` | Returns window title string |
+| `WinGetClass()` | `WinGetClass(WinTitle?)` | Returns class name; stable across app versions and locales |
+| `WinGetProcessName()` | `WinGetProcessName(WinTitle?)` | Returns executable filename (e.g., `"notepad.exe"`) |
+| `WinGetPID()` | `WinGetPID(WinTitle?)` | Returns Integer process ID |
+| `WinGetID()` | `WinGetID(WinTitle?)` | Returns Integer HWND of first matching window |
+| `WinGetPos()` | `WinGetPos(&x, &y, &w, &h, WinTitle?)` | Fills output variables by reference; throws if window absent |
+| `WinGetList()` | `WinGetList(WinTitle?)` | Returns 1-based Array of Integer HWNDs for all matching windows |
+| `WinGetStyle()` | `WinGetStyle(WinTitle?)` | Returns Integer window style bitmask |
+| `WinGetExStyle()` | `WinGetExStyle(WinTitle?)` | Returns Integer extended window style bitmask |
 
 ### Window Mutation Functions
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `WinMove()` | `WinMove(x, y, w?, h?, WinTitle?)` | — | TargetError | Repositions and/or resizes; omit w/h to move without resizing |
-| `WinSetAlwaysOnTop()` | `WinSetAlwaysOnTop(value, WinTitle?)` | — | TargetError | `1` = pin on top, `0` = clear, `-1` = toggle |
-| `WinSetTransparent()` | `WinSetTransparent(N\|"Off", WinTitle?)` | — | TargetError | 0–255 alpha; use `"Off"` (not 255) to fully restore opacity |
-| `WinSetTitle()` | `WinSetTitle(newTitle, WinTitle?)` | — | TargetError | Changes the window's visible title string |
-| `WinRedraw()` | `WinRedraw(WinTitle?)` | — | TargetError | Forces a repaint; use after layered or transparency changes |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `WinMove()` | `WinMove(x, y, w?, h?, WinTitle?)` | Repositions and/or resizes; omit w/h to move without resizing |
+| `WinSetAlwaysOnTop()` | `WinSetAlwaysOnTop(value, WinTitle?)` | `1` = pin on top, `0` = clear, `-1` = toggle |
+| `WinSetTransparent()` | `WinSetTransparent(N\|"Off", WinTitle?)` | 0–255 alpha; use `"Off"` (not 255) to fully restore opacity |
+| `WinSetTitle()` | `WinSetTitle(newTitle, WinTitle?)` | Changes the window's visible title string |
+| `WinRedraw()` | `WinRedraw(WinTitle?)` | Forces a repaint of the window |
 
 ### Title Matching
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `SetTitleMatchMode()` | `SetTitleMatchMode(mode)` | — | — | `1` = starts-with, `2` = contains (default), `3` = exact, `"RegEx"` = regex; global flag — set once at startup |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `SetTitleMatchMode()` | `SetTitleMatchMode(mode)` | `1` = starts-with, `2` = contains (default), `3` = exact, `"RegEx"` = regex |
 
 ### Window Groups
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `GroupAdd()` | `GroupAdd(groupName, WinTitle?)` | — | — | Adds a title criterion to a named group; re-evaluated live at each activation |
-| `GroupActivate()` | `GroupActivate(groupName, mode?)` | — | — | Activates the next window in the group; `"R"` reverses direction |
-| `GroupDeactivate()` | `GroupDeactivate(groupName, mode?)` | — | — | Activates the next window NOT in the group |
-| `GroupClose()` | `GroupClose(groupName, mode?)` | — | — | Closes the active window if it is a group member |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `GroupAdd()` | `GroupAdd(groupName, WinTitle?)` | Adds a title criterion to a named group; re-evaluated live at each activation |
+| `GroupActivate()` | `GroupActivate(groupName, mode?)` | Activates the next window in the group; `"R"` reverses direction |
+| `GroupDeactivate()` | `GroupDeactivate(groupName, mode?)` | Activates the next window NOT in the group |
+| `GroupClose()` | `GroupClose(groupName, mode?)` | Closes the active window if it is a group member |
 
 ### Coordinate Mode
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `CoordMode()` | `CoordMode(targetType, relativeTo?)` | — | — | Sets coordinate origin for mouse/pixel functions; does NOT affect ControlClick or ControlGetPos |
-
-### Mouse Input Functions
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `MouseClick()` | `MouseClick(button?, x?, y?, count?, speed?, d?, r?)` | — | — | Requires CoordMode declaration for screen-absolute coordinates |
-| `MouseMove()` | `MouseMove(x, y, speed?, r?)` | — | — | Requires CoordMode; r = relative movement from current position |
-| `Click()` | `Click(options?)` | — | — | Shorthand for MouseClick; parses options string; also needs CoordMode |
-| `MouseGetPos()` | `MouseGetPos(&outX?, &outY?, &outWin?, &outCtrl?, flag?)` | — (fills refs) | — | Captures cursor position; coordinates obey current CoordMode |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `CoordMode()` | `CoordMode(targetType, relativeTo?)` | Sets coordinate origin; must be declared before every coordinate-sensitive block |
 
 ### Control Interaction
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `ControlClick()` | `ControlClick(ctrl?, WinTitle?, WinText?, button?, count?, options?)` | — | TargetError | Clicks without activating window; `"NA"` option suppresses activation |
-| `ControlSend()` | `ControlSend(keys, ctrl?, WinTitle?)` | — | TargetError | Sends keystrokes with special-key interpretation; window need not be active |
-| `ControlSendText()` | `ControlSendText(text, ctrl?, WinTitle?)` | — | TargetError | Sends literal text verbatim; no special-key interpretation; safe for passwords |
-| `ControlGetPos()` | `ControlGetPos(&x, &y, &w, &h, ctrl?, WinTitle?)` | — (fills refs) | TargetError, OSError | Coordinates always relative to target window's client area; CoordMode has no effect |
-| `ControlGetHwnd()` | `ControlGetHwnd(ctrl?, WinTitle?)` | Integer HWND | TargetError | Returns HWND of the specified child control |
-| `ControlGetFocus()` | `ControlGetFocus(WinTitle?)` | Integer HWND or 0 | TargetError, OSError | Returns HWND of currently focused control; returns 0 if no control has focus |
-| `ControlFocus()` | `ControlFocus(ctrl?, WinTitle?)` | — | TargetError | Moves keyboard focus to the specified control |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `ControlClick()` | `ControlClick(ctrl?, WinTitle?, WinText?, button?, count?, options?)` | Clicks a control without activating the window; `"NA"` option suppresses activation |
+| `ControlSend()` | `ControlSend(keys, ctrl?, WinTitle?)` | Sends keystrokes to a control; window need not be active; interprets special keys |
+| `ControlSendText()` | `ControlSendText(text, ctrl?, WinTitle?)` | Sends literal text verbatim; no special-key interpretation |
+| `ControlGetPos()` | `ControlGetPos(&x, &y, &w, &h, ctrl?, WinTitle?)` | Fills output vars with control bounds; coordinates are always relative to the target window's client area, unaffected by CoordMode |
+| `ControlGetHwnd()` | `ControlGetHwnd(ctrl?, WinTitle?)` | Returns Integer HWND of the specified child control |
+| `ControlGetFocus()` | `ControlGetFocus(WinTitle?)` | Returns Integer HWND of the currently focused control |
+| `ControlFocus()` | `ControlFocus(ctrl?, WinTitle?)` | Moves keyboard focus to the specified control |
 
 ### Control Data
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `ControlGetText()` | `ControlGetText(ctrl?, WinTitle?)` | String | TargetError | Reads text content from Edit or Static control |
-| `ControlSetText()` | `ControlSetText(newText, ctrl?, WinTitle?)` | — | TargetError | Writes content directly; does not trigger onChange events |
-| `ControlChooseIndex()` | `ControlChooseIndex(n, ctrl?, WinTitle?)` | — | TargetError | Selects item at 1-based index in ListBox/ComboBox; 0 is invalid |
-| `ControlChooseString()` | `ControlChooseString(str, ctrl?, WinTitle?)` | — | TargetError | Selects first item containing `str` (partial match) |
-| `ControlGetIndex()` | `ControlGetIndex(ctrl?, WinTitle?)` | Integer (1-based; 0 = none selected) | TargetError | Returns selected index; 0 means nothing is selected |
-| `ControlGetItems()` | `ControlGetItems(ctrl?, WinTitle?)` | 1-based Array of Strings | TargetError | Returns all item strings in ListBox/ComboBox |
-| `ControlGetChecked()` | `ControlGetChecked(ctrl?, WinTitle?)` | 1 (checked) or 0 (unchecked) | TargetError | For Button/Checkbox controls |
-| `ControlSetChecked()` | `ControlSetChecked(value, ctrl?, WinTitle?)` | — | TargetError | Sets checkbox state: `1` = check, `0` = uncheck, `-1` = toggle |
-| `ControlAddItem()` | `ControlAddItem(str, ctrl?, WinTitle?)` | — | TargetError | Appends a new item to a ListBox or ComboBox |
-| `ControlDeleteItem()` | `ControlDeleteItem(n, ctrl?, WinTitle?)` | — | TargetError | Removes item at 1-based index from a ListBox or ComboBox |
-| `ControlFindItem()` | `ControlFindItem(str, ctrl?, WinTitle?)` | Integer (1-based) or 0 | TargetError | Returns 1-based index of first item matching `str` exactly; 0 if not found |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `ControlGetText()` | `ControlGetText(ctrl?, WinTitle?)` | Reads text content from Edit or Static control |
+| `ControlSetText()` | `ControlSetText(newText, ctrl?, WinTitle?)` | Writes content directly; does not trigger onChange events |
+| `ControlChooseIndex()` | `ControlChooseIndex(n, ctrl?, WinTitle?)` | Selects item at 1-based index in ListBox/ComboBox; 0 is invalid |
+| `ControlChooseString()` | `ControlChooseString(str, ctrl?, WinTitle?)` | Selects first item containing `str` (partial match) |
+| `ControlGetIndex()` | `ControlGetIndex(ctrl?, WinTitle?)` | Returns 1-based selected index; 0 means nothing selected |
+| `ControlGetItems()` | `ControlGetItems(ctrl?, WinTitle?)` | Returns 1-based Array of all item strings in ListBox/ComboBox |
+| `ControlGetChecked()` | `ControlGetChecked(ctrl?, WinTitle?)` | Returns `1` if checkbox is checked, `0` if unchecked |
+| `ControlSetChecked()` | `ControlSetChecked(value, ctrl?, WinTitle?)` | Sets checkbox state: `1` = check, `0` = uncheck |
 
 ### Hook and Callback (DllCall)
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `DllCall("SetWinEventHook")` | `DllCall("SetWinEventHook", "UInt", eventMin, "UInt", eventMax, "Ptr", 0, "Ptr", callback, "UInt", pid, "UInt", tid, "UInt", flags, "Ptr")` | Ptr (hook handle) or 0 | — | Returns 0 on failure; must be freed with UnhookWinEvent |
-| `DllCall("UnhookWinEvent")` | `DllCall("UnhookWinEvent", "Ptr", hHook)` | — | — | Releases the hook handle; always call before CallbackFree |
-| `CallbackCreate()` | `CallbackCreate(func, options?, paramCount?)` | Integer (machine-code address) | — | Converts an AHK Func/BoundFunc to a machine-code address for DllCall |
-| `CallbackFree()` | `CallbackFree(address)` | — | — | Releases the machine-code address; always call after UnhookWinEvent |
-| `ObjBindMethod()` | `ObjBindMethod(obj, method, args*)` | BoundFunc | — | Binds `this` to a method reference; required before passing a method to CallbackCreate |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `DllCall("SetWinEventHook")` | `DllCall("SetWinEventHook", "UInt", eventMin, "UInt", eventMax, "Ptr", 0, "Ptr", callback, "UInt", pid, "UInt", tid, "UInt", flags, "Ptr")` | Returns Ptr hook handle; 0 on failure; must be freed with UnhookWinEvent |
+| `DllCall("UnhookWinEvent")` | `DllCall("UnhookWinEvent", "Ptr", hHook)` | Releases the hook handle; always call before CallbackFree |
+| `CallbackCreate()` | `CallbackCreate(func, options?, paramCount?)` | Converts an AHK Func/BoundFunc to a machine-code address for DllCall |
+| `CallbackFree()` | `CallbackFree(address)` | Releases the machine-code address; always call after UnhookWinEvent |
+| `ObjBindMethod()` | `ObjBindMethod(obj, method, args*)` | Binds `this` to a method reference; required before passing a method to CallbackCreate |
 
 ## AHK V2 CONSTRAINTS
 
@@ -146,6 +125,7 @@ Safe-access priority order for window operations:
   3. `try { Win*(…) } catch TargetError` — when the window is expected to exist but race conditions are possible, or when the error message carries diagnostic information
   4. `SetWinEventHook` — only when the task is event-driven ("react when window X appears") and polling is explicitly unacceptable; zero CPU at idle, sub-millisecond latency
 
+Pair every prohibition with its consequence and positive alternative:
 - ✗ `WinActivate, ahk_id %hwnd%` — parse error in AHK v2
 - ✓ `WinActivate("ahk_id " . hwnd)` — correct function-call syntax with string concatenation
 - ✗ `if hwnd = "0"` — Integer ≠ string; always false on 64-bit systems
@@ -155,26 +135,10 @@ Safe-access priority order for window operations:
 - ✗ `ControlChooseIndex(0, "CB1", title)` — 0 is not a valid index
 - ✓ `ControlChooseIndex(1, "CB1", title)` — first item is index 1
 
-## AGENT QA CHECKLIST
-
-- [ ] Did I use `if !hwnd` or `if (hwnd = 0)` instead of `if hwnd = "0"` for every HWND falsy check?
-- [ ] Did I declare `CoordMode("Mouse", "Screen")` (or the appropriate mode) before every `MouseClick`, `MouseMove`, `Click`, or `MouseGetPos` call?
-- [ ] Did I guard every `Win*` and `Control*` call with either a `WinExist()` pre-check or `try/catch TargetError`?
-- [ ] Did I use 1-based indexing for `ControlChooseIndex()` and all `ControlGetItems()` Array access?
-
-## RUNTIME ERROR MAPPING
-
-| Exception Class | Trigger Condition | Detection Code | Fix |
-|----------------|-------------------|----------------|-----|
-| `TargetError` | `Win*` or `Control*` called when the target window/control has closed (race condition) | `e.Message` contains the window title or "Target" | Wrap in `try/catch TargetError`; re-check existence with `WinExist()` before retrying |
-| Runtime crash (method call on Integer 0) | Calling `.Read()` or `WinGetTitle()` using a raw 0 HWND without checking `WinExist()` return | No exception — AHK v2 crashes the thread; absent `if !hwnd` guard | Add `if !hwnd { throw TargetError(…) }` immediately after every `WinExist()` or `WinWait()` call |
-| Memory/handle leak (silent, no exception) | `CallbackCreate()` address freed without calling `DllCall("UnhookWinEvent")` first, or `UnhookWinEvent` called without `CallbackFree()` | No runtime error; OS handle table grows; detectable only via Task Manager | Always sequence: `DllCall("UnhookWinEvent",…)` → `CallbackFree(cb)` inside `__Delete()`; zero out both fields afterward |
-
 ## TIER 1 — Basic State Checks and Safety Guards
 > METHODS COVERED: WinExist · WinActive · WinActivate · WinWaitActive · WinClose · WinWaitClose · WinWait · WinGetMinMax · WinRestore
 
 TIER 1 covers the fundamental entry point for all window work: checking existence, activating, closing, and waiting for windows. Every operation at this tier requires a TargetError guard because any of these functions will throw if the window does not exist when called. In AHK v2, `WinExist()` serves dual purpose — it returns the HWND (Integer) of the matched window for immediate reuse, or 0 if not found.
-
 ```ahk
 ; ============================================================
 ; TIER 1 — Basic state checks, activation, close, and waiting
@@ -236,10 +200,9 @@ if hwnd {
 ```
 
 ## TIER 2 — Window Metadata Queries
-> METHODS COVERED: WinGetTitle · WinGetClass · WinGetProcessName · WinGetPID · WinGetID · WinGetPos · WinGetList · WinGetStyle · WinGetExStyle · SetTitleMatchMode
+> METHODS COVERED: WinGetTitle · WinGetClass · WinGetProcessName · WinGetPID · WinGetPos · WinGetList · SetTitleMatchMode
 
-TIER 2 extracts structured metadata from an existing window: title, class name, process name, PID, position, size, style bitmasks, and a list of all matching HWNDs. These functions always require a valid target and will throw `TargetError` if the window disappears between the existence check and the query call. Using `"ahk_id " . hwnd` for every query avoids title-matching ambiguity and locale-dependency. `WinGetList()` returns a 1-based Array of Integer HWNDs for every window that matches the given criteria.
-
+TIER 2 extracts structured metadata from an existing window: title, class name, process name, PID, position, size, and a list of all matching HWNDs. These functions always require a valid target and will throw `TargetError` if the window disappears between the existence check and the query call. Using `"ahk_id " . hwnd` for every query avoids title-matching ambiguity and locale-dependency. `WinGetList()` returns a 1-based Array of Integer HWNDs for every window that matches the given criteria.
 ```ahk
 ; ============================================================
 ; TIER 2 — Window metadata: title, class, process, pos, list
@@ -294,24 +257,6 @@ AllWindows() {
     return WinGetList()         ; returns full HWND Array of all top-level windows
 }
 
-; ✓ WinGetID returns the HWND of the first matching window
-; Use WinExist() when you also need an existence check; WinGetID throws TargetError if absent
-hwnd := WinExist("ahk_exe notepad.exe")   ; preferred — existence check + HWND in one call
-; hwnd := WinGetID("ahk_exe notepad.exe") ; ✓ valid alternative; throws TargetError if gone
-
-; ✓ WinGetStyle / WinGetExStyle — read style bitmasks for conditional logic
-WS_CAPTION    := 0xC00000   ; standard title bar + border
-WS_EX_TOPMOST := 0x0008    ; extended style: always-on-top flag
-hwnd := WinExist("ahk_exe notepad.exe")
-if hwnd {
-    style   := WinGetStyle("ahk_id " . hwnd)
-    exStyle := WinGetExStyle("ahk_id " . hwnd)
-    if (style & WS_CAPTION)
-        OutputDebug("Has title bar.")
-    if (exStyle & WS_EX_TOPMOST)
-        OutputDebug("Window is always-on-top.")
-}
-
 ; ✓ Combine title text and ahk_exe for precise matching
 hwnd := WinExist("Untitled ahk_exe notepad.exe")
 
@@ -322,10 +267,9 @@ SetTitleMatchMode(1)            ; restore to mode 1 (starts-with) after the bloc
 ```
 
 ## TIER 3 — Coordinate System Declaration and Basic Control Commands
-> METHODS COVERED: CoordMode · MouseClick · MouseMove · MouseGetPos · Click · ControlClick · ControlSend · ControlSendText · ControlGetPos · ControlGetHwnd · ControlGetFocus · ControlFocus
+> METHODS COVERED: CoordMode · ControlClick · ControlSend · ControlGetPos · ControlGetHwnd · ControlGetFocus · ControlFocus
 
-TIER 3 introduces `CoordMode` — mandatory before any mouse-coordinate-sensitive call such as `MouseClick`, `Click`, or `MouseMove` — and the primary background-window control functions: `ControlClick`, `ControlSend`, and `ControlSendText`. Note that `CoordMode` does not affect `ControlClick` or `ControlGetPos`; both always operate relative to the target window's client area regardless of CoordMode settings. Controls are identified by their ClassNN descriptor (e.g., `"Edit1"`, `"Button3"`), by their visible text, or by a raw control HWND obtained from `ControlGetHwnd()`. Background-window control commands operate without activating or stealing focus from the target window, making them suitable for automation of concurrent processes.
-
+TIER 3 introduces `CoordMode` — mandatory before any mouse-coordinate-sensitive call such as `MouseClick`, `Click`, or `MouseMove` — and the two primary background-window control functions: `ControlClick` and `ControlSend`. Note that `CoordMode` does not affect `ControlClick` or `ControlGetPos`; both always operate relative to the target window's client area regardless of CoordMode settings. Controls are identified by their ClassNN descriptor (e.g., `"Edit1"`, `"Button3"`), by their visible text, or by a raw control HWND obtained from `ControlGetHwnd()`. Background-window control commands operate without activating or stealing focus from the target window, making them suitable for automation of concurrent processes.
 ```ahk
 ; ============================================================
 ; TIER 3 — CoordMode declaration + ControlClick / ControlSend
@@ -365,10 +309,6 @@ SendToNotepad() {
 }
 SendToNotepad()
 
-; ✓ ControlSendText — literal text; no special-key interpretation; safe for passwords/email
-; Use ControlSend when {Enter}, ^a, etc. must be interpreted; ControlSendText for raw text
-ControlSendText("user@example.com", "Edit1", "ahk_exe browser.exe")
-
 ; ✓ ControlGetPos — position of a control within the window
 ; coordinates are always relative to the target window's client area; CoordMode has no effect
 GetControlBounds(winTitle, ctrlNN) {
@@ -396,17 +336,13 @@ FocusSearchBox(winTitle) {
 ; MouseClick("Left", x, y)    ; → may silently misfire if screen coords are intended
 ; ✓ CORRECT — declare CoordMode first when absolute screen coordinates are needed
 CoordMode("Mouse", "Screen")
-MouseClick("Left", 500, 300)        ; click at screen-absolute (500, 300)
-MouseMove(600, 400)                  ; move cursor to (600, 400) without clicking
-MouseGetPos(&curX, &curY)            ; capture current cursor position after move
-Click("500 300")                     ; ✓ Click() shorthand — also requires CoordMode
+MouseClick("Left", x, y)
 ```
 
 ## TIER 4 — Advanced Control Data Interaction
-> METHODS COVERED: ControlGetText · ControlSetText · ControlChooseIndex · ControlChooseString · ControlGetIndex · ControlGetItems · ControlGetChecked · ControlSetChecked · ControlAddItem · ControlDeleteItem · ControlFindItem
+> METHODS COVERED: ControlGetText · ControlSetText · ControlChooseIndex · ControlChooseString · ControlGetIndex · ControlGetItems · ControlGetChecked · ControlSetChecked
 
-TIER 4 covers reading and writing data stored in controls: text from Edit or Static controls, selected indices and item lists from ListBox and ComboBox controls, checkbox state from Button controls, and item add/remove/find operations. `ControlGetItems()` returns an AHK v2 Array using 1-based indexing — a common source of off-by-one errors for developers accustomed to zero-indexed languages. `ControlChooseIndex()` is also 1-based. All functions in this tier can throw `TargetError` if the control or window is absent.
-
+TIER 4 covers reading and writing data stored in controls: text from Edit or Static controls, selected indices and item lists from ListBox and ComboBox controls, and checkbox state from Button controls. `ControlGetItems()` returns an AHK v2 Array using 1-based indexing — a common source of off-by-one errors for developers accustomed to zero-indexed languages. `ControlChooseIndex()` is also 1-based. All functions in this tier can throw `TargetError` if the control or window is absent.
 ```ahk
 ; ============================================================
 ; TIER 4 — ControlGetText, ControlSetText, ListBox/ComboBox ops
@@ -480,26 +416,6 @@ SetCheckbox(winTitle, checked) {
     ControlSetChecked(checked ? 1 : 0, "Button1", winTitle)
 }
 
-; ✓ ControlAddItem — append a new item to a ListBox or ComboBox
-AddOption(winTitle, newItem) {
-    ControlAddItem(newItem, "ComboBox1", winTitle)
-}
-
-; ✓ ControlDeleteItem — remove item at 1-based index (1 = first item)
-RemoveOption(winTitle, oneBasedIndex) {
-    ; ✗ WRONG: ControlDeleteItem(0, "ComboBox1", winTitle)  → 0 invalid; same 1-based rule
-    ControlDeleteItem(oneBasedIndex, "ComboBox1", winTitle)
-}
-
-; ✓ ControlFindItem — returns 1-based index of exact match, or 0 if not found
-FindAndSelectItem(winTitle, targetName) {
-    idx := ControlFindItem(targetName, "ListBox1", winTitle)
-    if (idx > 0)
-        ControlChooseIndex(idx, "ListBox1", winTitle)   ; ✓ reuse returned 1-based index
-    else
-        MsgBox("Item not found: " . targetName)
-}
-
 ; ✓ Full ListBox selection workflow with validation
 SafeSelectItem(winTitle, listBoxNN, targetName) {
     hwnd := WinExist(winTitle)
@@ -521,10 +437,9 @@ SafeSelectItem("My App", "ListBox1", "Option B")
 ```
 
 ## TIER 5 — Window Groups, Batch Lifecycle, and OOP Wrapper
-> METHODS COVERED: GroupAdd · GroupActivate · GroupDeactivate · GroupClose · WinHide · WinShow · WinMinimize · WinMaximize · WinSetAlwaysOnTop · WinSetTransparent · WinSetTitle · WinRedraw · WinMove · WinGetList · WinActivate · WinWaitActive · WinClose · WinWaitClose · WinGetPos · ControlSend · ControlGetText
+> METHODS COVERED: GroupAdd · GroupActivate · WinHide · WinShow · WinMinimize · WinMaximize · WinSetAlwaysOnTop · WinSetTransparent · WinMove · WinGetList · WinActivate · WinWaitActive · WinClose · WinWaitClose · WinGetPos · ControlSend · ControlGetText
 
 TIER 5 covers two complementary advanced patterns: batch group management via `GroupAdd`/`WinGetList`, and the `WindowWrapper` OOP class that encapsulates TIER 1–4 operations behind a safe, HWND-anchored interface. `GroupAdd` defines named window sets by title criteria — not by fixed HWND snapshots — so the group is re-evaluated live each time it is activated. The `WindowWrapper` class demonstrates proper `__New`/`__Delete` lifecycle management for a single window reference.
-
 ```ahk
 ; ============================================================
 ; TIER 5 — GroupAdd, batch Hide/Show/Minimize, WinSetAlwaysOnTop
@@ -543,12 +458,6 @@ SetupEditorGroup()
 ; "R" reverses direction; omit for forward cycling
 ^!Tab:: GroupActivate("Editors")        ; Ctrl+Alt+Tab cycles forward
 ^!+Tab:: GroupActivate("Editors", "R")  ; Ctrl+Alt+Shift+Tab cycles backward
-
-; ✓ GroupDeactivate — activate next window NOT in the group
-^!`:: GroupDeactivate("Editors")        ; switch to a non-editor window
-
-; ✓ GroupClose — close the active window if it is a group member
-^!w:: GroupClose("Editors")
 
 ; ✓ Batch hide all windows in a group
 HideGroup(groupName) {
@@ -589,16 +498,6 @@ SetGroupTransparency(groupName, alpha) {
 }
 SetGroupTransparency("Editors", 200)        ; slight transparency while working
 
-; ✓ WinSetTitle — rename visible title (useful for tagging windows by state)
-TagWindow(hwnd, label) {
-    WinSetTitle(label, "ahk_id " . hwnd)
-}
-
-; ✓ WinRedraw — force repaint after transparency or layered changes
-ForceRepaint(hwnd) {
-    WinRedraw("ahk_id " . hwnd)
-}
-
 ; ✓ WinGetList with ahk_exe for on-demand batch ops without pre-defined group
 CloseAllInstancesOfApp(exeName) {
     winList := WinGetList("ahk_exe " . exeName)
@@ -623,7 +522,6 @@ TileGroupLeft(groupName) {
 }
 TileGroupLeft("Editors")
 ```
-
 ```ahk
 ; ============================================================
 ; WindowWrapper — HWND-safe OOP interface for a single window
@@ -701,11 +599,82 @@ win := WindowWrapper("Calculator")
 MsgBox("Title: " . win.title)
 ```
 
+### Performance Notes
+
+Window and control operations range from O(1) HWND-direct lookups to O(n) title scans across all open windows. The dominant performance mistake is replacing the OS event system with polling loops — `SetWinEventHook` (TIER 6) consumes zero CPU at idle and should be preferred whenever the task is "react when window X appears or disappears."
+
+**HWND caching:** Resolve a title string to an HWND once with `WinExist()`, then compose `"ahk_id " . hwnd` and reuse it for all subsequent operations. Each title-based `Win*` call performs a full O(n) scan of all top-level windows; HWND-direct calls are O(1) message dispatches. In a loop over multiple windows, cache the `WinGetList()` result and iterate the Array — do not call `WinGetList()` on every iteration.
+
+**ControlGetItems caching:** Call `ControlGetItems()` once and store the returned Array locally. If the same item list is needed across multiple operations in sequence, iterating the cached Array is O(1) per item; calling `ControlGetItems()` repeatedly inside a loop adds a cross-process call on every iteration.
+
+**ControlClick vs MouseClick:** Prefer `ControlClick` over `MouseClick` for background-window automation. `MouseClick` requires the window to be in the foreground, which forces it to the front and disrupts the user. `ControlClick` sends a `WM_LBUTTONDOWN` message directly to the control regardless of z-order — O(1) message post with no activation overhead.
+```ahk
+; ============================================================
+; PERFORMANCE — HWND caching, O(1) lookup, avoiding polling
+; ============================================================
+
+; ✗ WRONG — resolves title string anew for every call (O(n) scan each time)
+WrongRepeatQuery() {
+    WinActivate("ahk_exe notepad.exe")           ; title scan #1
+    WinGetTitle("ahk_exe notepad.exe")           ; title scan #2
+    WinGetPos(&x,&y,&w,&h,"ahk_exe notepad.exe") ; title scan #3
+}
+
+; ✓ CORRECT — resolve once, reuse HWND for O(1) subsequent ops
+CachedHwndOps() {
+    hwnd := WinExist("ahk_exe notepad.exe")      ; one title scan
+    if !hwnd
+        return
+    idStr := "ahk_id " . hwnd                   ; compose string once
+    WinActivate(idStr)
+    title := WinGetTitle(idStr)
+    WinGetPos(&x, &y, &w, &h, idStr)
+}
+
+; ✓ Cache ControlGetItems result; avoid per-iteration calls
+ProcessListItems(winTitle) {
+    hwnd  := WinExist(winTitle)
+    if !hwnd
+        return
+    items := ControlGetItems("ListBox1", "ahk_id " . hwnd)  ; one call
+    ; ✓ iterate the cached Array — ControlGetItems is NOT called again per loop
+    for i, item in items {
+        if InStr(item, "Error")
+            MsgBox("Problem item at index " . i . ": " . item)
+    }
+}
+
+; ✗ WRONG — burns CPU checking WinExist every 100 ms; ~600 scans/minute wasted
+PollBadPattern() {
+    while !WinExist("Setup Wizard") {
+        Sleep(100)    ; → high CPU for no benefit; misses fast windows
+    }
+}
+
+; ✓ CORRECT — WinWait for a single target; SetWinEventHook for multi-target or recurring
+GoodWaitPattern() {
+    hwnd := WinWait("Setup Wizard",, 60)    ; OS-native wait; CPU idles until event fires
+    if !hwnd
+        MsgBox("Setup never appeared within 60 seconds.")
+}
+
+; ✓ Use WinGetList once and cache the Array for batch processing
+BatchProcessOnce(exeName) {
+    winList := WinGetList("ahk_exe " . exeName)     ; one enumeration pass
+    for hwnd in winList {                            ; iterate cached Array
+        WinMinimize("ahk_id " . hwnd)               ; O(1) per window via HWND
+    }
+}
+
+; ✓ Prefer ControlClick over MouseClick for background-window automation
+; MouseClick requires foreground activation → forces window to front → disturbs user
+; ControlClick works on any window regardless of z-order → O(1) message post
+```
+
 ## TIER 6 — System-Level Window Hooks via DllCall + SetWinEventHook
 > METHODS COVERED: ObjBindMethod · CallbackCreate · CallbackFree · DllCall("SetWinEventHook") · DllCall("UnhookWinEvent") · WinGetTitle
 
 TIER 6 replaces polling loops with passive Windows event subscriptions using `SetWinEventHook` via `DllCall`. The OS calls the registered `WINEVENTPROC` callback whenever a matching window event occurs — creation, destruction, or focus change — with zero CPU overhead at idle. `CallbackCreate` converts an AHK v2 function into a machine-code address that Windows can call directly. All hooks and callback addresses must be explicitly freed in `__Delete()` to prevent handle and memory leaks. The `WinEventMonitor` class below encapsulates this pattern with proper OOP lifecycle.
-
 ```ahk
 ; ============================================================
 ; TIER 6 — SetWinEventHook passive monitoring, WinEventMonitor
@@ -827,183 +796,6 @@ OnExit(CleanupMonitor)
 ; ✗ WRONG — a multi-statement arrow function is not valid AHK v2 syntax
 ; OnExit((*)=> { DllCall("UnhookWinEvent",...) CallbackFree(...) })  ; → parse error
 ; ✓ CORRECT — named cleanup function (see CleanupMonitor above)
-```
-
-### Performance Notes
-
-Window and control operations range from O(1) HWND-direct lookups to O(n) title scans across all open windows. The dominant performance mistake is replacing the OS event system with polling loops — `SetWinEventHook` (TIER 6) consumes zero CPU at idle and should be preferred whenever the task is "react when window X appears or disappears."
-
-**HWND caching:** Resolve a title string to an HWND once with `WinExist()`, then compose `"ahk_id " . hwnd` and reuse it for all subsequent operations. Each title-based `Win*` call performs a full O(n) scan of all top-level windows; HWND-direct calls are O(1) message dispatches. In a loop over multiple windows, cache the `WinGetList()` result and iterate the Array — do not call `WinGetList()` on every iteration.
-
-**ControlGetItems caching:** Call `ControlGetItems()` once and store the returned Array locally. If the same item list is needed across multiple operations in sequence, iterating the cached Array is O(1) per item; calling `ControlGetItems()` repeatedly inside a loop adds a cross-process call on every iteration.
-
-**ControlClick vs MouseClick:** Prefer `ControlClick` over `MouseClick` for background-window automation. `MouseClick` requires the window to be in the foreground, which forces it to the front and disrupts the user. `ControlClick` sends a `WM_LBUTTONDOWN` message directly to the control regardless of z-order — O(1) message post with no activation overhead.
-
-```ahk
-; ============================================================
-; PERFORMANCE — HWND caching, O(1) lookup, avoiding polling
-; ============================================================
-
-; ✗ WRONG — resolves title string anew for every call (O(n) scan each time)
-WrongRepeatQuery() {
-    WinActivate("ahk_exe notepad.exe")           ; title scan #1
-    WinGetTitle("ahk_exe notepad.exe")           ; title scan #2
-    WinGetPos(&x,&y,&w,&h,"ahk_exe notepad.exe") ; title scan #3
-}
-
-; ✓ CORRECT — resolve once, reuse HWND for O(1) subsequent ops
-CachedHwndOps() {
-    hwnd := WinExist("ahk_exe notepad.exe")      ; one title scan
-    if !hwnd
-        return
-    idStr := "ahk_id " . hwnd                   ; compose string once
-    WinActivate(idStr)
-    title := WinGetTitle(idStr)
-    WinGetPos(&x, &y, &w, &h, idStr)
-}
-
-; ✓ Cache ControlGetItems result; avoid per-iteration calls
-ProcessListItems(winTitle) {
-    hwnd  := WinExist(winTitle)
-    if !hwnd
-        return
-    items := ControlGetItems("ListBox1", "ahk_id " . hwnd)  ; one call
-    ; ✓ iterate the cached Array — ControlGetItems is NOT called again per loop
-    for i, item in items {
-        if InStr(item, "Error")
-            MsgBox("Problem item at index " . i . ": " . item)
-    }
-}
-
-; ✗ WRONG — burns CPU checking WinExist every 100 ms; ~600 scans/minute wasted
-PollBadPattern() {
-    while !WinExist("Setup Wizard") {
-        Sleep(100)    ; → high CPU for no benefit; misses fast windows
-    }
-}
-
-; ✓ CORRECT — WinWait for a single target; SetWinEventHook for multi-target or recurring
-GoodWaitPattern() {
-    hwnd := WinWait("Setup Wizard",, 60)    ; OS-native wait; CPU idles until event fires
-    if !hwnd
-        MsgBox("Setup never appeared within 60 seconds.")
-}
-
-; ✓ Use WinGetList once and cache the Array for batch processing
-BatchProcessOnce(exeName) {
-    winList := WinGetList("ahk_exe " . exeName)     ; one enumeration pass
-    for hwnd in winList {                            ; iterate cached Array
-        WinMinimize("ahk_id " . hwnd)               ; O(1) per window via HWND
-    }
-}
-
-; ✓ Prefer ControlClick over MouseClick for background-window automation
-; MouseClick requires foreground activation → forces window to front → disturbs user
-; ControlClick works on any window regardless of z-order → O(1) message post
-```
-
-## DROP-IN RECIPES
-
-```ahk
-; WaitAndActivate — wait for a window, restore if minimized, activate, return HWND
-; ✓ Validates inputs; uses OS-native WinWait (no polling); throws with diagnostic message on failure
-WaitAndActivate(winTitle, timeout := 10) {
-    if !(winTitle is String) || winTitle = ""
-        throw TypeError("WaitAndActivate: winTitle must be a non-empty string", -1)
-    if !(timeout is Number) || timeout <= 0
-        throw ValueError("WaitAndActivate: timeout must be a positive number", -1)
-
-    hwnd := WinWait(winTitle,, timeout)
-    if !hwnd
-        throw TargetError("WaitAndActivate: window never appeared — " . winTitle, -1, winTitle)
-
-    idStr := "ahk_id " . hwnd
-
-    ; ✓ Restore minimized window before activating — WinActivate on minimized fails silently
-    if (WinGetMinMax(idStr) = -1)
-        WinRestore(idStr)
-
-    WinActivate(idStr)
-
-    ; ✓ WinWaitActive confirms the activation completed; guards against rapid focus stealing
-    if !WinWaitActive(idStr,, 3)
-        throw TargetError("WaitAndActivate: activation timed out — " . winTitle, -1, winTitle)
-
-    return hwnd
-}
-; Call site: hwnd := WaitAndActivate("ahk_exe notepad.exe", 15)
-
-
-; SafeSelectListItem — find and select a ListBox/ComboBox item by exact name
-; ✓ Handles window-not-found, control-not-found, and item-not-found as distinct errors
-; ✓ Uses ControlFindItem for O(1) exact match; falls back to linear scan for partial match
-SafeSelectListItem(winTitle, ctrlNN, targetName, allowPartial := false) {
-    if !(winTitle is String) || winTitle = ""
-        throw TypeError("SafeSelectListItem: winTitle must be a non-empty string", -1)
-    if !(ctrlNN is String) || ctrlNN = ""
-        throw TypeError("SafeSelectListItem: ctrlNN must be a non-empty string", -1)
-    if !(targetName is String)
-        throw TypeError("SafeSelectListItem: targetName must be a string", -1)
-
-    hwnd := WinExist(winTitle)
-    if !hwnd
-        throw TargetError("SafeSelectListItem: window not found — " . winTitle, -1, winTitle)
-
-    idStr := "ahk_id " . hwnd
-
-    try {
-        ; ✓ ControlFindItem: exact match, returns 1-based index or 0
-        idx := ControlFindItem(targetName, ctrlNN, idStr)
-        if (idx > 0) {
-            ControlChooseIndex(idx, ctrlNN, idStr)
-            return idx
-        }
-
-        ; ✓ Partial match fallback — only when explicitly requested
-        if allowPartial {
-            items := ControlGetItems(ctrlNN, idStr)
-            for i, item in items {
-                if InStr(item, targetName) {
-                    ControlChooseIndex(i, ctrlNN, idStr)
-                    return i
-                }
-            }
-        }
-    } catch TargetError as e {
-        throw TargetError("SafeSelectListItem: control error — " . e.Message, -1, ctrlNN)
-    }
-
-    throw Error("SafeSelectListItem: item not found — '" . targetName . "' in " . ctrlNN, -1)
-}
-; Call site: idx := SafeSelectListItem("My App", "ComboBox1", "Option B")
-; Call site: idx := SafeSelectListItem("My App", "ListBox1", "partial", true)
-
-
-; BatchApplyToGroup — apply a window operation to every window matching a WinTitle criterion
-; ✓ Captures WinGetList snapshot before loop; handles TargetError per-window (ephemeral close)
-; ✓ op is a Func/BoundFunc receiving a single "ahk_id N" string argument
-BatchApplyToGroup(winTitle, op) {
-    if !(winTitle is String) || winTitle = ""
-        throw TypeError("BatchApplyToGroup: winTitle must be a non-empty string", -1)
-    if !IsObject(op) || !(op is Func)
-        throw TypeError("BatchApplyToGroup: op must be a Func or BoundFunc", -1)
-
-    winList := WinGetList(winTitle)
-    if (winList.Length = 0)
-        return 0
-
-    successCount := 0
-    for hwnd in winList {
-        try {
-            op.Call("ahk_id " . hwnd)
-            successCount++
-        } catch TargetError
-            continue    ; window closed between snapshot and operation — skip silently
-    }
-    return successCount
-}
-; Call site: BatchApplyToGroup("ahk_exe notepad.exe", WinMinimize)
-; Call site: BatchApplyToGroup("ahk_group Editors", WinClose)
 ```
 
 ## ANTI-PATTERNS

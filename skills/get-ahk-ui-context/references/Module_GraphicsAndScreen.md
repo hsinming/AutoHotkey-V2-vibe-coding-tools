@@ -1,8 +1,8 @@
-# Module_GraphicsAndScreen.md
+﻿# Module_GraphicsAndScreen.md
 <!-- DOMAIN: Graphics and Screen -->
 <!-- SCOPE: GDI+ bitmap rendering, screen-to-file capture, DirectX surface access, and GUI overlay event wiring are not covered — see Module_DllCallAndMemory.md and Module_GUI.md. -->
-<!-- TRIGGERS: ImageSearch(), PixelSearch(), PixelGetColor(), CoordMode(), MonitorGet(), MonitorGetWorkArea(), MonitorGetCount(), MonitorGetPrimary(), "screen coordinates", "pixel color", "find image on screen", "multi-monitor", "screen resolution", "transparent overlay", "DPI scaling", "work area", "image recognition", "visual automation" -->
-<!-- CONSTRAINTS: ImageSearch and PixelSearch return Boolean in AHK v2 — never check ErrorLevel; use `if ImageSearch(&x, &y, ...)` for branching. CoordMode must be set explicitly at the top of every function that performs pixel, mouse, or image operations — it does not propagate between function scopes. ImageSearch option flags (*n tolerance, *TransCOLOR) must be embedded as string prefixes in the ImageFile argument — never passed as extra positional arguments. -->
+<!-- TRIGGERS: ImageSearch, PixelSearch, PixelGetColor, CoordMode, MonitorGet, MonitorGetWorkArea, MonitorGetCount, MonitorGetPrimary, "screen coordinates", "pixel color", "find image on screen", "multi-monitor", "screen resolution", "transparent overlay", "DPI scaling", "work area", "image recognition", "visual automation" -->
+<!-- CONSTRAINTS: ImageSearch and PixelSearch return Boolean in AHK v2 — never check ErrorLevel; use `if ImageSearch(&x, &y, ...)` for branching. CoordMode must be set explicitly at the top of every function that performs pixel, mouse, or image operations — it does not propagate between function scopes. -->
 <!-- CROSS-REF: Module_GUI.md, Module_Errors.md, Module_DllCallAndMemory.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -15,94 +15,81 @@
 | `ImageSearch(&x,&y, x1,y1,x2,y2, 20, img)` — tolerance as positional argument | `ImageSearch(&x,&y, x1,y1,x2,y2, "*20 " img)` — tolerance embedded in ImageFile string | Extra argument causes runtime TypeError; tolerance is silently ignored or crashes |
 | `PixelGetColor, x, y` — legacy command, sets ErrorLevel, returns decimal int | `color := PixelGetColor(x, y)` — returns hex string `"0xRRGGBB"` | Comparing returned string against an integer literal always fails |
 | `CoordMode, Pixel, Screen` — legacy command syntax | `CoordMode("Pixel", "Screen")` | SyntaxError in AHK v2; script aborts |
-| `new ScreenOverlay()` / `new ResolutionScaler()` | `ScreenOverlay()` / `ResolutionScaler()` | `new` keyword is AHK v1 OOP; AHK v2 calls `__New()` via `ClassName()` — `new` causes NameError |
+| `new ScreenOverlay()` / `new ResolutionScaler()` | `ScreenOverlay()` / `ResolutionScaler()` | `new` keyword is AHK v1 OOP; AHK v2 calls `__New()` via `ClassName()` — `new` causes TypeError |
 | `A_ScreenWidth` / `A_ScreenHeight` as search bounds for any monitor | `MonitorGet(n, &l, &t, &r, &b)` for per-monitor bounds | Returns primary-monitor dimensions only; produces off-screen or clipped region on secondary monitors |
 
 ## API QUICK-REFERENCE
 
 ### CoordMode and Screen Dimensions
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `CoordMode()` | `CoordMode(TargetType, RelativeTo?)` | Previous setting string (`"Screen"`, `"Window"`, or `"Client"`) | — | TargetType: `"Pixel"`, `"Mouse"`, `"ToolTip"`, `"Caret"`, `"Menu"`. RelativeTo: `"Screen"`, `"Window"`, `"Client"`. Default RelativeTo is `"Screen"`. Must be called in every function that issues coordinate ops — does not propagate between function scopes |
-| `A_ScreenWidth` | read-only Integer | Primary monitor pixel width | — | Primary monitor only — not valid for secondary monitors |
-| `A_ScreenHeight` | read-only Integer | Primary monitor pixel height | — | Primary monitor only — not valid for secondary monitors |
-| `A_ScreenDPI` | read-only Integer | Current DPI as Integer | — | 96 = 100%, 144 = 150%, 192 = 200% |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `CoordMode()` | `CoordMode(TargetType, RelativeTo?)` | TargetType: `"Pixel"`, `"Mouse"`, `"ToolTip"`, `"Caret"`, `"Menu"`. RelativeTo: `"Screen"`, `"Window"`, `"Client"`. Must be called in every function that issues coordinate ops — does not propagate between function scopes |
+| `A_ScreenWidth` | read-only Integer | Primary monitor pixel width only — not valid for secondary monitors |
+| `A_ScreenHeight` | read-only Integer | Primary monitor pixel height only — not valid for secondary monitors |
+| `A_ScreenDPI` | read-only Integer | Current DPI setting; 96 = 100%, 144 = 150%, 192 = 200% |
 
 ### Mouse and Click
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `MouseGetPos()` | `MouseGetPos(&OutputX?, &OutputY?, &OutputVarWin?, &Control?)` | — | — | Returns position in coordinates established by `CoordMode("Mouse", ...)` |
-| `MouseMove()` | `MouseMove(X, Y, Speed?, Relative?)` | — | — | Moves cursor; respects current CoordMode |
-| `Click()` | `Click(Options*)` | — | — | `Click(x, y)`, `Click("Right", x, y)`, `Click(x, y, 2)` for double-click |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `MouseGetPos()` | `MouseGetPos(&OutputX?, &OutputY?, &OutputVarWin?, &Control?)` | Returns position in coordinates established by `CoordMode("Mouse", ...)` |
+| `MouseMove()` | `MouseMove(X, Y, Speed?, Relative?)` | Moves cursor; respects current CoordMode |
+| `Click()` | `Click(Options*)` | `Click(x, y)`, `Click("Right", x, y)`, `Click(x, y, 2)` for double-click |
 
 ### Pixel Operations
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `PixelGetColor()` | `PixelGetColor(X, Y, Mode?)` | Hex string `"0xRRGGBB"` | `OSError` on failure | Mode: `"Alt"` (~10% slower, more reliable for certain windows), `"Slow"` (most reliable, works in some full-screen apps). Requires prior `CoordMode("Pixel", ...)` |
-| `PixelSearch()` | `PixelSearch(&OutputX, &OutputY, X1, Y1, X2, Y2, ColorID, Variation?)` | Boolean (`1` = found, `0` = not found) | `OSError` if search could not be conducted | `Variation` 0–255: per-channel tolerance. Blanks output vars when not found. Requires prior `CoordMode("Pixel", ...)` |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `PixelGetColor()` | `PixelGetColor(X, Y, Mode?)` | Returns hex string `"0xRRGGBB"`. Mode: `"Alt"` (slower, more reliable for some windows), `"Slow"` (most reliable, full-screen apps). Requires prior `CoordMode("Pixel", ...)` |
+| `PixelSearch()` | `PixelSearch(&OutputX, &OutputY, X1, Y1, X2, Y2, ColorID, Variation?)` | Returns **Boolean**. `Variation` 0–255: per-channel tolerance. Requires prior `CoordMode("Pixel", ...)` |
 
 ### Image Search
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `ImageSearch()` | `ImageSearch(&OutputX, &OutputY, X1, Y1, X2, Y2, ImageFile)` | Boolean (`1` = found, `0` = not found) | `ValueError` if image file invalid or unloadable; `OSError` on internal failure | Option flags embedded as string prefixes in `ImageFile`: `"*n"` = variation 0–255, `"*TransCOLOR"` = treat hex color as transparent, `"*wN *hN"` = scale image. Never pass flags as extra positional arguments |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `ImageSearch()` | `ImageSearch(&OutputX, &OutputY, X1, Y1, X2, Y2, ImageFile)` | Returns **Boolean** (True = found). Option flags are embedded as string prefixes in `ImageFile`: `"*n"` = variation 0–255, `"*TransCOLOR"` = treat hex color as transparent. Never pass tolerance as a positional argument |
 
 ### Window Position
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `WinGetPos()` | `WinGetPos(&X?, &Y?, &Width?, &Height?, WinTitle?)` | — | `TargetError` if window not found | `"A"` targets active window; omitted output vars are skipped |
-| `WinMove()` | `WinMove(X, Y, Width?, Height?, WinTitle?)` | — | `TargetError` if window not found | Repositions and/or resizes window |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `WinGetPos()` | `WinGetPos(&X?, &Y?, &Width?, &Height?, WinTitle?)` | Returns window position and dimensions; `"A"` targets active window |
+| `WinMove()` | `WinMove(X, Y, Width?, Height?, WinTitle?)` | Repositions window |
 
 ### Monitor Functions
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `MonitorGetCount()` | `MonitorGetCount()` | Returns total number of connected monitors |
+| `MonitorGetPrimary()` | `MonitorGetPrimary()` | Returns 1-based index of the primary monitor |
+| `MonitorGet()` | `MonitorGet(N, &Left, &Top, &Right, &Bottom)` | Full monitor bounds including taskbar. N is 1-based |
+| `MonitorGetWorkArea()` | `MonitorGetWorkArea(N, &Left, &Top, &Right, &Bottom)` | Work-area bounds excluding taskbar and reserved screen edges |
 
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `MonitorGetCount()` | `MonitorGetCount()` | Integer (total monitors) | — | Includes all connected monitors |
-| `MonitorGetPrimary()` | `MonitorGetPrimary()` | Integer (1-based index) | — | Index of the primary monitor |
-| `MonitorGet()` | `MonitorGet(N, &Left, &Top, &Right, &Bottom)` | — | — | Full monitor bounds including taskbar. N is 1-based |
-| `MonitorGetWorkArea()` | `MonitorGetWorkArea(N, &Left, &Top, &Right, &Bottom)` | — | — | Work-area bounds excluding taskbar and reserved screen edges |
-
-### Overlay and Window Transparency
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `WinSetTransColor()` | `WinSetTransColor(Color, WinTitle?)` | — | `TargetError` if window not found | Chroma-key transparency — makes one specific color fully invisible. Append space + alpha (0–255) to also set uniform transparency: `"RRGGBB 150"` |
-| `WinSetTransparent()` | `WinSetTransparent(N, WinTitle?)` | — | `TargetError` if window not found | Applies uniform alpha 0–255 to the **entire** window including controls — not interchangeable with `WinSetTransColor` |
-| `ObjBindMethod()` | `ObjBindMethod(Obj, Method, Params*)` | `BoundFunc` object | — | Creates a bound callback for `SetTimer` that calls `Obj.Method(Params*)` — use instead of multi-statement arrow functions |
+### Overlay / Window Transparency
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `WinSetTransColor()` | `WinSetTransColor(Color, WinTitle?)` | Chroma-key transparency — makes one specific color fully invisible. Use for click-through overlays |
+| `WinSetTransparent()` | `WinSetTransparent(N, WinTitle?)` | Applies uniform alpha 0–255 to the **entire** window including controls — not suitable for selective transparency |
+| `ObjBindMethod()` | `ObjBindMethod(Obj, Method, Params*)` | Creates a bound callback for `SetTimer` that calls `Obj.Method(Params*)` |
 
 ## AHK V2 CONSTRAINTS
 
 - `ImageSearch` and `PixelSearch` return **Boolean** in AHK v2 — use `if ImageSearch(&x, &y, ...)` for branching; never check `ErrorLevel` after these calls — `ErrorLevel` is always zero and produces permanently wrong logic.
-  - ✗ `if ErrorLevel = 0` after ImageSearch — silent logic failure; the false branch never runs even when image is absent
-  - ✓ `if ImageSearch(&foundX, &foundY, x1, y1, x2, y2, imgFile)` — correct Boolean branch
+- ✗ `if ErrorLevel = 0` after ImageSearch — silent logic failure; the false branch never runs even when image is absent
+- ✓ `if ImageSearch(&foundX, &foundY, x1, y1, x2, y2, imgFile)` — correct Boolean branch
 
-- `CoordMode` must be called explicitly in every function that uses coordinate operations — AHK v2 does not propagate CoordMode between function scopes; omitting it defaults to active-window-relative mode (`"Client"`), producing wrong coordinates when the active window changes.
-  - ✗ Bare `PixelGetColor(x, y)` with no prior `CoordMode` — returns window-relative values, not screen coordinates
-  - ✓ `CoordMode("Pixel", "Screen")` as the first line of any screen-automation function
+- `CoordMode` must be called explicitly in every function that uses coordinate operations — AHK v2 does not propagate CoordMode between function scopes; omitting it defaults to active-window-relative mode, producing wrong coordinates when the active window changes.
+- ✗ Bare `PixelGetColor(x, y)` with no prior `CoordMode` — returns window-relative values, not screen coordinates
+- ✓ `CoordMode("Pixel", "Screen")` as the first line of any screen-automation function
 
-- ImageSearch option flags (`*n` variation, `*TransCOLOR` transparency, `*wN *hN` scaling) must be embedded as a string prefix in the `ImageFile` parameter — they are not separate positional arguments.
-  - ✗ `ImageSearch(&x,&y, 0,0,1920,1080, 20, "btn.png")` — TypeError at runtime
-  - ✓ `ImageSearch(&x,&y, 0,0,1920,1080, "*20 btn.png")` — correct embedded prefix
+- ImageSearch option flags (`*n` variation, `*TransCOLOR` transparency) must be embedded as a string prefix in the `ImageFile` parameter — they are not separate positional arguments.
+- ✗ `ImageSearch(&x,&y, 0,0,1920,1080, 20, "btn.png")` — TypeError at runtime
+- ✓ `ImageSearch(&x,&y, 0,0,1920,1080, "*20 btn.png")` — correct embedded prefix
 
 - `A_ScreenWidth` and `A_ScreenHeight` return primary-monitor dimensions only — never use them as search region bounds in any multi-monitor context; use `MonitorGet(n, &l, &t, &r, &b)` for per-monitor bounds — using the primary dimensions on a secondary monitor produces an off-screen search region that can never match.
-  - ✗ `ImageSearch(&x,&y, 0,0, A_ScreenWidth, A_ScreenHeight, img)` on monitor 2 — off-screen region
-  - ✓ `MonitorGet(2, &ml,&mt,&mr,&mb)` then `ImageSearch(&x,&y, ml,mt,mr,mb, img)`
 
 - `PixelGetColor` returns a hex string `"0xRRGGBB"` — compare against matching hex string literals or call `Integer()` to convert for arithmetic; comparing against bare integers silently fails.
-  - ✗ `if (PixelGetColor(x, y) = 0xFF0000)` — integer vs string comparison, always false
-  - ✓ `if (PixelGetColor(x, y) = "0xFF0000")` or `Integer(PixelGetColor(x, y)) > threshold`
+- ✗ `if (PixelGetColor(x, y) = 0xFF0000)` — integer vs string comparison, always false
+- ✓ `if (PixelGetColor(x, y) = "0xFF0000")` or `Integer(PixelGetColor(x, y)) > threshold`
 
 - `WinSetTransColor` removes one specific chroma-key color from an overlay window; `WinSetTransparent` applies uniform alpha to the entire window including all controls — the two are not interchangeable for debug overlay construction.
-  - ✗ `WinSetTransparent(200, overlayGui)` — makes all controls semi-transparent, destroying visibility
-  - ✓ `WinSetTransColor(bgColor, overlayGui)` — removes only the chroma-key; colored controls remain fully opaque
 
-- Instantiate classes with `ClassName()` — never `new ClassName()` — `new` is AHK v1 syntax and causes NameError in AHK v2.
-  - ✗ `overlay := new ScreenOverlay()` — NameError: `new` is not valid in v2
-  - ✓ `overlay := ScreenOverlay()` — correct v2 class instantiation
+- Instantiate classes with `ClassName()` — never `new ClassName()` — `new` is AHK v1 syntax and causes TypeError in AHK v2.
 
 Safe-access priority order for screen operations:
 1. `PixelGetColor(x, y)` — O(1) single-point check; use when position is already known
@@ -110,30 +97,10 @@ Safe-access priority order for screen operations:
 3. `ImageSearch(&x, &y, x1, y1, x2, y2, imgFile)` — O(area) template match; use for UI element detection
 4. `try/catch` around `ImageSearch` — only when the image file may not exist and the exception message carries diagnostic information worth logging
 
-Unset variable handling: `ImageSearch` and `PixelSearch` blank their output VarRefs when the search fails — access `foundX`/`foundY` only inside the `if` true-branch; accessing them after a failed search yields an unset-variable runtime error.
-
-Resource lifecycle: `ScreenOverlay` Gui objects must be explicitly destroyed via `Destroy()` or `AutoHide()` — AHK v2 does not guarantee `__Delete` timing, so leaving `AlwaysOnTop` transparent windows open without an explicit cleanup path leaks window handles.
-
-## AGENT QA CHECKLIST
-
-- [ ] Did I call `CoordMode("Pixel", "Screen")` as the first line inside every function that issues pixel, image, or mouse operations?
-- [ ] Did I branch on the Boolean return of `ImageSearch` / `PixelSearch` rather than checking `ErrorLevel` after the call?
-- [ ] Did I embed tolerance (`*n`) and transparency (`*TransCOLOR`) flags in the `ImageFile` string rather than passing them as extra positional arguments?
-- [ ] Did I use `MonitorGet(n, &l, &t, &r, &b)` for per-monitor search bounds instead of `A_ScreenWidth` / `A_ScreenHeight`?
-
-## RUNTIME ERROR MAPPING
-
-| Exception Class | Trigger Condition | Detection Code | Fix |
-|----------------|-------------------|----------------|-----|
-| `ValueError` | `ImageSearch()` called when the image file does not exist or cannot be loaded (bad format, corrupt file) | `e.Message` contains "could not be loaded" or "invalid parameter" | Guard with `if FileExist(imgPath) = ""` before calling; wrap in `try/catch` for format errors |
-| `OSError` | `PixelGetColor()` or `PixelSearch()` fails during screen capture — typically caused by a hardware-accelerated or DRM-protected window | `e.Message` describes the internal failure | Retry with `"Alt"` or `"Slow"` mode on `PixelGetColor`; ensure the target window is visible and not minimized |
-| Unset variable runtime error | Accessing `foundX` or `foundY` outside the `if ImageSearch(...)` true-branch — output VarRefs are blanked on search failure | `e.Message` contains "unset variable" or references the output var name | Always place coordinate usage inside `if ImageSearch(&fx, &fy, ...) { ... }` true-branch only |
-
 ## TIER 1 — Basic Screen Information
 > METHODS COVERED: CoordMode · A_ScreenWidth · A_ScreenHeight · MouseGetPos · MouseMove · Click · WinGetPos
 
-Tier 1 covers reading primary monitor dimensions, setting coordinate modes, querying the mouse cursor position, and performing basic click and move operations in AHK v2. `A_ScreenWidth` and `A_ScreenHeight` reflect only the primary monitor. CoordMode must always precede any coordinate-dependent call to ensure screen-relative results — the default mode is active-window-relative (`"Client"`) and will produce wrong coordinates as soon as the active window changes.
-
+Tier 1 covers reading primary monitor dimensions, setting coordinate modes, querying the mouse cursor position, and performing basic click and move operations in AHK v2. `A_ScreenWidth` and `A_ScreenHeight` reflect only the primary monitor. CoordMode must always precede any coordinate-dependent call to ensure screen-relative results — the default mode is active-window-relative and will produce wrong coordinates as soon as the active window changes.
 ```ahk
 ; ─── Primary monitor dimensions (primary monitor only) ───────────────────────
 primaryW := A_ScreenWidth    ; e.g. 1920
@@ -144,7 +111,7 @@ primaryH := A_ScreenHeight   ; e.g. 1080
 CoordMode("Mouse", "Screen")  ; Mouse coords relative to screen (0,0)
 CoordMode("Pixel", "Screen")  ; Required before PixelGetColor / PixelSearch / ImageSearch
 
-; ✗ Omitting CoordMode — coordinates default to active-window-relative ("Client")
+; ✗ Omitting CoordMode — coordinates default to active-window-relative
 ; MouseGetPos(&x, &y)   ; → returns window-relative coords, not screen coords
 
 ; ─── Query current cursor position ───────────────────────────────────────────
@@ -179,7 +146,6 @@ MsgBox("Client-relative cursor: " clientX ", " clientY)
 > METHODS COVERED: PixelGetColor · PixelSearch · CoordMode · Integer()
 
 Tier 2 covers `PixelGetColor` for single-point sampling and `PixelSearch` for regional color scanning. Both require `CoordMode("Pixel","Screen")` for absolute coordinates. `PixelSearch` returns Boolean in AHK v2 — the v1 `ErrorLevel` pattern is silently wrong and must never appear. `Variation` (0–255) controls how much each color channel may deviate from the target before a match is rejected.
-
 ```ahk
 ; ✓ CoordMode must be the first line of any function doing pixel operations
 CoordMode("Pixel", "Screen")
@@ -239,7 +205,6 @@ Loop {
 > METHODS COVERED: ImageSearch · FileExist · CoordMode · WinGetPos
 
 Tier 3 covers the `ImageSearch` function: correct Boolean return handling, embedded option-flag syntax for tolerance and transparency, constrained region searches, file validation guards, and timeout-loop patterns. `ImageSearch` returns True when the image is found and places the top-left corner coordinates in the reference output variables. Option flags are prefixed in the `ImageFile` string — never passed as extra positional arguments.
-
 ```ahk
 ; ✓ CoordMode("Pixel","Screen") is required before every ImageSearch call
 CoordMode("Pixel", "Screen")
@@ -277,7 +242,7 @@ if ImageSearch(&foundX, &foundY, searchX1, searchY1, searchX2, searchY2, imgPath
     MsgBox("Found in region at: " foundX ", " foundY)
 
 ; ─── File-existence guard before searching ───────────────────────────────────
-; ✓ Guard prevents ValueError from ImageSearch when path is wrong — validate first
+; ✓ Guard prevents cryptic ImageSearch failure when path is wrong — validate first
 if !FileExist(imgPath)
     throw Error("ImageSearch aborted — file missing: " imgPath)
 
@@ -315,7 +280,6 @@ if result.Length
 > METHODS COVERED: MonitorGetCount · MonitorGetPrimary · MonitorGet · MonitorGetWorkArea · WinGetPos · WinMove · MouseGetPos · CoordMode · ImageSearch
 
 Tier 4 covers the `MonitorGet` family of functions for accurate multi-monitor bounds, work-area queries that exclude the taskbar, per-monitor ImageSearch loops, mouse-to-monitor detection, and the `ScreenHelper` utility class that caches all monitor data in a Map array for reuse. `A_ScreenWidth` and `A_ScreenHeight` must not be used as search region bounds on secondary monitors — they return the primary monitor's dimensions only and produce an off-screen search region on any other monitor.
-
 ```ahk
 ; ─── Monitor inventory ────────────────────────────────────────────────────────
 monitorCount := MonitorGetCount()    ; Total number of connected monitors
@@ -436,7 +400,6 @@ class ScreenHelper {
 > METHODS COVERED: ResolutionScaler · WindowRelative · A_ScreenDPI · WinGetPos · ImageSearch · CoordMode · MonitorGet · MouseGetPos
 
 Tier 5 covers the mathematical models for making scripts portable across different screen resolutions and DPI settings. Absolute pixel coordinates break when the target machine has a different resolution. The solution is to express all positions as fractions of the current screen or window dimensions, or to scale from a known reference resolution using computed X and Y scale factors.
-
 ```ahk
 ; ─── Screen-ratio scaler: scale from reference resolution to current ──────────
 class ResolutionScaler {
@@ -448,7 +411,7 @@ class ResolutionScaler {
     __New(refW := 1920, refH := 1080) {
         this.refW   := refW
         this.refH   := refH
-        this.scaleX := A_ScreenWidth  / refW   ; Primary monitor only — use MonitorGet for secondary
+        this.scaleX := A_ScreenWidth  / refW
         this.scaleY := A_ScreenHeight / refH
     }
 
@@ -541,11 +504,64 @@ FindOnCurrentMonitor(imgFile, &foundX, &foundY, tolerance := 15) {
 }
 ```
 
+### Performance Notes
+
+Screen and image operations are among the most CPU-intensive AHK v2 calls. `ImageSearch` and `PixelSearch` both scale at O(area) — time is proportional to the pixel count of the search region. Narrowing the search bounds is the highest-leverage optimization available. `PixelGetColor` is O(1) and should always be preferred when the pixel position is already known. `MonitorGet` data is stable for the script's lifetime and should be cached once at startup rather than called inside loops.
+
+Sleep throttling in polling loops is mandatory. A loop calling `ImageSearch` or `PixelSearch` without `Sleep` will saturate a CPU core indefinitely. A minimum of `Sleep(100)` between iterations is recommended; `Sleep(300)` is appropriate for most UI automation waits.
+
+Tolerance (`*n`) has a direct cost: higher values require more comparison work per pixel. `*10` is a good default for clean UI elements; `*20` handles anti-aliasing and minor rendering variation; values above `*50` are significantly slower and should be benchmarked before deployment. `*0` (exact match) is fastest but brittle — any rendering variation breaks it.
+
+AlwaysOnTop transparent overlay windows must be destroyed promptly. Lingering overlays consume resources and can interfere with other windows. Use `AutoHide(delayMs)` with `ObjBindMethod` for guaranteed cleanup via `SetTimer`, with `__Delete()` as a scope-exit fallback.
+```ahk
+; ─── Narrow the search region — O(area) complexity ───────────────────────────
+; ✓ Constrain to the smallest region that reliably contains the target
+WinGetPos(&wx, &wy, &ww, &wh, "TargetApp")
+if ImageSearch(&x, &y, wx, wy, wx+ww, wy+wh, imgPath)   ; ✓ Window-scoped
+    Click(x, y)
+
+; ✗ Wasteful — searching entire primary screen when target is inside one window
+; ImageSearch(&x, &y, 0, 0, A_ScreenWidth, A_ScreenHeight, imgPath)   ; → O(1920*1080)
+
+; ─── Cache MonitorGet results — stable for script lifetime ───────────────────
+; ✓ Call once at startup; store in a global variable and reuse
+g_Monitors := GetAllMonitors()
+; ✗ Calling MonitorGet inside a tight loop — unnecessary syscall per iteration
+
+; ─── PixelGetColor vs PixelSearch ────────────────────────────────────────────
+; ✓ PixelGetColor is O(1) — use when the pixel position is already known
+color := PixelGetColor(knownX, knownY)
+
+; ✓ PixelSearch is O(area) — use only when position is unknown
+if PixelSearch(&x, &y, 0, 0, 500, 400, 0xFF0000, 5)
+    Click(x, y)
+
+; ─── Tolerance trade-off reference ───────────────────────────────────────────
+; *0  = exact pixel match  (fastest; brittle — rendering variation breaks it)
+; *10 = low tolerance       (good default for clean UI elements)
+; *20 = medium tolerance    (handles anti-aliasing and minor rendering differences)
+; *50+= high tolerance      (significantly slower; benchmark before deploying)
+
+; ─── Sleep in polling loops — mandatory to prevent 100% CPU usage ─────────────
+; ✓ Yield at least 100 ms between scans in any pixel or image polling loop
+CoordMode("Pixel", "Screen")
+Loop {
+    if PixelSearch(&x, &y, 0, 0, A_ScreenWidth, A_ScreenHeight, 0xFF0000, 10)
+        break
+    Sleep(100)
+}
+
+; ─── Destroy overlay Gui promptly — do not leave AlwaysOnTop windows open ─────
+overlay := ScreenOverlay()
+; ... perform search and mark result ...
+overlay.AutoHide(3000)   ; ✓ Guaranteed cleanup via SetTimer + ObjBindMethod
+; __Delete() provides fallback cleanup when object goes out of scope
+```
+
 ## TIER 6 — Visual Debug Overlays
 > METHODS COVERED: Gui() · WinSetTransColor · SetTimer · ObjBindMethod · ImageSearch · CoordMode
 
 Tier 6 covers transparent, click-through GUI overlays that visualize ImageSearch results, scan regions, and found coordinates directly on screen. The overlay uses `WS_EX_TRANSPARENT` (`+E0x20`) for click-through behavior and `WinSetTransColor` for chroma-key transparency. `WinSetTransColor` removes one specific color entirely from the window — the background color becomes invisible while colored controls remain visible. See `Module_GUI.md` for Gui lifecycle and threading rules.
-
 ```ahk
 ; ─── ScreenOverlay class — chroma-keyed transparent debug layer ───────────────
 class ScreenOverlay {
@@ -667,117 +683,6 @@ GetVirtualDesktopBounds(&vLeft, &vTop, &vRight, &vBottom)
 allMonitorOverlay := ScreenOverlay()
 allMonitorOverlay.ShowRegion(vLeft, vTop, vRight - vLeft, vBottom - vTop, 40)
 allMonitorOverlay.AutoHide(1500)
-```
-
-### Performance Notes
-
-Screen and image operations are among the most CPU-intensive AHK v2 calls. `ImageSearch` and `PixelSearch` both scale at O(area) — time is proportional to the pixel count of the search region. Narrowing the search bounds is the highest-leverage optimization available. `PixelGetColor` is O(1) and should always be preferred when the pixel position is already known. `MonitorGet` data is stable for the script's lifetime and should be cached once at startup rather than called inside loops.
-
-Sleep throttling in polling loops is mandatory. A loop calling `ImageSearch` or `PixelSearch` without `Sleep` will saturate a CPU core indefinitely. A minimum of `Sleep(100)` between iterations is recommended; `Sleep(300)` is appropriate for most UI automation waits.
-
-Tolerance (`*n`) has a direct cost: higher values require more comparison work per pixel. `*10` is a good default for clean UI elements; `*20` handles anti-aliasing and minor rendering variation; values above `*50` are significantly slower and should be benchmarked before deployment. `*0` (exact match) is fastest but brittle — any rendering variation breaks it.
-
-AlwaysOnTop transparent overlay windows must be destroyed promptly. Lingering overlays consume resources and can interfere with other windows. Use `AutoHide(delayMs)` with `ObjBindMethod` for guaranteed cleanup via `SetTimer`, with `__Delete()` as a scope-exit fallback.
-
-```ahk
-; ─── Narrow the search region — O(area) complexity ───────────────────────────
-; ✓ Constrain to the smallest region that reliably contains the target
-WinGetPos(&wx, &wy, &ww, &wh, "TargetApp")
-if ImageSearch(&x, &y, wx, wy, wx+ww, wy+wh, imgPath)   ; ✓ Window-scoped
-    Click(x, y)
-
-; ✗ Wasteful — searching entire primary screen when target is inside one window
-; ImageSearch(&x, &y, 0, 0, A_ScreenWidth, A_ScreenHeight, imgPath)   ; → O(1920*1080)
-
-; ─── Cache MonitorGet results — stable for script lifetime ───────────────────
-; ✓ Call once at startup; store in a variable and reuse
-g_Monitors := GetAllMonitors()
-; ✗ Calling MonitorGet inside a tight loop — unnecessary syscall per iteration
-
-; ─── PixelGetColor vs PixelSearch ────────────────────────────────────────────
-; ✓ PixelGetColor is O(1) — use when the pixel position is already known
-color := PixelGetColor(knownX, knownY)
-
-; ✓ PixelSearch is O(area) — use only when position is unknown
-if PixelSearch(&x, &y, 0, 0, 500, 400, 0xFF0000, 5)
-    Click(x, y)
-
-; ─── Tolerance trade-off reference ───────────────────────────────────────────
-; *0  = exact pixel match  (fastest; brittle — rendering variation breaks it)
-; *10 = low tolerance       (good default for clean UI elements)
-; *20 = medium tolerance    (handles anti-aliasing and minor rendering differences)
-; *50+= high tolerance      (significantly slower; benchmark before deploying)
-
-; ─── Sleep in polling loops — mandatory to prevent 100% CPU usage ─────────────
-; ✓ Yield at least 100 ms between scans in any pixel or image polling loop
-CoordMode("Pixel", "Screen")
-Loop {
-    if PixelSearch(&x, &y, 0, 0, A_ScreenWidth, A_ScreenHeight, 0xFF0000, 10)
-        break
-    Sleep(100)
-}
-
-; ─── Destroy overlay Gui promptly — do not leave AlwaysOnTop windows open ─────
-overlay := ScreenOverlay()
-; ... perform search and mark result ...
-overlay.AutoHide(3000)   ; ✓ Guaranteed cleanup via SetTimer + ObjBindMethod
-; __Delete() provides fallback cleanup when object goes out of scope
-```
-
-## DROP-IN RECIPES
-
-```ahk
-; FindImageOnAllMonitors — search every connected monitor in order with optional timeout
-; ✓ Returns Map("found", true/false, "x", n, "y", n, "monitor", n) — never throws on not-found
-FindImageOnAllMonitors(imgFile, tolerance := 15, maxWaitMs := 0) {
-    if !(imgFile is String) || imgFile = ""
-        throw TypeError("FindImageOnAllMonitors: imgFile must be a non-empty string", -1)
-    if FileExist(imgFile) = ""
-        throw Error("FindImageOnAllMonitors: image file not found — " imgFile, -1)
-
-    deadline := (maxWaitMs > 0) ? (A_TickCount + maxWaitMs) : 0
-    CoordMode("Pixel", "Screen")   ; ✓ Set inside function — not inherited from caller scope
-
-    Loop {
-        Loop MonitorGetCount() {
-            MonitorGet(A_Index, &ml, &mt, &mr, &mb)
-            if ImageSearch(&fx, &fy, ml, mt, mr, mb, "*" tolerance " " imgFile)
-                return Map("found", true, "x", fx, "y", fy, "monitor", A_Index)
-        }
-        if !deadline || (A_TickCount >= deadline)
-            break
-        Sleep(200)   ; ✓ Yield CPU between full-screen sweeps
-    }
-    return Map("found", false, "x", 0, "y", 0, "monitor", 0)
-}
-; Call site: r := FindImageOnAllMonitors(A_ScriptDir "\btn.png", 20, 5000)
-;            if r["found"] { Click(r["x"], r["y"]) }
-
-; WaitForPixelColor — poll a single coordinate until it matches a target color or times out
-; ✓ Returns true on match, false on timeout — never throws; Sleep prevents CPU saturation
-WaitForPixelColor(x, y, targetColor, timeoutMs := 5000, intervalMs := 150) {
-    if !(targetColor is String)
-        throw TypeError("WaitForPixelColor: targetColor must be a hex string like ""0xFF0000""", -1)
-    if (intervalMs < 50)
-        intervalMs := 50   ; ✓ Enforce minimum sleep to prevent CPU starvation
-
-    CoordMode("Pixel", "Screen")   ; ✓ Set inside function — not inherited
-    deadline := A_TickCount + timeoutMs
-
-    Loop {
-        try {
-            current := PixelGetColor(x, y)
-            if (current = targetColor)
-                return true
-        } catch OSError {
-            ; ✓ Swallow transient screen-capture failures; retry on next iteration
-        }
-        if (A_TickCount >= deadline)
-            return false
-        Sleep(intervalMs)
-    }
-}
-; Call site: if WaitForPixelColor(960, 540, "0x00FF00", 8000) { MsgBox("Pixel is green") }
 ```
 
 ## ANTI-PATTERNS

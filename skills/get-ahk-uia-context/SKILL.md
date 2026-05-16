@@ -29,17 +29,13 @@ This skill is the **primary knowledge owner** for UI Automation interaction in t
 
 ## How to Use This Skill
 
-Follow this decision tree every time a task triggers this skill. Do **not** skip to code generation before completing the loading steps.
+Follow this protocol every time a task triggers this skill. Do **not** skip to code generation before completing the loading steps.
 
-### Step 1 — Identify which domains the task touches
+### Step 1 — Identify task type and load targeted sections via Section Navigator
 
-| If the task involves… | Load this module |
-|-----------------------|-----------------|
-| Element discovery, FindFirst, FindAll, ElementExist, WaitElement, tree traversal, DataGridView traversal, element staleness | `references/Module_UIAElements.md` |
-| Clicking, invoking, setting values, reading element text via UIA patterns (InvokePattern, ValuePattern, TogglePattern, etc.) | `references/Module_UIAPatterns.md` |
-| Browser automation — Chrome, Edge, Firefox; Navigate, tab management, document element, JSExecute, GetCurrentURL | `references/Module_UIABrowser.md` |
+Do **not** load entire Module files. Use the **Section Navigator** below to find the exact heading to grep and the number of lines to read. Start with the **Fast Path** rows; descend into TIER sections only when you need a runnable code example.
 
-A native-UI task almost always touches both UIAElements and UIAPatterns — load **both**. A browser task almost always touches all three — load **all three**.
+A native-UI task almost always requires both a discovery section (UIAElements) and an interaction section (UIAPatterns). A browser task needs UIABrowser. Load only the sections that match your task.
 
 ### Step 2 — Load cross-skill dependencies
 
@@ -82,6 +78,127 @@ Write code only after completing Steps 1–3. Match the TIER level to the comple
 
 ---
 
+## Section Navigator
+
+> **How to use:**
+> 1. Find the row matching your task below.
+> 2. `grep -n "^## heading text"` the target file to get the current line number.
+> 3. `Read(file, offset=<line>, limit=<n>)` — read only that section.
+>
+> **Fast Path first:** the `## API QUICK-REFERENCE` and `## AHK V2 CONSTRAINTS` sections
+> cover ~80 % of tasks in ~100–150 lines. Load a TIER section only when you need
+> a complete, runnable code example.
+
+---
+
+### Fast Path — API signatures + constraints (no full-file read needed)
+
+| Task | File | Grep for heading | ~Lines |
+|------|------|-----------------|--------|
+| All pattern API signatures (Click, InvokePattern, ValuePattern, …) | `Module_UIAPatterns.md` | `## API QUICK-REFERENCE` | 100 |
+| All element-discovery API (FindFirst, ElementExist, WaitElement, …) | `Module_UIAElements.md` | `## API QUICK-REFERENCE` | 151 |
+| All browser API signatures (Navigate, GetCurrentDocumentElement, …) | `Module_UIABrowser.md` | `## API QUICK-REFERENCE` | 77 |
+| Constraints & pitfalls — patterns | `Module_UIAPatterns.md` | `## AHK V2 CONSTRAINTS` | 31 |
+| Constraints & pitfalls — elements | `Module_UIAElements.md` | `## AHK V2 CONSTRAINTS` | 49 |
+| Constraints & pitfalls — browser | `Module_UIABrowser.md` | `## AHK V2 CONSTRAINTS` | 39 |
+| v1 → v2 breaking changes (patterns) | `Module_UIAPatterns.md` | `## V1 → V2 BREAKING CHANGES` | 12 |
+| v1 → v2 breaking changes (elements) | `Module_UIAElements.md` | `## V1 → V2 BREAKING CHANGES` | 14 |
+| v1 → v2 breaking changes (browser) | `Module_UIABrowser.md` | `## V1 → V2 BREAKING CHANGES` | 13 |
+| QA checklist before submitting UIA code | `Module_UIAPatterns.md` | `## AGENT QA CHECKLIST` | 7 |
+| Runtime error → probable cause mapping | `Module_UIAPatterns.md` | `## RUNTIME ERROR MAPPING` | 8 |
+
+---
+
+### Native UI — Element Discovery & Waiting
+
+| Task | File | Grep for heading | ~Lines |
+|------|------|-----------------|--------|
+| Get root from HWND (`UIA.ElementFromHandle`) | `Module_UIAElements.md` | `### Root & Window Acquisition` | 8 |
+| `FindFirst` / `FindElement` — throwing variants | `Module_UIAElements.md` | `### Element Discovery (Throwing Variants)` | 7 |
+| `ElementExist` / `WaitElement` — safe non-throwing variants | `Module_UIAElements.md` | `### Element Discovery (Safe Non-Throwing Variants)` | 7 |
+| Navigate tree by path (`GetChildAt`, `GetParent`, …) | `Module_UIAElements.md` | `### Element Navigation & Path Traversal` | 7 |
+| Read element properties (Name, Value, AutomationId, Type, …) | `Module_UIAElements.md` | `### Element Properties` | 27 |
+| Debug element tree (`Dump`, `GetUIATreeAsString`) | `Module_UIAElements.md` | `### Element Actions & Debugging` | 10 |
+| Tree scope constants (`UIA.TreeScope.*`) | `Module_UIAElements.md` | `### Tree Scope Constants` | 11 |
+| ControlType integer constants (`UIA.Type.*`) | `Module_UIAElements.md` | `### ControlType Integer Constants (UIA.Type.*)` | 39 |
+| Staleness rules + re-fetch patterns (full rules) | `Module_UIAElements.md` | `## AHK V2 CONSTRAINTS` | 49 |
+| **Working example** — root acquisition + safe discovery | `Module_UIAElements.md` | `## TIER 1 — Root Acquisition and Safe Element Discovery` | 47 |
+| **Working example** — nested FindFirst + preflight validation | `Module_UIAElements.md` | `## TIER 2 — Nested FindFirst and Preflight Validation` | 26 |
+| **Working example** — WaitElement for async elements | `Module_UIAElements.md` | `## TIER 3 — WaitElement for Async Elements` | 36 |
+| **Working example** — multi-window HWND resolution + UIA.Filter | `Module_UIAElements.md` | `## TIER 5 — Multi-Window HWND Resolution and UIA.Filter` | 53 |
+
+---
+
+### Native UI — Element Interaction (click, type, toggle, expand, scroll, grid)
+
+| Task | File | Grep for heading | ~Lines |
+|------|------|-----------------|--------|
+| `element.Click()` smart-action (API signature) | `Module_UIAPatterns.md` | `### element.Click() — Universal Smart Action` | 4 |
+| Check which patterns an element supports | `Module_UIAPatterns.md` | `### Pattern Availability Checks (on element)` | 13 |
+| `InvokePattern.Invoke()` (API) | `Module_UIAPatterns.md` | `### InvokePattern` | 4 |
+| `ValuePattern.SetValue()` / `.Value` (API) | `Module_UIAPatterns.md` | `### ValuePattern` | 7 |
+| `TogglePattern.Toggle()` / `.ToggleState` (API) | `Module_UIAPatterns.md` | `### TogglePattern` | 5 |
+| `ExpandCollapsePattern.Expand()` / `.Collapse()` (API) | `Module_UIAPatterns.md` | `### ExpandCollapsePattern` | 6 |
+| `SelectionItemPattern.Select()` / `.IsSelected` (API) | `Module_UIAPatterns.md` | `### SelectionItemPattern` | 7 |
+| Slider / spin box / progress bar (`RangeValuePattern`) | `Module_UIAPatterns.md` | `### RangeValuePattern (Slider, SpinBox, ProgressBar)` | 7 |
+| `ScrollItemPattern.ScrollIntoView()` (API) | `Module_UIAPatterns.md` | `### ScrollItemPattern` | 4 |
+| Scroll a container (`ScrollPattern`) | `Module_UIAPatterns.md` | `### ScrollPattern (on container)` | 6 |
+| Read DataGrid cell value (`GridItemPattern`) | `Module_UIAPatterns.md` | `### GridItemPattern (on cell within DataGrid)` | 6 |
+| Window-level operations (`WindowPattern`) | `Module_UIAPatterns.md` | `### WindowPattern` | 6 |
+| BM_CLICK / PostMessage fallback (API) | `Module_UIAPatterns.md` | `### NativeWindowHandle (WM_* Fallback)` | 4 |
+| `UIA.Pattern.*` integer constants | `Module_UIAPatterns.md` | `### Pattern Constants (UIA.Pattern.*)` | 17 |
+| **Working example** — Click smart-action + InvokePattern | `Module_UIAPatterns.md` | `## TIER 1 — element.Click() Smart Action and InvokePattern` | 47 |
+| **Working example** — ValuePattern text input + RangeValuePattern | `Module_UIAPatterns.md` | `## TIER 2 — ValuePattern Text Input and RangeValuePattern` | 65 |
+| **Working example** — NativeWindowHandle BM_CLICK fallback | `Module_UIAPatterns.md` | `## TIER 3 — NativeWindowHandle Fallback (BM_CLICK / WM_*)` | 47 |
+| **Working example** — Toggle, ExpandCollapse, SelectionItem | `Module_UIAPatterns.md` | `## TIER 4 — Toggle, ExpandCollapse, and SelectionItem Patterns` | 69 |
+| **Working example** — Scroll, Grid, Window patterns | `Module_UIAPatterns.md` | `## TIER 5 — Scroll, Grid, and Window Patterns` | 78 |
+
+---
+
+### Native UI — DataGridView Traversal
+
+For DataGridView tasks load **both** files: UIAElements for row discovery, UIAPatterns for reading cell values.
+
+| Task | File | Grep for heading | ~Lines |
+|------|------|-----------------|--------|
+| **Working example** — traverse rows + match columns by Name | `Module_UIAElements.md` | `## TIER 4 — DataGridView Traversal by Name Pattern` | 51 |
+| Read a cell's value via GridItemPattern | `Module_UIAPatterns.md` | `### GridItemPattern (on cell within DataGrid)` | 6 |
+| SelectionItemPattern for grid row selection | `Module_UIAPatterns.md` | `### SelectionItemPattern` | 7 |
+
+---
+
+### Native UI — Drop-in Recipes & Anti-patterns
+
+| Task | File | Grep for heading | ~Lines |
+|------|------|-----------------|--------|
+| Copy-paste working snippets (complete adapter patterns) | `Module_UIAElements.md` | `## DROP-IN RECIPES` | 61 |
+| Copy-paste working snippets (pattern interactions) | `Module_UIAPatterns.md` | `## DROP-IN RECIPES` | 59 |
+| Anti-patterns to avoid | `Module_UIAElements.md` | `## ANTI-PATTERNS` | 12 |
+| Anti-patterns to avoid | `Module_UIAPatterns.md` | `## ANTI-PATTERNS` | 12 |
+
+---
+
+### Browser Automation (UIA_Browser)
+
+| Task | File | Grep for heading | ~Lines |
+|------|------|-----------------|--------|
+| Browser instance properties + constructor signatures | `Module_UIABrowser.md` | `### Constructors` | 5 |
+| `GetCurrentDocumentElement()` lifecycle rules (API + return type) | `Module_UIABrowser.md` | `### Document & Navigation` | 11 |
+| Tab management API (`GetTab`, `TabExist`, `SelectTab`, `GetTabs`) | `Module_UIABrowser.md` | `### Tab Management` | 10 |
+| JavaScript interop (`JSExecute`, `JSReturnThroughClipboard`) | `Module_UIABrowser.md` | `### JavaScript Interop` | 11 |
+| Content extraction (`GetCurrentURL`, text) | `Module_UIABrowser.md` | `### Content Extraction` | 5 |
+| Alert / dialog handling | `Module_UIABrowser.md` | `### Alerts & Dialogs` | 5 |
+| Browser constraints + stale-document rules (full) | `Module_UIABrowser.md` | `## AHK V2 CONSTRAINTS` | 39 |
+| **Working example** — constructor + auto-detection + proxy | `Module_UIABrowser.md` | `## TIER 1 — Constructor, Auto-Detection, and BrowserElement Proxy` | 37 |
+| **Working example** — document lifecycle + page load sync | `Module_UIABrowser.md` | `## TIER 2 — Document Element Lifecycle and Page Load Synchronisation` | 52 |
+| **Working example** — navigate + URL management + GetCurrentURL | `Module_UIABrowser.md` | `## TIER 3 — Navigation Controls, URL Management, and GetCurrentURL` | 42 |
+| **Working example** — tab management (open, switch, close) | `Module_UIABrowser.md` | `## TIER 4 — Tab Management` | 59 |
+| **Working example** — JSExecute + querySelector interaction | `Module_UIABrowser.md` | `## TIER 5 — JavaScript Interop and querySelector Interaction` | 67 |
+| Copy-paste browser automation snippets | `Module_UIABrowser.md` | `## DROP-IN RECIPES` | 45 |
+| Browser anti-patterns | `Module_UIABrowser.md` | `## ANTI-PATTERNS` | 12 |
+
+---
+
 ## Module Index
 
 | Module | Topic | When to load |
@@ -101,6 +218,8 @@ Write code only after completing Steps 1–3. Match the TIER level to the comple
 ---
 
 ## Universal Critical Rules
+
+These rules are inlined here so they are available at zero cost — no Module read needed for the common cases.
 
 ### Element Staleness (Native UI)
 - **Re-fetch `root` at every public method entry** via `UIA.ElementFromHandle(this._hwnd)` — never reuse a stored element across method calls; Windows Forms rebuilds the element tree on any repaint, focus change, or data refresh

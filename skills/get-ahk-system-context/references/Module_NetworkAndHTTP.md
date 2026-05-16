@@ -1,4 +1,4 @@
-# Module_NetworkAndHTTP.md
+﻿# Module_NetworkAndHTTP.md
 <!-- DOMAIN: Network Requests and HTTP — WinHttp.WinHttpRequest.5.1 COM, file download, JSON handling, REST API clients, Promise-style async -->
 <!-- SCOPE: COM automation beyond WinHttp.WinHttpRequest.5.1 (IStream direct manipulation, WebSocket COM, WinInet), OAuth multi-step flows, TLS certificate management via registry, and raw socket I/O are not covered — see Module_SystemAndCOM.md -->
 <!-- TRIGGERS: WinHttp.WinHttpRequest, WinHttpRequest, ComObject HTTP, Download(), HttpGet, HttpPost, REST API, JSON parse, JSON stringify, "HTTP request", "fetch URL", "web request", "API call", "async HTTP", "Bearer token", "API client", responseText, setRequestHeader, WaitForResponse, Jxon, "network request", "rate limit", "retry request", ResponseBody, HttpPromise, "Promise async", "concurrent requests", "non-blocking HTTP" -->
@@ -10,7 +10,7 @@
 
 | v1 pattern (LLM commonly writes) | v2 correct form | Consequence |
 |----------------------------------|-----------------|-------------|
-| `ComObjCreate("WinHttp.WinHttpRequest.5.1")` | `ComObject("WinHttp.WinHttpRequest.5.1")` | NameError at runtime — `ComObjCreate()` was removed in AHK v2; no HTTP session is created |
+| `ComObjCreate("WinHttp.WinHttpRequest.5.1")` | `ComObject("WinHttp.WinHttpRequest.5.1")` | MethodError at runtime — `ComObjCreate()` was removed in AHK v2; no HTTP session is created |
 | `ComObject("Msxml2.ServerXMLHTTP.6.0")` | `ComObject("WinHttp.WinHttpRequest.5.1")` | Works but uses the MSXML6-stack COM server — WinHttp.WinHttpRequest.5.1 is a native Windows OS component since XP SP1, has `ResponseBody` for binary, `WaitForResponse()` for async, and explicit `SetProxy()`/`SetCredentials()` methods |
 | `JSON.Parse(xhr.responseText)` | `Jxon.Load(xhr.responseText)` after `#Include Jxon.ahk` | MethodError — no native JSON parser exists in AHK v2 standard library |
 | `JSON.Stringify(obj)` or `JSON.Dump(obj)` | `Jxon.Dump(obj)` or custom `MapToJsonFlat()` | MethodError — same root cause; agent must use community library or manual serializer |
@@ -27,44 +27,40 @@
 ## API QUICK-REFERENCE
 
 ### Download (built-in)
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `Download()` | `Download(url, destPath)` | — (void) | `OSError` on network-level or disk failure | Fully synchronous — blocks AHK thread for entire duration; HTTP 4xx/5xx responses are NOT exceptions — the response body is silently written to the destination file |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `Download()` | `Download(url, destPath)` | Fully synchronous — blocks AHK thread for entire duration; throws `OSError` on failure (network-level error or disk write error); HTTP 4xx/5xx responses are NOT exceptions — the response body is silently written to the destination file |
 
 ### WinHttp.WinHttpRequest.5.1 COM Object — Core Request Methods
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `ComObject()` | `ComObject("WinHttp.WinHttpRequest.5.1")` | COM wrapper object | `Error` if ProgID not found | Creates HTTP session — native Windows OS component, preferred over `Msxml2.ServerXMLHTTP.6.0` |
-| `.setTimeouts()` | `.setTimeouts(resolve, connect, send, receive)` | — | — | All values in milliseconds; **resolve must be 0** (non-zero causes DNS thread handle leaks per Microsoft KB); must be called before `open()` |
-| `.open()` | `.open(method, url, async)` | — | — | `async=false` = blocks AHK message loop (GUI freezes); `async=true` = HTTP I/O on background thread, use `WaitForResponse()` or `WaitForResponse(0)` for completion |
-| `.setRequestHeader()` | `.setRequestHeader(name, value)` | — | — | Must be called after `open()` and before `send()` |
-| `.send()` | `.send(body?)` | — | `Error` (COM exception) on network failure | Accepts string or empty for GET/HEAD; returns immediately when `async=true` |
-| `.abort()` | `.abort()` | — | — | Cancels an in-flight async request |
-| `.waitForResponse()` | `.waitForResponse()` | — (blocks until complete) | `Error` on timeout or network failure | **No-arg form**: blocks current AHK code flow but pumps the message loop — other timers and hotkeys remain active. Per official AHK v2 docs: canonical "script remains responsive" pattern |
-| `.waitForResponse(0)` | `.waitForResponse(timeoutSecs)` | `true` if ready, `false` if in-flight | — | **Zero-timeout form**: non-blocking poll — returns `true` immediately if response is ready, `false` if still in-flight; use inside `SetTimer` callback for fully non-blocking async |
-| `.waitForResponse(n)` | `.waitForResponse(timeoutSecs)` | — (blocks up to n seconds) | `Error` if no response within timeout | **Timed form**: blocks up to `n` seconds then throws if no response; unlike no-arg form, has an explicit deadline |
-| `.status` | `.status` (read-only) | Integer (200, 404, etc.) | — | HTTP status integer; never auto-throws on 4xx/5xx |
-| `.responseText` | `.responseText` (read-only) | String | — | Response body as string; check `.status` first — returns empty string or error body on HTTP error |
-| `.statusText` | `.statusText` (read-only) | String (e.g. `"Not Found"`) | — | HTTP reason phrase |
-| `.getAllResponseHeaders()` | `.getAllResponseHeaders()` | CRLF-delimited header string | — | Returns all response headers as a single string |
-| `.getResponseHeader()` | `.getResponseHeader(name)` | String (header value) | — | Returns one named response header value |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `ComObject()` | `ComObject("WinHttp.WinHttpRequest.5.1")` | Creates HTTP session — native Windows OS component, preferred over `Msxml2.ServerXMLHTTP.6.0` |
+| `.setTimeouts()` | `.setTimeouts(resolve, connect, send, receive)` | All values in milliseconds; **resolve must be 0** (non-zero causes DNS thread handle leaks per Microsoft KB); must be called before `open()` |
+| `.open()` | `.open(method, url, async)` | `async=false` = blocks AHK message loop (GUI freezes); `async=true` = HTTP I/O on background thread, use `WaitForResponse()` or `WaitForResponse(0)` for completion |
+| `.setRequestHeader()` | `.setRequestHeader(name, value)` | Must be called after `open()` and before `send()` |
+| `.send()` | `.send(body?)` | Accepts string or empty for GET/HEAD; returns immediately when `async=true` |
+| `.abort()` | `.abort()` | Cancels an in-flight async request |
+| `.waitForResponse()` | `.waitForResponse()` | **No-arg form**: blocks current AHK code flow but pumps the message loop — other timers and hotkeys remain active. Per official AHK v2 docs: canonical "script remains responsive" pattern. Throws on timeout/network error. |
+| `.waitForResponse(0)` | `.waitForResponse(timeoutSecs)` | **Zero-timeout form**: non-blocking poll — returns `true` immediately if response is ready, `false` if still in-flight; use inside `SetTimer` callback for fully non-blocking async |
+| `.waitForResponse(n)` | `.waitForResponse(timeoutSecs)` | **Timed form**: blocks up to `n` seconds then throws if no response; unlike no-arg form, has an explicit deadline |
+| `.status` | `.status` (read-only) | HTTP status integer (200, 404, etc.); never auto-throws on 4xx/5xx |
+| `.responseText` | `.responseText` (read-only) | Response body as string; check `.status` first — returns empty string or error body on HTTP error |
+| `.statusText` | `.statusText` (read-only) | HTTP reason phrase (e.g., `"Not Found"`) |
+| `.getAllResponseHeaders()` | `.getAllResponseHeaders()` | Returns all response headers as a single CRLF-delimited string |
+| `.getResponseHeader()` | `.getResponseHeader(name)` | Returns one named response header value |
 
 ### WinHttp.WinHttpRequest.5.1 COM Object — Extended Capabilities
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `.responseBody` | `.responseBody` (read-only) | SafeArray of unsigned bytes | — | Response entity body as byte array — use for binary downloads (images, ZIPs, PDFs); not available on Msxml2 |
-| `.responseStream` | `.responseStream` (read-only) | `IStream` COM object | — | Response entity body as IStream — use for large streaming responses |
-| `.setProxy()` | `.setProxy(proxySetting, proxyServer?, bypassList?)` | — | — | Explicit proxy config: `0`=default, `1`=no proxy, `2`=named proxy; `proxyServer` = `"server:port"` |
-| `.setCredentials()` | `.setCredentials(username, password, flags)` | — | — | Built-in HTTP or proxy authentication; `flags`: `0`=server, `1`=proxy |
-| `.setClientCertificate()` | `.setClientCertificate(clientCertificate)` | — | — | Select TLS client certificate; cert string format: `"CURRENT_USER\My\CertSubject"` |
-| `.setAutoLogonPolicy()` | `.setAutoLogonPolicy(autoLogonPolicy)` | — | — | NTLM/Kerberos auto-logon: `0`=always, `1`=on intranet, `2`=never |
-| `.option` | `.option[optionID]` (read/write) | Variant | — | Get or set a WinHTTP option value by numeric ID |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `.responseBody` | `.responseBody` (read-only) | Response entity body as SafeArray of unsigned bytes — use for binary downloads (images, ZIPs, PDFs); not available on Msxml2 |
+| `.responseStream` | `.responseStream` (read-only) | Response entity body as `IStream` COM object — use for large streaming responses |
+| `.setProxy()` | `.setProxy(proxySetting, proxyServer?, bypassList?)` | Explicit proxy config: `0`=default, `1`=no proxy, `2`=named proxy; `proxyServer` = `"server:port"` |
+| `.setCredentials()` | `.setCredentials(username, password, flags)` | Built-in HTTP or proxy authentication; `flags`: `0`=server, `1`=proxy |
+| `.setClientCertificate()` | `.setClientCertificate(clientCertificate)` | Select TLS client certificate; cert string format: `"CURRENT_USER\My\CertSubject"` |
+| `.setAutoLogonPolicy()` | `.setAutoLogonPolicy(autoLogonPolicy)` | NTLM/Kerberos auto-logon: `0`=always, `1`=on intranet, `2`=never |
+| `.option` | `.option[optionID]` (read/write) | Get or set a WinHTTP option value by numeric ID |
 
 ### WaitForResponse — Three Blocking Modes
-
 | Call form | Blocks message loop? | Blocks current code? | Use when |
 |-----------|---------------------|---------------------|----------|
 | `.waitForResponse()` | No — pumps it | Yes — code waits | GUI script needs a single request; simplest correct async pattern per AHK v2 docs |
@@ -73,7 +69,6 @@
 | `open(false)` + `send()` | **Yes — freezes GUI** | Yes | Background scripts with no GUI only |
 
 ### WinHttp vs Msxml2 — Capability Comparison
-
 | Aspect | Msxml2.ServerXMLHTTP.6.0 | WinHttp.WinHttpRequest.5.1 |
 |--------|--------------------------|---------------------------|
 | Part of Windows OS | No — requires MSXML6 package | Yes — built into Windows since XP SP1 |
@@ -88,33 +83,30 @@
 | ResolveTimeout | Safe to set non-zero | Must be 0 — non-zero causes DNS thread handle leaks |
 
 ### HttpPromise Class (defined in TIER 5)
-
-| Method/Property | Signature | Returns | Throws | Notes |
-|----------------|-----------|---------|--------|-------|
-| `HttpPromise()` | `HttpPromise(method, url, opts?)` | HttpPromise instance | — | `opts` Map: `connectMs`, `sendMs`, `receiveMs`, `headers`, `body`, `contentType`; COM object stored in `this._xhr`; SetTimer polling starts in constructor |
-| `.then()` | `.then(onFulfilled)` | `this` (for chaining) | — | Register success callback; if already fulfilled, fires immediately |
-| `.catch()` | `.catch(onRejected)` | `this` (for chaining) | — | Register error callback; if already rejected, fires immediately; **requires AHK v2.0.3+** — `catch` as method name was a parser bug before v2.0.3 |
-| `.abort()` | `.abort()` | — | — | Stop polling, cancel COM request, call reject handlers; nullifies `_pollFn` to break reference cycle |
+| Method/Property | Signature | Notes |
+|----------------|-----------|-------|
+| `HttpPromise()` | `HttpPromise(method, url, opts?)` | `opts` Map: `connectMs`, `sendMs`, `receiveMs`, `headers`, `body`, `contentType`; COM object stored in `this._xhr`; SetTimer polling starts in constructor |
+| `.then()` | `.then(onFulfilled)` | Register success callback; if already fulfilled, fires immediately; returns `this` for chaining |
+| `.catch()` | `.catch(onRejected)` | Register error callback; if already rejected, fires immediately; returns `this` for chaining; **requires AHK v2.0.3+** — `catch` as method name was a parser bug before v2.0.3 |
+| `.abort()` | `.abort()` | Stop polling, cancel COM request, call reject handlers; nullifies `_pollFn` to break reference cycle |
 
 ### Jxon Community Library (third-party — required for full JSON support)
-
-| Method | Signature | Returns | Throws | Notes |
-|--------|-----------|---------|--------|-------|
-| `Jxon.Load()` | `Jxon.Load(jsonString)` | Map or Array | `Error` on malformed JSON | Parses JSON string into AHK v2 Map / Array structure; Arrays are 1-based |
-| `Jxon.Dump()` | `Jxon.Dump(obj, indent?)` | String (JSON) | — | Serializes Map / Array to JSON string |
+| Method | Signature | Notes |
+|--------|-----------|-------|
+| `Jxon.Load()` | `Jxon.Load(jsonString)` | Parses JSON string into AHK v2 Map / Array structure; Arrays are 1-based |
+| `Jxon.Dump()` | `Jxon.Dump(obj, indent?)` | Serializes Map / Array to JSON string |
 
 ### Path and File Helpers (used in TIER 1)
-
-| Function | Signature | Returns | Throws | Notes |
-|----------|-----------|---------|--------|-------|
-| `SplitPath()` | `SplitPath(path, &name?, &dir?, &ext?, &nameNoExt?, &drive?)` | — | — | Output vars passed by reference |
-| `FileExist()` | `FileExist(path)` | Attribute string or `""` | — | Not a boolean; use `!= ""` for truthiness |
-| `DirExist()` | `DirExist(path)` | Attribute string or `""` | — | Same semantics as FileExist |
-| `DirCreate()` | `DirCreate(path)` | — | `OSError` if fails | Creates directory; may throw if already exists on some systems |
+| Function | Signature | Notes |
+|----------|-----------|-------|
+| `SplitPath()` | `SplitPath(path, &name?, &dir?, &ext?, &nameNoExt?, &drive?)` | Output vars passed by reference |
+| `FileExist()` | `FileExist(path)` | Returns attribute string or `""` — not a boolean; use `!= ""` for truthiness |
+| `DirExist()` | `DirExist(path)` | Returns attribute string or `""` |
+| `DirCreate()` | `DirCreate(path)` | Creates directory; throws `OSError` if it already exists on some systems |
 
 ## AHK V2 CONSTRAINTS
 
-- Use `ComObject("WinHttp.WinHttpRequest.5.1")` for every HTTP session — `ComObjCreate()` was removed in AHK v2 and throws `NameError` immediately. `Msxml2.ServerXMLHTTP.6.0` also works but is an MSXML6-stack dependency; WinHttp is the native Windows OS component preferred for new scripts.
+- Use `ComObject("WinHttp.WinHttpRequest.5.1")` for every HTTP session — `ComObjCreate()` was removed in AHK v2 and throws `MethodError` immediately. `Msxml2.ServerXMLHTTP.6.0` also works but is an MSXML6-stack dependency; WinHttp is the native Windows OS component preferred for new scripts.
 - **Always set `setTimeouts` ResolveTimeout (first parameter) to `0`** — any non-zero value triggers a thread handle leak on every DNS resolution in WinHTTP per Microsoft documentation. Windows provides its own DNS client timeout. Correct call: `xhr.setTimeouts(0, 10000, 30000, 30000)`.
 - AHK v2 ships with no JSON parser — never generate `JSON.Parse()`, `JSON.Stringify()`, `JSON.Load()`, or any similar built-in form; use the `Jxon` community library (`#Include Jxon.ahk`), or use `RegExMatch` named-capture patterns for known single-field extraction from flat JSON only.
 - **WinHttp `WaitForResponse()` has three distinct modes** — the no-arg form blocks current code flow but pumps the AHK message loop (GUI and other timers remain active, per official AHK v2 docs); `WaitForResponse(0)` returns true/false immediately for use inside `SetTimer` polling; `open(false)` + `send()` blocks the entire message loop and freezes the GUI.
@@ -124,7 +116,7 @@
 - **Reference cycle rule**: storing a BoundFunc that captures `this` as a property of `this` (e.g. `this._pollFn := this._Poll.Bind(this)`) creates a cycle that prevents GC under AHK v2 reference counting. Always nullify with `this._pollFn := unset` immediately after calling `SetTimer(this._pollFn, 0)`.
 - Store async COM objects in script-scope (global or static) variables — a local-variable COM object goes out of scope when the enclosing function returns, silently cancelling the in-flight request.
 - Escape all user-supplied strings with `JsonEscape()` before embedding in JSON payloads — unescaped `"` and `\` produce malformed JSON silently.
-- ✗ `xhr := ComObjCreate("WinHttp.WinHttpRequest.5.1")` — NameError, no session
+- ✗ `xhr := ComObjCreate("WinHttp.WinHttpRequest.5.1")` — MethodError, no session
 - ✓ `xhr := ComObject("WinHttp.WinHttpRequest.5.1")` — correct v2 COM instantiation
 - ✗ `xhr.setTimeouts(5000, 10000, 30000, 30000)` — non-zero ResolveTimeout causes DNS thread handle leak
 - ✓ `xhr.setTimeouts(0, 10000, 30000, 30000)` — ResolveTimeout must be 0
@@ -147,30 +139,10 @@ Safe-access priority order for network responses:
   3. `open(true)` + `SetTimer` + `WaitForResponse(0)` polling — fully non-blocking; use when current code flow must return immediately
   4. `SetTimer` + synchronous `open(false)` loop (`ApiPoller`) — periodic polling; no COM lifetime risk, simple to debug
 
-Unset variable handling: always check `IsSet(xhr)` or test the COM object before calling methods — a COM object that has gone out of scope or was never assigned will cause a runtime crash on method invocation.
-
-Resource lifecycle: WinHttp COM objects are freed when all references drop to zero under AHK v2 reference counting. For async objects, store them in script-scope (global or static) variables to keep them alive until `waitForResponse()` or the final callback fires.
-
-## AGENT QA CHECKLIST
-
-- [ ] Did I use `ComObject("WinHttp.WinHttpRequest.5.1")` (not the removed `ComObjCreate()`) to create the HTTP session?
-- [ ] Did I set the first parameter of `setTimeouts()` (ResolveTimeout) to exactly `0` — not 5000, not 3000, not any other value?
-- [ ] Did I check `xhr.status` before reading `xhr.responseText` — WinHttp never throws on HTTP 4xx/5xx errors?
-- [ ] Did I use `open(true)` + `WaitForResponse()` (not `open(false)`) in any GUI script, and did I nullify `this._pollFn := unset` after `SetTimer(this._pollFn, 0)` to break any BoundFunc reference cycle?
-
-## RUNTIME ERROR MAPPING
-
-| Exception Class | Trigger Condition | Detection Code | Fix |
-|----------------|-------------------|----------------|-----|
-| `NameError` | `ComObjCreate("WinHttp.WinHttpRequest.5.1")` — function removed in AHK v2 | `e.Message` contains `"ComObjCreate"` | Replace with `ComObject("WinHttp.WinHttpRequest.5.1")` — no `Obj` in `ComObject` |
-| `Error` (COM network exception) | `send()` or `waitForResponse()` on unreachable host, DNS failure, timeout, or refused connection | `e.Message` contains `0x80072EFD` (connection failed), `0x80072EE7` (DNS name not resolved), or `0x80072EFE` (connection aborted) | Wrap `send()` and `waitForResponse()` in `try/catch`; inspect `e.Message` for the WinHTTP error code; verify URL and network availability |
-| `IndexError` | `jxonArray[0]` — zero-based index access on a Jxon-parsed Array | `e.Message` contains `"Index 0 is out of range"` | Use 1-based index `jxonArray[1]` — AHK v2 Arrays are 1-indexed; Jxon returns standard AHK v2 Arrays for JSON arrays |
-
 ## TIER 1 — Basic File Download
 > METHODS COVERED: Download · FileExist · DirExist · DirCreate · SplitPath
 
 `Download()` is AHK v2's built-in single-function file fetcher. It accepts a URL and a local destination path, executes synchronously on the calling thread for its entire duration, and throws an `OSError` on network-level failure (DNS, timeout, refused connection) or disk write failure. HTTP 4xx/5xx responses are not exceptions — the response body is silently saved to the destination path. All TIER 1 usage must wrap `Download()` in `try/catch` and verify the file exists after the call. Never use `Download()` for large files in GUI contexts — the AHK thread blocks completely until the transfer finishes.
-
 ```ahk
 ; ── TIER 1: Download() with error handling ────────────────────────────────────
 #Requires AutoHotkey v2.0
@@ -227,7 +199,6 @@ for i, url in urls {
 > METHODS COVERED: ComObject · .setTimeouts · .open · .send · .status · .responseText · .statusText · BuildQueryString · UriEncode · StrJoin
 
 A synchronous GET request uses `ComObject("WinHttp.WinHttpRequest.5.1")` with `open()` in blocking mode (`async=false`), then reads `xhr.responseText` after `send()` completes. Use this mode only in non-GUI scripts — `open(false)` blocks the entire AHK message loop and freezes any GUI. For GUI scripts, use `open(true)` + `WaitForResponse()` (TIER 5). Every WinHttp session must follow this initialization sequence: `ComObject()` → `setTimeouts(0,...)` → `open()` → `setRequestHeader()` calls → `send()` → check `.status` → read `.responseText`.
-
 ```ahk
 ; ── TIER 2: Synchronous GET request ──────────────────────────────────────────
 #Requires AutoHotkey v2.0
@@ -236,8 +207,8 @@ HttpGet(url) {
     ; ✓ Correct AHK v2 COM instantiation — WinHttp is the preferred native Windows HTTP component
     xhr := ComObject("WinHttp.WinHttpRequest.5.1")
 
-    ; ✗ Wrong — ComObjCreate() was removed; produces NameError immediately
-    ; xhr := ComObjCreate("WinHttp.WinHttpRequest.5.1")   ; → NameError
+    ; ✗ Wrong — ComObjCreate() was removed; produces MethodError immediately
+    ; xhr := ComObjCreate("WinHttp.WinHttpRequest.5.1")   ; → MethodError
 
     ; ✓ ResolveTimeout MUST be 0 — any non-zero value causes DNS thread handle leaks
     ; Params: resolve(must be 0), connect, send, receive (milliseconds)
@@ -316,7 +287,6 @@ try {
 > METHODS COVERED: .setRequestHeader · .getAllResponseHeaders · .setCredentials · BasicAuthHeader · HttpSend · MapToJsonFlat · JsonEscape · PostJsonWithBearer · StrJoin
 
 POST requests extend the TIER 2 baseline by adding `setRequestHeader()` calls for `Content-Type`, `Authorization`, and any custom headers, then passing a string payload to `send()`. This tier also covers Bearer token injection, Basic Auth construction via `CryptBinaryToStringW`, and the built-in `.setCredentials()` method unique to WinHttp. The `HttpSend()` function in this tier is the general-purpose multi-method sender that all higher tiers build on. The `PUT`/`PATCH`/`DELETE` method variants follow identical patterns with different method strings.
-
 ```ahk
 ; ── TIER 3: POST with headers and auth ───────────────────────────────────────
 #Requires AutoHotkey v2.0
@@ -460,7 +430,6 @@ try {
 > METHODS COVERED: Jxon.Load · Jxon.Dump · RegExMatch · ExtractJsonField · ArrayOfMapsToJson · MapToJsonFlat · JsonEscape · StrJoin
 
 AHK v2 has no built-in JSON parser. This tier documents the three valid approaches: **(A)** community library `Jxon` for full parsing and serialization, **(B)** `RegExMatch` named-capture patterns for single known-field extraction from simple flat JSON, and **(C)** manual `MapToJsonFlat` serialization for outbound payloads. Complex or nested JSON always requires Jxon — `RegExMatch` patterns break silently on nested objects, escaped characters within values, or JSON arrays. Never generate `JSON.Parse()`, `JSON.Stringify()`, or any built-in form; these throw `MethodError` at runtime.
-
 ```ahk
 ; ── TIER 4A: Jxon community library (RECOMMENDED) ────────────────────────────
 ; Download: https://github.com/cocobelgica/AutoHotkey-JSON
@@ -580,7 +549,6 @@ WinHttp async works because `open(true)` moves HTTP I/O onto a Windows thread po
 **Pattern C (ApiPoller, `SetTimer` + sync `open(false)`):** periodic polling where a fresh synchronous COM object fires on each interval. Simplest lifetime management — no async state to track.
 
 **Pattern D (HttpPromise):** Promise-style API for concurrent requests. Multiple HttpPromise instances run simultaneously, each managing its own COM object, timer, and callback queue. Critical: storing `this._pollFn := this._Poll.Bind(this)` creates a reference cycle; always set `this._pollFn := unset` after stopping the timer to allow GC.
-
 ```ahk
 ; ── TIER 5A: open(true) + WaitForResponse() — simplest GUI-safe async ─────────
 ; Per official AHK v2 docs: this pattern keeps the script responsive
@@ -843,11 +811,30 @@ p3.catch(HandleError)
 ; ✓ All three lines return immediately — AHK main thread stays responsive
 ```
 
+### Performance Notes
+
+Network I/O is orders of magnitude slower than in-memory operations. Apply these principles to avoid the most common AHK v2 network performance pitfalls:
+
+**WaitForResponse vs SetTimer vs HttpPromise:** For a single request in a GUI script, `open(true)` + `WaitForResponse()` is the simplest correct choice — one function call, no timer management, message loop pumped during wait. Use `SetTimer` + `WaitForResponse(0)` only when current code must return immediately. Use `HttpPromise` when firing multiple concurrent requests — each instance manages its own lifetime independently.
+
+**Request batching:** Avoid one HTTP call per loop iteration. A loop of N items makes N round-trips. The per-request overhead (DNS + TCP + TLS handshake) dwarfs payload transfer time for most APIs. When the API supports batch or bulk endpoints, compose a single request.
+
+**Timeout sizing:** Leave ResolveTimeout at `0` always. Set connect timeout short (2–3 s) for fast APIs; use longer receive timeouts (60–300 s) only for large file downloads. Oversized timeouts mask connectivity problems.
+
+**COM object reuse in tight loops:** Creating a new `ComObject("WinHttp.WinHttpRequest.5.1")` for every request in a high-frequency polling loop is wasteful. Reuse a single instance — `open()` resets request state and can be called multiple times on the same object.
+
+**JSON parsing cost:** `Jxon.Load()` parses the entire JSON tree. In hot polling loops where only one field is needed, `RegExMatch` named-capture on a known flat field is significantly faster.
+
+**Rate limiting with Sleep:** Insert `Sleep(delayMs)` between requests in batch loops to avoid HTTP 429. A 500 ms inter-request delay is a reasonable default for public APIs without documented rate limits.
+
+**Concurrent request ceiling:** HttpPromise instances fire simultaneously, each backed by a Windows thread pool thread. 10–20 concurrent instances is reasonable; beyond that, rate limiting and thread pool exhaustion become concerns.
+
+**Binary responses:** When downloading binary content (images, PDFs, ZIPs), use `.responseBody` (SafeArray of bytes) rather than `.responseText` — text decoding corrupts binary data.
+
 ## TIER 6 — Full REST API Client Class
 > METHODS COVERED: RestClient.__New · RestClient.Get · RestClient.Post · RestClient.Put · RestClient.Delete · RestClient.SetToken · RestClient.IsTokenValid · RestClient.RefreshToken · RestClient.BuildUrl · RestClient.Execute · RestClient.SendRequest · RestClient.ParseResponse · RestClient.UriEncode · RestClient.JoinStr · GitHubClient.__New · GitHubClient.GetRepo · GitHubClient.ListIssues · GitHubClient.CreateIssue · Jxon.Load · Jxon.Dump
 
 A production REST API client encapsulates base URL management, token storage with expiry tracking, automatic retry with exponential backoff, and dynamic endpoint composition into a single reusable class. This tier integrates all lower-tier patterns and implements the robustness requirements for real-world API integrations. `#Include Jxon.ahk` is required at this tier — `Jxon.Dump()` is used for request serialization and `Jxon.Load()` for response parsing. When subclassing `RestClient`, override `RefreshToken()` to implement token renewal without modifying the base retry loop. `SendRequest` uses `open(false)` — this class is intended for background script contexts. For GUI-integrated usage, replace `open(false)` with `open(true)` + `WaitForResponse()` in `SendRequest`.
-
 ```ahk
 ; ── TIER 6: Production REST API client ───────────────────────────────────────
 #Requires AutoHotkey v2.0
@@ -1092,157 +1079,6 @@ try {
 } catch Error as e {
     MsgBox("GitHub API error: " e.Message "`n" e.Extra, "API Error", 16)
 }
-```
-
-### Performance Notes
-
-Network I/O is orders of magnitude slower than in-memory operations. Apply these principles to avoid the most common AHK v2 network performance pitfalls:
-
-**WaitForResponse vs SetTimer vs HttpPromise:** For a single request in a GUI script, `open(true)` + `WaitForResponse()` is the simplest correct choice — one function call, no timer management, message loop pumped during wait. Use `SetTimer` + `WaitForResponse(0)` only when current code must return immediately. Use `HttpPromise` when firing multiple concurrent requests — each instance manages its own lifetime independently.
-
-**Request batching:** Avoid one HTTP call per loop iteration. A loop of N items makes N round-trips. The per-request overhead (DNS + TCP + TLS handshake) dwarfs payload transfer time for most APIs. When the API supports batch or bulk endpoints, compose a single request.
-
-**Timeout sizing:** Leave ResolveTimeout at `0` always. Set connect timeout short (2–3 s) for fast APIs; use longer receive timeouts (60–300 s) only for large file downloads. Oversized timeouts mask connectivity problems.
-
-**COM object reuse in tight loops:** Creating a new `ComObject("WinHttp.WinHttpRequest.5.1")` for every request in a high-frequency polling loop is wasteful. Reuse a single instance — `open()` resets request state and can be called multiple times on the same object.
-
-**JSON parsing cost:** `Jxon.Load()` parses the entire JSON tree. In hot polling loops where only one field is needed, `RegExMatch` named-capture on a known flat field is significantly faster.
-
-**Rate limiting with Sleep:** Insert `Sleep(delayMs)` between requests in batch loops to avoid HTTP 429. A 500 ms inter-request delay is a reasonable default for public APIs without documented rate limits.
-
-**Concurrent request ceiling:** HttpPromise instances fire simultaneously, each backed by a Windows thread pool thread. 10–20 concurrent instances is reasonable; beyond that, rate limiting and thread pool exhaustion become concerns.
-
-**Binary responses:** When downloading binary content (images, PDFs, ZIPs), use `.responseBody` (SafeArray of bytes) rather than `.responseText` — text decoding corrupts binary data.
-
-## DROP-IN RECIPES
-
-```ahk
-; ── Recipe 1: HttpFetch — production single-request function ──────────────────
-; ✓ Full initialization ceremony, explicit timeouts, status check, and typed error context
-; ✓ Handles both sync (non-GUI) and responsive-GUI modes via asyncMode parameter
-; ✓ Returns response Map: {status, body, headers} — caller decides what to do with status
-HttpFetch(method, url, opts := Map()) {
-    if !(method is String) || method = ""
-        throw TypeError("HttpFetch: method must be a non-empty string", -1)
-    if !(url is String) || !RegExMatch(url, "^https?://")
-        throw TypeError("HttpFetch: url must begin with http:// or https://", -1)
-
-    xhr := ComObject("WinHttp.WinHttpRequest.5.1")
-
-    ; ✓ ResolveTimeout MUST be 0 — any non-zero value leaks a DNS thread handle
-    xhr.setTimeouts(
-        0,
-        opts.Get("connectMs", 10000),
-        opts.Get("sendMs",    30000),
-        opts.Get("receiveMs", 30000)
-    )
-
-    ; ✓ async=true + WaitForResponse() keeps GUI responsive; async=false for non-GUI
-    asyncMode := opts.Get("async", true)
-    xhr.open(method, url, asyncMode)
-
-    ; Apply request headers — must be called after open(), before send()
-    if opts.Has("headers")
-        for k, v in opts["headers"]
-            xhr.setRequestHeader(k, v)
-
-    ; Apply Content-Type if body is present
-    payload := opts.Get("body", "")
-    if (payload != "")
-        xhr.setRequestHeader("Content-Type",
-            opts.Get("contentType", "application/json; charset=UTF-8"))
-
-    try {
-        xhr.send(payload)
-        if asyncMode
-            xhr.waitForResponse()   ; pumps message loop; GUI stays live
-
-        ; ✓ Always inspect status — WinHttp NEVER throws on HTTP 4xx/5xx
-        return Map(
-            "status",  xhr.status,
-            "body",    xhr.responseText,
-            "headers", xhr.getAllResponseHeaders()
-        )
-    } catch Error as e {
-        throw Error("HttpFetch [" method " " url "]: " e.Message, -1, e.Extra)
-    }
-}
-
-; Call site: res := HttpFetch("GET", "https://api.example.com/data", Map("headers", Map("Accept", "application/json")))
-;            if (res["status"] == 200) MsgBox(res["body"])
-
-
-; ── Recipe 2: SafeDownload — retry-capable file downloader ───────────────────
-; ✓ Creates destination directory if absent, verifies file exists after download,
-;   retries on transient network failure with configurable delay
-; ✓ Never silently succeeds when the file is missing after the call
-SafeDownload(url, destPath, maxRetries := 2, retryDelayMs := 1000) {
-    if !(url is String) || !RegExMatch(url, "^https?://")
-        throw TypeError("SafeDownload: url must begin with http:// or https://", -1)
-    if !(destPath is String) || destPath = ""
-        throw TypeError("SafeDownload: destPath must be a non-empty string", -1)
-
-    ; ✓ Ensure destination directory exists before attempting write
-    SplitPath(destPath, , &destDir)
-    if destDir != "" && !DirExist(destDir)
-        DirCreate(destDir)
-
-    attempt := 0
-    loop {
-        attempt++
-        try {
-            Download(url, destPath)
-
-            ; ✓ Verify file was written — HTTP 4xx/5xx body can be silently saved
-            if FileExist(destPath) = ""
-                throw Error("File absent after download", -1, destPath)
-
-            return true   ; success
-
-        } catch OSError as e {
-            ; Network-level or disk failure — retry if attempts remain
-            if (attempt <= maxRetries) {
-                Sleep(retryDelayMs * attempt)   ; escalating delay
-                continue
-            }
-            throw Error("SafeDownload failed after " attempt
-                " attempts: " e.Message, -1, url)
-        }
-    }
-}
-
-; Call site: SafeDownload("https://example.com/update.zip", A_Temp "\update.zip", 3, 500)
-
-
-; ── Recipe 3: JsonFetch — fetch + JSON parse in one call ─────────────────────
-; ✓ Combines HttpFetch with Jxon.Load; validates JSON prefix before parsing
-; ✓ Surfaces HTTP error status as a typed Error with body excerpt for debugging
-; Requires: #Include Jxon.ahk
-JsonFetch(url, opts := Map()) {
-    if !(url is String) || url = ""
-        throw TypeError("JsonFetch: url must be a non-empty string", -1)
-
-    res := HttpFetch("GET", url, opts)
-
-    ; ✓ Check HTTP status before attempting parse — body may be HTML error page
-    if (res["status"] >= 400)
-        throw Error("JsonFetch: HTTP " res["status"], -1,
-            SubStr(res["body"], 1, 300))
-
-    body := Trim(res["body"])
-    if body = ""
-        throw Error("JsonFetch: empty response body", -1, url)
-
-    ; ✓ Quick prefix check before invoking Jxon — avoids confusing Jxon error messages
-    if !(SubStr(body, 1, 1) ~= "[{\[]")
-        throw Error("JsonFetch: response is not JSON (starts with '"
-            SubStr(body, 1, 20) "')", -1, url)
-
-    return Jxon.Load(body)
-}
-
-; Call site: data := JsonFetch("https://api.github.com/repos/Lexikos/AutoHotkey_L")
-;            MsgBox("Stars: " data["stargazers_count"])
 ```
 
 ## ANTI-PATTERNS

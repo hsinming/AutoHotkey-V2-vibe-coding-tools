@@ -27,24 +27,22 @@ order on every review request. Do not skip steps or reorder them.
 
 ## How to Use This Skill
 
-### Step 1 — Decision Table: task type → module to load
+### Step 1 — Load modules via Section Navigator, then scan submitted code
 
-| Task type | Load module |
-|-----------|-------------|
-| Any code review / audit / v2 compliance check | `references/Module_CodeReview.md` |
-| v2 syntax baseline verification (Dimension 1) | `../get-ahk-core-context/references/Module_Instructions.md` |
-| OOP / class / inheritance review | `../get-ahk-core-context/references/Module_Classes.md` |
-| Function naming contract enforcement | `../get-ahk-core-context/references/Module_Functions.md` |
-| Error handling / throwing operations review | `../get-ahk-logic-context/references/Module_Errors.md` |
-| GUI / event binding review (Dimension 4) | `../get-ahk-ui-context/references/Module_GUI.md` |
-| DllCall / Buffer / COM security review (Dimension 5) | `../get-ahk-system-context/references/Module_DllCallAndMemory.md` |
+Use the **Section Navigator** below to load targeted sections from `Module_CodeReview.md`
+before reading the submitted code. The `## API QUICK-REFERENCE` and `## AHK V2 CONSTRAINTS`
+sections establish the review baseline; descend into the TIER section matching the
+review dimension you are evaluating.
+
+After loading the baseline, scan the submitted code and load additional cross-skill
+modules conditionally based on what constructs are present.
 
 ### Step 2 — Cross-skill dependency loading order
 
 Load in this sequence; conditional modules require scanning the submitted code first.
 
-1. `../get-ahk-core-context/references/Module_Instructions.md` — **always load first** (authoritative v2 syntax baseline)
-2. `references/Module_CodeReview.md` — **always load** (primary review framework: 6 dimensions, severity rules, Clean Code + OE contracts)
+1. `../get-ahk-core-context/references/Module_Instructions.md` — **always load first** (full file, authoritative v2 syntax baseline)
+2. `references/Module_CodeReview.md` — targeted sections via Section Navigator (primary review framework)
 3. `../get-ahk-core-context/references/Module_Classes.md` — if `class`, `extends`, `__New`, `static`, or OOP patterns present
 4. `../get-ahk-core-context/references/Module_Functions.md` — if `Get*`, `Check*`, `Is*`, or `Set*` function/method names present
 5. `../get-ahk-logic-context/references/Module_Errors.md` — if `try`, `catch`, `FileRead`, `ComObject`, `RegRead`, `DllCall`, or `Download` present
@@ -53,15 +51,15 @@ Load in this sequence; conditional modules require scanning the submitted code f
 
 ### Step 3 — Apply Universal Critical Rules
 
-After loading all required modules, cross-check the submitted code against the Critical and Major severity rule tables in `references/Module_CodeReview.md` before writing any finding. Confirm: every Critical condition has been evaluated.
+After loading all required modules, cross-check the submitted code against the
+Critical and Major severity rule tables before writing any finding.
 
 ### Step 4 — Generate the review report
 
-Produce the six-dimension report defined in `references/Module_CodeReview.md`, assigning each finding the mandatory severity level (🔴 Critical / 🟠 Major / 🟡 Minor) from the severity classification tables — not from personal judgment.
+Produce the six-dimension report defined in `Module_CodeReview.md`, assigning each
+finding the mandatory severity level (🔴 Critical / 🟠 Major / 🟡 Minor).
 
 ### Step 5 — Pre-output self-check
-
-Before writing the final report, verify every item below:
 
 - [ ] `=` is not used as assignment anywhere in the reviewed code (must be `:=`)
 - [ ] No `catch {}` body is empty — every catch block contains a handling action
@@ -73,13 +71,44 @@ Before writing the final report, verify every item below:
 
 ---
 
+## Section Navigator
+
+> **How to use:**
+> 1. Find the row matching your review task below.
+> 2. `grep -n "^## heading text"` `Module_CodeReview.md` to get the current line number.
+> 3. `Read(file, offset=<line>, limit=<n>)` — read only that section.
+>
+> Load `## API QUICK-REFERENCE` + `## AHK V2 CONSTRAINTS` first to establish the review
+> baseline (~120 lines). Then load only the TIER section(s) matching the dimension(s)
+> you are actively evaluating.
+
+### Module_CodeReview.md (1184 lines)
+
+| Task | Grep for heading | ~Lines |
+|------|-----------------|--------|
+| Severity classification table + six-dimension overview + report format | `## API QUICK-REFERENCE` | 79 |
+| Which operations throw (vs return falsy) — throwing ops reference | `### Throwing Operations Reference` | 15 |
+| Report output format template | `### Report Output Format` | 20 |
+| AHK v2 functions used in review patterns | `### AHK v2 Functions Referenced in Review Patterns` | 22 |
+| v1 → v2 breaking changes (review lens) | `## V1 → V2 BREAKING CHANGES` | 13 |
+| General constraints that must hold across all six dimensions | `## AHK V2 CONSTRAINTS` | 41 |
+| **Dimension 1** — Modern Syntax & v2 Compliance (`=` vs `:=`, `#Requires`, `%Var%`) | `## TIER 1 — Modern Syntax & v2 Compliance` | 66 |
+| **Dimension 2** — Error Handling & Type Safety (try/catch, empty catch, type guards) | `## TIER 2 — Error Handling & Type Safety` | 90 |
+| **Dimension 3** — Variable Scope, Architecture & SE Design Principles | `## TIER 3 — Variable Scope, Architecture & SE Design Principles` | 194 |
+| **Dimension 4** — GUI & Event Binding (`.Bind(this)`, `.OnEvent()`, g-label removal) | `## TIER 4 — GUI & Event Binding` | 96 |
+| **Dimension 5** — Performance, Security & Resource Management | `## TIER 5 — Performance, Security & Resource Management` | 220 |
+| **Dimension 6** — Clean Code, Over-Engineering & Composite (YAGNI, naming contracts) | `## TIER 6 — Clean Code, Over-Engineering & Composite Review` | 342 |
+| Anti-patterns catalogue | `## ANTI-PATTERNS` | 24 |
+
+---
+
 ## Step 1 — Load Modules (before reading the submitted code)
 
 ### Always load
 
 | Module | Path | Why |
 |--------|------|-----|
-| `Module_CodeReview` | `references/Module_CodeReview.md` | Primary review framework: 6 dimensions, severity rules, Clean Code + OE contracts |
+| `Module_CodeReview` | Targeted sections via Section Navigator | Primary review framework: 6 dimensions, severity rules, Clean Code + OE contracts |
 | `Module_Instructions` | `../get-ahk-core-context/references/Module_Instructions.md` | Authoritative v2 syntax baseline for Dimension 1 compliance |
 
 ### Load conditionally — scan the submitted code first
@@ -164,7 +193,7 @@ Apply these rules on every finding. They are not guidelines — they are mandato
 | O(n²) string concat `.=` inside loop > ~20 iterations | — |
 | `ObjRelease()` on `ComObject()` wrapper | Double-free risk |
 | Magic string appearing in 3+ locations | Extract to named constant |
-| Clean Code violations (negative naming, `Get*` side effect, comment restates code) | These are **Major by default** — not Minor — they signal systemic maintenance debt |
+| Clean Code violations (negative naming, `Get*` side effect, comment restates code) | **Major by default** — systemic maintenance debt |
 
 ### Minor 🟡 — fix if time allows
 
@@ -179,10 +208,7 @@ Apply these rules on every finding. They are not guidelines — they are mandato
 ### Pass ✅ — always write explicitly
 
 Every dimension that has no findings **must** appear in the report with `✅ No issues found.`
-or `✅ Not applicable ([reason]).`
-
-**Never silently omit a dimension.** A missing dimension line signals to the reader that
-it was not evaluated, not that it passed.
+or `✅ Not applicable ([reason]).` — never silently omit a dimension.
 
 ---
 
@@ -201,20 +227,8 @@ it was not evaluated, not that it passed.
 ✗  🔴 Line 7 — counter might not be assigned correctly. Consider using :=.
 ```
 
-**Major findings must:**
-- Name what the violation costs (maintenance, runtime, security)
-- Name the recommended action
-
-```
-✓  🟠 Line 23 — `GetUser()` calls `FileAppend()` (side effect in a Get* function).
-      Callers cannot safely repeat this call. Split into `GetUser()` + `LogAccess()`.
-
-✗  🟠 Line 23 — GetUser() is not very clean.
-```
-
-**Aggregation rule:** If the same pattern (e.g., comment-restates-code) appears in 5+
-locations, report it as one finding with representative line numbers — do not list all
-occurrences individually.
+**Aggregation rule:** If the same pattern appears in 5+ locations, report it as one finding
+with representative line numbers — do not list all occurrences individually.
 
 ---
 
@@ -228,8 +242,7 @@ AHK v2 Code Review Report
 
 Dimension 1 — Modern Syntax & v2 Compliance
 - 🔴 / 🟠 / 🟡 Line N — [concrete consequence]. Fix: [inline code]
-  OR
-✅ No issues found.
+  OR ✅ No issues found.
 
 Dimension 2 — Error Handling & Type Safety
 ...
@@ -257,15 +270,11 @@ Priority Action List
 **Priority Action List rules:**
 - Maximum 5 items
 - Order: Critical first → Major by impact → no Minors unless all Criticals and Majors resolved
-- If Dim 6 flagged a class as YAGNI: list it once as "delete class X" — do not also list
-  Dim 3 refactoring suggestions for the same class
+- If Dim 6 flagged a class as YAGNI: list it once as "delete class X" — do not also list Dim 3 refactoring suggestions for the same class
 
 ---
 
 ## Quick-Reference: Naming Contracts
-
-These contracts are enforced across `Module_CodeReview`, `Module_Functions`, and
-`Module_Classes`. Apply on every review regardless of which module is loaded.
 
 | Prefix | Contract | Violation severity |
 |--------|----------|--------------------|
@@ -276,8 +285,6 @@ These contracts are enforced across `Module_CodeReview`, `Module_Functions`, and
 ---
 
 ## Quick-Reference: Throwing vs Non-Throwing Operations
-
-Do not fabricate try/catch requirements. Apply only to genuinely throwing operations.
 
 | Throws → requires try/catch | Does NOT throw → no try/catch |
 |-----------------------------|-------------------------------|
@@ -292,12 +299,11 @@ Do not fabricate try/catch requirements. Apply only to genuinely throwing operat
 ## Reference Files
 
 ```
-references/Module_CodeReview.md                              ← primary (always load)
-../get-ahk-core-context/references/Module_Instructions.md   ← always load alongside
-../get-ahk-core-context/references/Module_Functions.md      ← load if Get*/Check*/Is* function names present
-../get-ahk-core-context/references/Module_Classes.md        ← load if class / extends / OOP present
-../get-ahk-logic-context/references/Module_Errors.md        ← load if try/catch or throwing ops present
-../get-ahk-logic-context/references/Module_AsyncAndTimers.md ← load if SetTimer / async patterns present
-../get-ahk-ui-context/references/Module_GUI.md              ← load if Gui() or .OnEvent() present
-../get-ahk-system-context/references/Module_DllCallAndMemory.md ← load if DllCall / Buffer / COM present
+references/Module_CodeReview.md                              ← primary (targeted sections)
+../get-ahk-core-context/references/Module_Instructions.md   ← always load (full file)
+../get-ahk-core-context/references/Module_Functions.md      ← if Get*/Check*/Is* names present
+../get-ahk-core-context/references/Module_Classes.md        ← if class / extends / OOP present
+../get-ahk-logic-context/references/Module_Errors.md        ← if try/catch or throwing ops present
+../get-ahk-ui-context/references/Module_GUI.md              ← if Gui() or .OnEvent() present
+../get-ahk-system-context/references/Module_DllCallAndMemory.md ← if DllCall / Buffer / COM present
 ```

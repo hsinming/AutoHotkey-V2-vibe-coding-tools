@@ -1,8 +1,8 @@
-# Module_CodeReview.md
+﻿# Module_CodeReview.md
 <!-- DOMAIN: Code Review -->
-<!-- SCOPE: AHK v2 syntax rules, idiomatic API usage, and domain-specific patterns are not defined here — they are enforced by Module_Instructions.md and the domain modules; this module provides only the six-dimension evaluation framework, severity classifications, throwing-operations reference, and report output format for reviewing submitted AHK v2 scripts. -->
-<!-- TRIGGERS: review, audit, "code review", "check my script", "find bugs", "quality check", "what's wrong with", "is this v2 compliant", "best practices check", "is my error handling correct", "why does my script crash", "refactor review", "clean code", "over-engineering", "YAGNI", "too complex", "naming convention", "comment quality", "abstraction", "design pattern", MsgBox(), SetTimer(), ComObject(), .Bind(), .OnEvent() -->
-<!-- CONSTRAINTS: `=` used as assignment is always Critical — it is comparison in v2 and silently leaves the variable as ""; never flag MsgBox(), ToolTip(), or Sleep() as needing try/catch — they do not throw; every catch block must surface e.Message or e.Extra — an empty catch body is always Critical. Clean Code violations (comments that restate code, negative naming, side-effecting Get* functions) are always Major. Over-Engineering is always Major when an abstraction layer has no current caller or when a design pattern appears in a script under 300 lines without documented justification. -->
+<!-- SCOPE: AHK v2 syntax rules, API semantics, and domain-specific patterns are not defined here — they are enforced by Module_Instructions.md and the domain modules; this module provides only the six-dimension evaluation framework and severity-graded output format for reviewing submitted scripts. -->
+<!-- TRIGGERS: review, audit, "code review", "check my script", "find bugs", "quality check", "what's wrong with", "is this v2 compliant", "best practices check", "is my error handling correct", "why does my script crash", "refactor review", "clean code", "over-engineering", "YAGNI", "too complex", "refactor", "naming convention", "comment quality", "abstraction", "design pattern", MsgBox(), SetTimer(), ComObject(), .Bind(), .OnEvent() -->
+<!-- CONSTRAINTS: `=` used as assignment is always Critical — it is comparison in v2 and silently leaves the variable as ""; never flag MsgBox(), ToolTip(), or Sleep() as needing try/catch — they do not throw; every catch block must surface e.Message or e.Extra — an empty catch body is always Critical. Clean Code violations (comments that restate code, negative naming, side-effecting Get* functions) are always Major — they signal systemic maintenance debt, not style preference. Over-Engineering is always Major when an abstraction layer has no current caller or when a design pattern appears in a script under 300 lines without documented justification — flag these before architectural concerns. -->
 <!-- CROSS-REF: Module_Instructions.md, Module_Errors.md, Module_GUI.md, Module_Classes.md -->
 <!-- VERSION: AHK v2.0+ -->
 
@@ -45,29 +45,22 @@
 
 | Category | Operations that THROW — wrap in try/catch | Operations that DO NOT THROW — no try/catch |
 |----------|-------------------------------------------|----------------------------------------------|
-| File I/O | `FileRead(path)`, `FileOpen(path, "r")`, `FileAppend()`, `FileDelete()` | — |
-| Registry | `RegRead("HKCU\Key", "Val")`, `RegWrite()`, `RegDelete()` | — |
+| File I/O | `FileRead(path)`, `FileOpen(path, "r")` | — |
+| Registry | `RegRead("HKCU\Key", "Val")` | — |
 | Regex | `RegExMatch(str, badPattern)`, `RegExReplace(str, badPat)` | — |
 | Process | `ProcessGetPath(pid)` | — |
 | Network | `Download(url, dest)` | — |
 | DLL | `DllCall("lib\fn", ...)` | — |
 | COM | `ComObject("ProgID")` | — |
-| UI | — | `MsgBox()`, `ToolTip()`, `Sleep()`, `Send()`, `OutputDebug()` |
-| Win | `WinGetTitle()`, `WinGetPID()`, `WinGetClass()` — throw `TargetError` if window not found | `WinActive()` — returns 0 if not found, never throws |
-| String | — | `StrLen()`, `StrReplace()`, `InStr()` |
-| Messaging | `SendMessage()` — throws `TimeoutError` on timeout, `TargetError` if window not found | — |
+| UI | — | `MsgBox()`, `ToolTip()`, `Sleep()`, `Send()` |
+| Win | `WinGetTitle()` — throws `TargetError` if window not found | — |
+| String | — | `StrLen(str)` |
 
 ### Report Output Format
 
 Every review must follow this exact structure. Dimensions with no issues must still appear with an explicit pass line — never omit a dimension.
-
 ```
 AHK v2 Code Review Report
-
-Review scope:    [Complete script | Fragment — Dim 2–6 limited to visible constructs]
-AHK version:     [v2.0 confirmed via #Requires | v2.0 assumed — no directive found]
-Script length:   [< 50 lines | 50–200 lines | 200–500 lines | 500+ lines]
-Declared intent: [stated goal] | [Not declared — reviewing for general quality only]
 
 Dimension N — [Name]
 - [SEVERITY_EMOJI] Line N — Description. Suggested fix (inline code if ≤ 5 lines).
@@ -85,82 +78,38 @@ Priority Action List
 
 ### AHK v2 Functions Referenced in Review Patterns
 
-Functions with 20+ entries — structured bulleted list format:
-
-- **`#Requires`** — Directive: `#Requires AutoHotkey v2.0` | Forces version check at load time | Absence is 🟠 Major — script may run under wrong interpreter silently
-- **`MsgBox()`** — Signature: `MsgBox(Text?, Title?, Options?, Timeout?)` | Returns: button name string | Throws: never | ✅ No try/catch needed
-- **`ToolTip()`** — Signature: `ToolTip(Text?, X?, Y?, WhichToolTip?)` | Returns: — | Throws: never | ✅ No try/catch needed
-- **`Sleep()`** — Signature: `Sleep(Delay)` | Returns: — | Throws: never | ✅ No try/catch needed
-- **`OutputDebug()`** — Signature: `OutputDebug(Text)` | Returns: — | Throws: never | Use in catch blocks instead of empty body
-- **`FileRead()`** — Signature: `FileRead(Filename, Options?)` | Returns: String | Throws: OSError | Text-only; always wrap in try/catch
-- **`FileOpen()`** — Signature: `FileOpen(Filename, Flags, Encoding?)` | Returns: File object | Throws: OSError on failure | Handle must `.Close()` in finally
-- **`FileAppend()`** — Signature: `FileAppend(Text, Filename, Options?)` | Returns: — | Throws: OSError | Requires try/catch
-- **`ComObject()`** — Signature: `ComObject(CLSID, IID?)` | Returns: COM wrapper | Throws: Error on HRESULT failure | Requires try/catch; release via `obj := ""`
-- **`ObjRelease()`** — Signature: `ObjRelease(Ptr)` | Returns: new ref count | Throws: — | Correct only for raw pointers from `ComObjQuery()`/`DllCall()` — never for `ComObject()` wrappers
-- **`ComObjQuery()`** — Signature: `ComObjQuery(ComObj, SID, IID?)` | Returns: raw pointer | Throws: Error | Caller owns `ObjRelease()` for the returned pointer
-- **`RegRead()`** — Signature: `RegRead(KeyName, ValueName?)` | Returns: value | Throws: OSError if key/value absent | Always wrap in try/catch
-- **`RegWrite()`** — Signature: `RegWrite(Value, ValueType, KeyName, ValueName?)` | Returns: — | Throws: OSError | Requires try/catch; validate key path if from user input
-- **`RegExMatch()`** — Signature: `RegExMatch(Haystack, NeedleRegEx, &OutputVar?, StartingPos?)` | Returns: match pos or 0 | Throws: Error on malformed pattern | Wrap in try/catch when pattern is dynamic (from user input)
-- **`RegExReplace()`** — Signature: `RegExReplace(Haystack, NeedleRegEx, Replacement?, &Count?, Limit?, StartPos?)` | Returns: String | Throws: Error on malformed pattern | Same as RegExMatch — wrap when dynamic
-- **`DllCall()`** — Signature: `DllCall(DllFile\Function, Type1, Arg1, ...)` | Returns: varies | Throws: Error on DLL-not-found or signature mismatch | Never pass user-supplied strings without whitelist validation
-- **`Download()`** — Signature: `Download(URL, Filename)` | Returns: — | Throws: Error on network failure | Always wrap in try/catch
-- **`Type()`** — Signature: `Type(Value)` | Returns: exact type string (`"Map"`, `"Array"`, `"Integer"`, etc.) | Throws: never | Use for strict type checks in Dimension 2 review
-- **`IsObject()`** — Signature: `IsObject(Value)` | Returns: true/false | Throws: never | Distinguishes scalar from any object; less precise than `Type()`
-- **`IsInteger()`** — Signature: `IsInteger(Value)` | Returns: true/false | Throws: never | Guards before `Integer()` cast; checks if string is a valid integer
-- **`Integer()`** — Signature: `Integer(Value)` | Returns: Integer | Throws: TypeError if value is non-numeric | Always guard with `IsInteger()` first
-- **`InputBox()`** — Signature: `InputBox(Prompt, Title?, Options?, Default?)` | Returns: object with `.Value` (String) and `.Result` (`"OK"/"Cancel"/"Timeout"`) | Throws: never | Access `.Value`, not the object directly
-- **`Map()`** — Signature: `Map(Key1, Val1, ...)` | Returns: Map object | Throws: never | Use for key-value storage; replaces object literals `{}` from v1
-- **`Array()`** / `[]` — Signature: `Array(Val1, ...)` or `[val1, val2]` | Returns: Array object | Throws: never | Use for ordered collections; replaces `var1/var2/var3` pseudo-arrays
-- **`StrSplit()`** — Signature: `StrSplit(String, Delimiters?, OmitChars?, MaxParts?)` | Returns: Array | Throws: never | Common in Dimension 3 architecture reviews for line parsing
-- **`.Bind()`** — Signature: `FuncObj.Bind(Param1, ...)` | Returns: BoundFunc | Throws: never | **Mandatory** on every class method used as `.OnEvent()` callback — preserves `this`
-- **`SetTimer()`** — Signature: `SetTimer(Function?, Period?, Priority?)` | Returns: — | Throws: never | Requires function reference, not label string; label form is v1
-- **`CoordMode()`** — Signature: `CoordMode(TargetType, RelativeTo?)` | Returns: previous mode string | Throws: never | Global state — save `A_CoordModeMouse` and restore after affected block
-- **`Gui()`** — Signature: `Gui(Options?, Title?, EventObj?)` | Returns: Gui object | Throws: never | Store reference; use `.OnEvent()` for all event binding
-- **`.Add()`** — Signature: `GuiObj.Add(ControlType, Options?, Text?)` | Returns: GuiControl object | Throws: never | Store return value for later `.OnEvent()` binding
-- **`.OnEvent()`** — Signature: `GuiObj.OnEvent(EventName, Callback, AddRemove?)` or `CtrlObj.OnEvent(...)` | Returns: — | Throws: never | Use exclusively in v2 — g-labels do not exist
-- **`.Show()`** — Signature: `GuiObj.Show(Options?)` | Returns: — | Throws: never | Call after all controls are added and events are bound
-- **`.Destroy()`** — Signature: `GuiObj.Destroy()` | Returns: — | Throws: never | Call in OnClose handler for long-running scripts to release resources
-- **`WinGetTitle()`** — Signature: `WinGetTitle(WinTitle?, ...)` | Returns: String | Throws: TargetError if window not found | Always wrap in try/catch
-- **`WinGetPID()`** — Signature: `WinGetPID(WinTitle?, ...)` | Returns: Integer | Throws: TargetError if window not found | Always wrap in try/catch
-- **`WinGetClass()`** — Signature: `WinGetClass(WinTitle?, ...)` | Returns: String | Throws: TargetError if window not found | Always wrap in try/catch
-- **`WinActive()`** — Signature: `WinActive(WinTitle?, ...)` | Returns: HWND or 0 | Throws: never | Returns 0 when window not active — does NOT throw TargetError; no try/catch needed
+| Function / Method | Notes relevant to review context |
+|-------------------|----------------------------------|
+| `FileRead(path)` | Throws — requires try/catch; text-only |
+| `FileOpen(path, mode, enc)` | Throws — requires try/catch; handle must be `.Close()`d in finally |
+| `ComObject("ProgID")` | Throws on HRESULT failure — requires try/catch |
+| `RegRead(key, val)` | Throws if key/value absent — requires try/catch |
+| `RegExMatch()` / `RegExReplace()` | Throws on malformed pattern — requires try/catch around dynamic patterns |
+| `DllCall()` | Throws if DLL not found or signature wrong |
+| `Download()` | Throws on network failure |
+| `ObjRelease(ptr)` | Correct only for raw pointers from `ComObjQuery()`/`DllCall()` — never for `ComObject()` wrappers |
+| `ComObjQuery()` | Returns raw pointer — caller owns `ObjRelease()` responsibility |
+| `Type(val)` | Returns exact type string — use for runtime type checks |
+| `IsObject(val)` | Returns true for any object — use to distinguish scalar from object |
+| `IsInteger(val)` | Returns true if string contains a valid integer — use before `Integer()` cast |
+| `Integer(val)` | Throws if val is not a numeric string — guard with `IsInteger()` first |
+| `InputBox()` | Returns an object; access `.Value` for the string; `.Result` for button |
+| `.Bind(this)` | Mandatory on any class method used as `.OnEvent()` callback — preserves `this` |
+| `SetTimer(fnRef, ms)` | Requires a function reference, not a label string |
+| `CoordMode(target, mode)` | Global state change — save `A_CoordModeMouse` and restore after affected block |
 
 ## AHK V2 CONSTRAINTS
 
 - The `=` operator is comparison in v2, not assignment — using `=` as assignment is always **Critical**: the variable stays `""` with no parse error and no runtime warning; every downstream expression that reads it operates on an empty string.
-  - ✗ `global counter = 0` — `=` is comparison; `counter` is never assigned — **Critical**
-  - ✓ `global counter := 0` — `:=` is the assignment operator in v2
-
-- Never flag `MsgBox()`, `ToolTip()`, `Sleep()`, `Send()`, or `OutputDebug()` as needing try/catch — they do not throw under normal conditions; adding spurious try/catch around them fabricates a non-existent risk and degrades report credibility.
-  - ✗ `try { MsgBox("Done") } catch { ... }` — fabricated risk; MsgBox never throws
-  - ✓ `MsgBox("Done")` — correct, no wrapping needed
-
+- Never flag `MsgBox()`, `ToolTip()`, or `Sleep()` as needing try/catch — they do not throw under normal conditions; adding spurious try/catch around them fabricates a non-existent risk and degrades report credibility.
 - Every catch block must reference `e.Message` or `e.Extra` — an empty `catch { }` body is always **Critical** because the failure becomes completely invisible and undiagnosable.
-  - ✗ `catch { }` — empty body swallows exception; failure is invisible — **Critical**
-  - ✓ `catch (e) { OutputDebug(e.Message) }` — surface the error for diagnosability
-
 - `.Bind(this)` is mandatory on every class method used as a GUI event callback — omitting it makes `this` undefined inside the handler at runtime with no warning (NameError on first property access).
-  - ✗ `this.btn.OnEvent("Click", this.OnClick)` — bare method loses `this` context — **Critical**
-  - ✓ `this.btn.OnEvent("Click", this.OnClick.Bind(this))` — context preserved
-
 - Duplicate hotkey registrations are always **Critical**: AHK v2 silently uses only the last definition; the first handler is permanently dead code with no diagnostic.
-
 - Arrow function syntax: `(params) => expr` is valid; `(params) => { multi-line }` is a load-time parse error — flag any multi-statement fat-arrow body as **Critical**.
-  - ✗ `MyBtn.OnEvent("Click", (*) => { DoA()`\n`DoB() })` — multi-line fat-arrow is a parse error — **Critical**
-  - ✓ Named function + `MyBtn.OnEvent("Click", namedFn)` — single-expression arrow or named function
-
 - COM object cleanup: assign wrapper to `""` for `ComObject()` — do not call `ObjRelease()` on it; reserve `ObjRelease()` only for raw pointers from `ComObjQuery()` or `DllCall()` — mixing these causes double-free.
-  - ✗ `ObjRelease(xlApp)` after `ComObject()` call — double-free risk — **Critical**
-  - ✓ `xlApp := ""` — reference-count cleanup; `ObjRelease(rawPtr)` only for `ComObjQuery()` result
-
 - Evaluate dimensions in order (1 → 6): syntax errors in Dimension 1 can make downstream observations in Dimensions 2–5 invalid; never reorder or skip.
-
 - Dimensions with no findings must still appear in the report with `✅ No issues found.` or `✅ Not applicable (reason).` — silently omitting a dimension causes the reader to assume it was not evaluated.
-  - ✗ (Dimension 4 section entirely absent) — reader cannot tell if GUI review was done
-  - ✓ `✅ Not applicable — no GUI or SetTimer present in this script.`
-
-- Evaluate only what is present in the submitted script — never flag absent features that were not requested; mark those dimensions `✅ Not applicable`.
-
+- Evaluate only what is present in the submitted script — never flag absent features that were not requested (e.g., no GUI cleanup when there is no GUI); mark those dimensions `✅ Not applicable`.
 - Code fragments must be noted at the top of the report; limit Dimension 1 checks to visible code and apply Dimensions 2–6 only to constructs present in the fragment.
 
 **Clean Code — mandatory constraints:**
@@ -183,26 +132,17 @@ Safe-access priority order for review triage:
   4. Dimension 6 Clean Code + Over-Engineering checks — run before Dims 3 and 5 when the script shows naming confusion or pattern overuse, because OE findings change the scope of architectural review
   5. Dimensions 3, 5 — architecture, performance in decreasing urgency
 
-## AGENT QA CHECKLIST
+Pair every Critical finding with a concrete resolution path:
+- ✗ `global counter = 0` — `=` is comparison; `counter` is never assigned — **Critical**
+- ✓ `global counter := 0` — `:=` is the assignment operator in v2
 
-- [ ] Did I evaluate all 6 dimensions in sequential order (1 → 6) and include every dimension in the report, including those with no findings?
-- [ ] Did I avoid flagging non-throwing operations (`MsgBox`, `ToolTip`, `Sleep`, `Send`, `OutputDebug`, `WinActive`) as needing try/catch?
-- [ ] Did I rate every `=` used as assignment as Critical — not Major or Minor — and provide the concrete `:=` fix with line number?
-- [ ] Did I flag every empty `catch { }` body as Critical and provide a fix that surfaces `e.Message` or `e.Extra`?
-
-## RUNTIME ERROR MAPPING
-
-| Exception Class | Trigger Condition | Detection Code | Fix |
-|----------------|-------------------|----------------|-----|
-| Silent logic failure (no exception thrown) | `var = value` used as assignment — `var` stays `""`, downstream logic is wrong but no exception fires | Scan for `=` not preceded by `!`, `<`, `>`, `=`, or `:` on assignment lines | Replace every `var = value` assignment with `var := value`; severity is always Critical |
-| `NameError` (at first `this.property` access in callback) | Class method passed to `.OnEvent()` without `.Bind(this)` — `this` is undefined at call time | Inspect `.OnEvent()` call sites: `this.Method` without `.Bind(this)` | Append `.Bind(this)` to the method reference: `this.OnClick.Bind(this)` |
-| `TargetError` (uncaught, crashes thread) | `WinGetTitle()`, `WinGetPID()`, or `WinGetClass()` called when the target window is absent | No `try/catch` wrapping `WinGet*` call in Dimension 4 review | Flag as Critical in Dim 4; fix: wrap in `try { ... } catch (e) { OutputDebug(e.Message) }` |
+- ✗ `catch { }` — empty body swallows exception; failure is invisible — **Critical**
+- ✓ `catch (e) { OutputDebug(e.Message) }` — surface the error for diagnosability
 
 ## TIER 1 — Modern Syntax & v2 Compliance
 > METHODS COVERED: `#Requires` · `:=` assignment · `MsgBox()` · hotkey function form · `%Var%` removal · `Map()`
 
 Dimension 1 evaluates whether the script uses AHK v2 syntax correctly and avoids patterns inherited from v1. The most common Critical issues are using `=` as an assignment operator (a silent no-op in v2 where `=` is comparison only) and `%Var%` percent-dereferencing. These produce no parse error but leave variables permanently uninitialized.
-
 ```ahk
 ; ================================================================
 ; TIER 1 REVIEW: Modern Syntax & v2 Compliance Checklist
@@ -269,7 +209,6 @@ MsgBox("Text", "Title")
 > METHODS COVERED: `FileRead()` · `ComObject()` · `RegRead()` · `InputBox()` · `Type()` · `IsObject()` · `IsInteger()` · `Integer()`
 
 Dimension 2 evaluates whether operations that genuinely throw are wrapped in try/catch and whether catch blocks surface error information rather than silently swallowing exceptions. Type validation for externally-sourced data (file content, registry values, user input) is also evaluated here. Consult the Throwing Operations Reference table in API QUICK-REFERENCE for the definitive list.
-
 ```ahk
 ; ================================================================
 ; TIER 2 REVIEW: Error Handling & Type Safety Checklist
@@ -360,7 +299,6 @@ if IsObject(obj) {
 > METHODS COVERED: `Map()` · `Array()` · `class static` · `FileAppend()` · `for` enumeration · `StrSplit()` · `RegExMatch()`
 
 Dimension 3 evaluates data structures, implicit global coupling, single-responsibility decomposition, function length, parameter count, and cyclomatic complexity. The most common Major issues are pseudo-arrays and functions that violate the 40-line / 4-nesting-depth boundaries. Cross-reference `Module_Classes.md` for class static property encapsulation patterns.
-
 ```ahk
 ; ================================================================
 ; TIER 3 REVIEW: Variable Scope & Architecture Checklist
@@ -555,7 +493,6 @@ ProcessSingleItem(item) {
 > METHODS COVERED: `Gui()` · `.Add()` · `.OnEvent()` · `.Bind()` · `.Show()` · `.Destroy()` · `SetTimer()`
 
 Dimension 4 evaluates whether GUI construction uses object-based patterns, event handlers are correctly bound to object context, and resources are cleaned up on GUI destruction. The most common Critical issue is a missing `.Bind(this)` on class method callbacks, which causes `this` to be undefined at runtime with no warning. Cross-reference `Module_GUI.md` for comprehensive control creation patterns.
-
 ```ahk
 ; ================================================================
 ; TIER 4 REVIEW: GUI & Event Binding Checklist
@@ -652,7 +589,6 @@ MyGui.OnEvent("Close", (*) => (MyGui.Destroy(), ExitApp()))
 > METHODS COVERED: `FileRead()` · `FileOpen()` · `.WriteLine()` · `.Close()` · `ComObject()` · `ObjRelease()` · `ComObjQuery()` · `CoordMode()` · `A_CoordModeMouse` · `Map.Has()` · `DllCall()` · `RegExMatch()` · `RegWrite()` · `InputBox()`
 
 Dimension 5 evaluates loop efficiency, string construction patterns, COM object lifecycle, restoration of global interpreter state, and input sanitisation before external API calls. The most common Critical issues are `FileRead()` or COM object creation inside a tight loop and unvalidated user input passed directly to `DllCall()`, `RegWrite()`, or dynamic `RegExMatch()`.
-
 ```ahk
 ; ================================================================
 ; TIER 5 REVIEW: Performance & Resource Management Checklist
@@ -853,11 +789,26 @@ if !ALLOWED_SETTINGS.Has(userKey) {
 RegWrite("value", "REG_SZ", "HKCU\MyApp\" userKey, "Data")   ; ✓ whitelisted
 ```
 
+### Performance Notes
+
+**Review depth vs. script size:** For short scripts (&lt;50 lines), a full six-dimension pass is appropriate. For long scripts (200+ lines), triage Critical and Major findings first, then Minor. For 500+ line scripts, spot-check Dimension 1 across 20% of lines plus all hotkey definitions; focus Dimension 3 on class/function decomposition and global count; identify every loop body for Dimension 5 invariant checks. Suggest decomposing into modules if function count exceeds 20.
+
+**Fragment review:** Note "Fragment review" at the top of the report; apply Dimension 1 to all visible code; apply Dimensions 2–6 only to constructs present in the fragment.
+
+**Dimension line ownership:** Avoid re-evaluating the same line under multiple dimensions. Each line has exactly one primary dimension owner — assign a finding to the most specific applicable dimension to prevent inflation of the Priority Action List.
+
+**O(1) vs O(n) tradeoffs:** String concatenation with `.=` inside a loop of n items costs O(n²) total copies — flag as Major for any loop > ~20 iterations. Map-based lookups in hot paths replace O(n) linear scans with O(1) — always prefer `Map.Has()` over iterating an Array to find a value.
+
+**COM creation cost:** `ComObject()` construction involves COM marshalling overhead — never call it inside a frequently-executed loop or hotkey handler body; hoist to module-level or class static property initialized once.
+
+**Over-Engineering review depth:** OE findings in Dimension 6 reduce the scope of architectural review in Dimension 3. If Dim 6 flags a class as YAGNI, do not generate Dim 3 refactoring suggestions for that class — flag it once for deletion and move on. This prevents Priority Action List inflation from reviewing code that should not exist.
+
+**Clean Code review depth:** When a script has more than 5 comment-restates-code violations, do not list each individually — report "pervasive comment noise throughout; see lines X, Y, Z for representative examples" as a single Major finding. Listing all 20 occurrences inflates the report without adding actionable value.
+
 ## TIER 6 — Clean Code, Over-Engineering & Composite Review
 > METHODS COVERED: `WinGetTitle()` · `WinGetPID()` · `OutputDebug()` · `RegExMatch()` · `WinActive()`
 
 Dimension 6 is the highest-priority readability tier. It evaluates Clean Code principles (comment quality, naming contracts, magic strings, negative naming) and Over-Engineering signals (YAGNI, unnecessary abstraction, over-defensive guards, inappropriate design patterns), then synthesises all five prior dimensions into a prioritised action list. Clean Code and Over-Engineering findings are **Major** by default — they signal systemic maintenance debt, not style preference. The Critical issue unique to this tier is duplicate hotkey definitions: AHK v2 silently uses only the last definition.
-
 ```ahk
 ; ================================================================
 ; TIER 6 REVIEW: Readability, Maintainability & Composite Checklist
@@ -887,15 +838,13 @@ GetWindowInfo() {
 ; GetWindowInfo()
 ;   Returns a Map with keys "title" (String) and "pid" (Integer)
 ;   representing the active window's title and process ID.
-;   Returns empty Map on WinGet failure — does not re-throw.
+;   Throws: nothing — returns empty Map on WinGet failure.
 GetWindowInfo() {
     try {
         return Map("title", WinGetTitle("A"), "pid", WinGetPID("A"))
-    } catch (e) {
-        OutputDebug("GetWindowInfo: " e.Message)   ; TargetError surfaced per constraint
+    } catch {
         return Map()
     }
-    ; <!-- CONVERTED: empty catch body replaced with e.Message surface — silent catch is Critical per constraint -->
 }
 
 ; ----------------------------------------------------------------
@@ -1144,9 +1093,9 @@ current := A_Clipboard
 ;
 ; Every review report must open with these four declarations:
 ;
-;   Review scope:    [Complete script | Fragment — Dim 2–6 limited to visible constructs]
-;   AHK version:     [v2.0 confirmed via #Requires | v2.0 assumed — no directive found]
-;   Script length:   [< 50 lines | 50–200 lines | 200–500 lines | 500+ lines]
+;   Review scope:  [Complete script | Fragment — Dim 2–6 limited to visible constructs]
+;   AHK version:   [v2.0 confirmed via #Requires | v2.0 assumed — no directive found]
+;   Script length: [< 50 lines | 50–200 lines | 200–500 lines | 500+ lines]
 ;   Declared intent: [stated goal] | [Not declared — reviewing for general quality only]
 ;
 ; Agent rule: omitting any of these four declarations is 🟠 Major —
@@ -1198,144 +1147,6 @@ current := A_Clipboard
 ; 5. Encapsulate 'counter' global into Session.hitCount class property. (🟠 Major)
 ```
 
-### Performance Notes
-
-**Review depth vs. script size:** For short scripts (<50 lines), a full six-dimension pass is appropriate. For long scripts (200+ lines), triage Critical and Major findings first, then Minor. For 500+ line scripts, spot-check Dimension 1 across 20% of lines plus all hotkey definitions; focus Dimension 3 on class/function decomposition and global count; identify every loop body for Dimension 5 invariant checks. Suggest decomposing into modules if function count exceeds 20.
-
-**Fragment review:** Note "Fragment review" at the top of the report; apply Dimension 1 to all visible code; apply Dimensions 2–6 only to constructs present in the fragment.
-
-**Dimension line ownership:** Avoid re-evaluating the same line under multiple dimensions. Each line has exactly one primary dimension owner — assign a finding to the most specific applicable dimension to prevent inflation of the Priority Action List.
-
-**O(1) vs O(n) tradeoffs:** String concatenation with `.=` inside a loop of n items costs O(n²) total copies — flag as Major for any loop > ~20 iterations. Map-based lookups in hot paths replace O(n) linear scans with O(1) — always prefer `Map.Has()` over iterating an Array to find a value.
-
-**COM creation cost:** `ComObject()` construction involves COM marshalling overhead — never call it inside a frequently-executed loop or hotkey handler body; hoist to module-level or class static property initialized once.
-
-**Over-Engineering review depth:** OE findings in Dimension 6 reduce the scope of architectural review in Dimension 3. If Dim 6 flags a class as YAGNI, do not generate Dim 3 refactoring suggestions for that class — flag it once for deletion and move on. This prevents Priority Action List inflation from reviewing code that should not exist.
-
-**Clean Code review depth:** When a script has more than 5 comment-restates-code violations, do not list each individually — report "pervasive comment noise throughout; see lines X, Y, Z for representative examples" as a single Major finding. Listing all 20 occurrences inflates the report without adding actionable value.
-
-## DROP-IN RECIPES
-
-```ahk
-; -----------------------------------------------------------------------
-; Recipe 1: CompliantScriptBootstrap
-; ✓ Canonical v2 script header that passes Dimension 1 out of the box.
-;   Use as the reference fix template when a reviewed script lacks #Requires,
-;   has no error handler, or uses implicit globals.
-; -----------------------------------------------------------------------
-#Requires AutoHotkey v2.0
-#SingleInstance Force
-
-; ============================================================
-; Script:   MyTool.ahk
-; Purpose:  [one-line description]
-; Author:   [name]
-; Version:  1.0.0  [YYYY-MM-DD]  Initial release
-; ============================================================
-
-; ✓ Global OnError handler surfaces all unhandled exceptions to the user —
-;   eliminates the "silent crash" scenario flagged in Dimension 2 reviews
-OnError(GlobalErrHandler)
-
-GlobalErrHandler(err, mode) {
-    MsgBox(
-        "Unhandled error: " err.Message
-        "`nLine: " err.Line
-        "`nFile: " err.File,
-        "Script Error", 0x10
-    )
-    return mode = "Return" ? -1 : 0   ; -1 = continue thread when possible
-}
-
-; ✓ Module-level constants at top of file — eliminates magic strings (Dim 6)
-APP_REGISTRY_KEY := "HKCU\Software\MyApp"
-
-; ✓ Shared state in a class, not bare globals — eliminates Dim 3 global coupling
-class AppState {
-    static isRunning := false
-    static lastError := ""
-}
-; Call site: (top-level bootstrap — paste at script top, fill in constants and class)
-```
-
-```ahk
-; -----------------------------------------------------------------------
-; Recipe 2: SafeThrowingOp
-; ✓ Canonical try/catch wrapper that always surfaces e.Message and e.Extra.
-;   Use as the pattern for all Dimension 2 fixes: replace bare calls to
-;   FileRead, RegRead, ComObject, DllCall with this structure.
-; -----------------------------------------------------------------------
-
-; ✓ Returns content string on success; throws descriptive Error on failure —
-;   never returns "" silently when FileRead fails
-SafeFileRead(path, encoding := "UTF-8") {
-    if Type(path) != "String" || path = ""
-        throw TypeError("SafeFileRead: path must be a non-empty String", -1)
-    try
-        return FileRead(path, encoding)
-    catch OSError as e
-        throw Error("SafeFileRead: read failed — " e.Message " [" e.Number "] | path: " path, -1)
-}
-; Call site: content := SafeFileRead("config.txt")
-
-; ✓ RegRead with safe default — surfacing e.Message while allowing fallback
-SafeRegRead(keyName, valueName, default := "") {
-    if Type(keyName) != "String" || Type(valueName) != "String"
-        throw TypeError("SafeRegRead: keyName and valueName must be Strings", -1)
-    try
-        return RegRead(keyName, valueName)
-    catch OSError as e {
-        OutputDebug("SafeRegRead: " e.Message " | key: " keyName "\" valueName)
-        return default
-    }
-}
-; Call site: timeout := SafeRegRead("HKCU\MyApp", "Timeout", "30")
-```
-
-```ahk
-; -----------------------------------------------------------------------
-; Recipe 3: BoundGuiController
-; ✓ Minimal class-based GUI controller that passes Dimensions 3, 4
-;   simultaneously. Use as the reference fix template for any reviewed
-;   script that has GUI code outside a class or is missing .Bind(this).
-; -----------------------------------------------------------------------
-
-class GuiController {
-    static _instance := ""   ; ✓ singleton guard — prevents duplicate windows (Dim 3)
-
-    __New(title := "My App") {
-        if GuiController._instance != ""
-            throw Error("GuiController: already instantiated — call Destroy() first")
-        GuiController._instance := this
-
-        ; ✓ Store all control references — required for later .OnEvent() binding (Dim 4)
-        this.ui   := Gui("+Resize +MinSize320x200", title)
-        this.edit := this.ui.Add("Edit", "w300 r5 vUserInput")
-        this.btn  := this.ui.Add("Button", "w100", "Submit")
-
-        ; ✓ .Bind(this) preserves instance context inside OnSubmit/OnClose (Dim 4 Critical)
-        this.btn.OnEvent("Click", this.OnSubmit.Bind(this))
-        this.ui.OnEvent("Close", this.OnClose.Bind(this))
-        this.ui.Show()
-    }
-
-    OnSubmit(ctrl, info) {
-        val := this.edit.Value
-        if (val = "")   ; ✓ guard empty input before use (Dim 2)
-            return
-        MsgBox("Submitted: " val, "Info", 0)
-    }
-
-    OnClose(guiObj) {
-        GuiController._instance := ""
-        this.ui.Destroy()   ; ✓ explicit Destroy prevents handle leak (Dim 4/5)
-        ExitApp()
-    }
-}
-app := GuiController("My Tool")
-; Call site: app := GuiController("My Tool")   ← module-level; no try/catch needed (Gui() does not throw)
-```
-
 ## ANTI-PATTERNS
 
 | Pattern | Wrong | Correct | LLM Common Cause |
@@ -1369,6 +1180,6 @@ app := GuiController("My Tool")
 > This module does NOT cover: general software engineering theory (SOLID, DRY, design pattern catalogues) — only AHK v2 script-scale application of Clean Code and YAGNI principles is defined here.
 
 - `Module_Instructions.md` — master AHK v2 syntax rules, idiomatic patterns, and the baseline against which Dimension 1 compliance is measured; load this module first for any general AHK v2 question.
-- `Module_Errors.md` — typed error classes (`OSError`, `TargetError`, `TypeError`, `ValueError`, `TimeoutError`), `OnError()` global handler, and try/catch patterns for Dimension 2 deep-dives; cross-reference when evaluating COM or file I/O error handling.
+- `Module_Errors.md` — typed error classes, `OnError()` global handler, and try/catch patterns for Dimension 2 deep-dives; cross-reference when evaluating COM or file I/O error handling.
 - `Module_GUI.md` — comprehensive control creation, layout, and `.OnEvent()` binding patterns for Dimension 4 evaluation; cross-reference when the submitted script defines class-based GUI controllers.
 - `Module_Classes.md` — class static property encapsulation, inheritance, and meta-function patterns for Dimension 3 architecture evaluation; cross-reference when reviewing scripts with multiple classes or OOP-heavy designs.
