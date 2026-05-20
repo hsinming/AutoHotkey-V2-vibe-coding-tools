@@ -14,8 +14,13 @@
         "skill":     { "*": "allow" },
         "todowrite": "allow",
         "todoread":  "allow",
+<<<<<<< HEAD
         "edit":      "allow",
         "write":     "allow",
+=======
+        "edit":      { "*.ahk": "allow", "*.md": "allow", "*.json": "allow", "*.js": "allow", "*.html": "allow", "*.css": "allow", "*.ini": "allow", "*.ps1": "allow", "*": "ask" },
+        "write":     { "*.ahk": "allow", "*.md": "allow", "*.json": "allow", "*.js": "allow", "*.html": "allow", "*.css": "allow", "*.ini": "allow", "*.ps1": "allow", "*": "ask" },
+>>>>>>> 4f3d82ab6e2ba334edf5e1eb261fef0673a531a9
         "webfetch":  "allow",
         "bash": {
           "rm *":              "ask",
@@ -49,8 +54,13 @@
         "skill":    { "*": "allow" },
         "todoread": "allow",
         "webfetch": "allow",
+<<<<<<< HEAD
         "edit":     "allow",
         "write":    "allow",
+=======
+        "edit":     { "*.md": "allow", "*.json": "allow", "*": "ask" },
+        "write":    { "*.md": "allow", "*.json": "allow", "*": "ask" },
+>>>>>>> 4f3d82ab6e2ba334edf5e1eb261fef0673a531a9
         "bash": {
           "rm *":              "ask",
           "rm -r *":           "ask",
@@ -84,8 +94,13 @@
         "todoread":  "allow",
         "todowrite": "allow",
         "webfetch":  "allow",
+<<<<<<< HEAD
         "edit":      "allow",
         "write":     "allow",
+=======
+        "edit":      { "*.ahk": "allow", "*.md": "allow", "*.json": "allow", "*.js": "allow", "*.html": "allow", "*.css": "allow", "*.ini": "allow", "*.ps1": "allow", "*": "ask" },
+        "write":     { "*.ahk": "allow", "*.md": "allow", "*.json": "allow", "*.js": "allow", "*.html": "allow", "*.css": "allow", "*.ini": "allow", "*.ps1": "allow", "*": "ask" },
+>>>>>>> 4f3d82ab6e2ba334edf5e1eb261fef0673a531a9
         "bash": {
           "rm *":              "ask",
           "rm -r *":           "ask",
@@ -118,8 +133,13 @@
         "todoread":  "allow",
         "todowrite": "allow",
         "webfetch":  "allow",
+<<<<<<< HEAD
         "edit":      "allow",
         "write":     "allow",
+=======
+        "edit":      { "*.ahk": "allow", "*.md": "allow", "*.json": "allow", "*.js": "allow", "*.html": "allow", "*.css": "allow", "*.ini": "allow", "*.ps1": "allow", "*": "ask" },
+        "write":     { "*.ahk": "allow", "*.md": "allow", "*.json": "allow", "*.js": "allow", "*.html": "allow", "*.css": "allow", "*.ini": "allow", "*.ps1": "allow", "*": "ask" },
+>>>>>>> 4f3d82ab6e2ba334edf5e1eb261fef0673a531a9
         "bash": {
           "rm *":              "ask",
           "rm -r *":           "ask",
