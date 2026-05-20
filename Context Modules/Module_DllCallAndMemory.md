@@ -31,7 +31,7 @@
 | `Buffer()` | `Buffer(ByteCount, FillByte)` | Buffer object | MemoryError | Allocates and fills every byte with FillByte; use `0` for struct initialization |
 | `.Ptr` | Read-only integer | Integer (raw address) | — | A_PtrSize bytes wide (4 on x86, 8 on x64) |
 | `.Size` | Read/write integer | Integer (byte count) | — | Assign a new value to reallocate in-place; data preserved, address may change |
-| Auto-deref | `"Ptr", buf` ≡ `"Ptr", buf.Ptr` | — | — | AHK auto-dereferences a Buffer to `.Ptr` in any `"Ptr"`-typed DllCall argument |
+| Auto-deref | `"Ptr", buf` ≡ `"Ptr", buf.Ptr` | — | — | AHK auto-dereferences a Buffer to `.Ptr` in any `"Ptr"`-typed DllCall argument. Per AHK v2 docs this is idiomatic and supported. **Exception:** BCrypt* functions (bcrypt.dll) throw `STATUS_INVALID_PARAMETER` on auto-deref'd Buffers — use explicit `.Ptr` for those APIs only |
 
 ### Numeric Memory I/O
 
@@ -252,7 +252,7 @@ Resource lifecycle: every HANDLE (mutex, virtual memory region, heap block) open
 ## TIER 1 — Buffer Object Fundamentals
 > METHODS COVERED: Buffer() · .Ptr · .Size · A_PtrSize
 
-`Buffer` is the AHK v2 replacement for the removed `VarSetCapacity`. A Buffer object tracks both the allocation size (`.Size`) and the raw memory address (`.Ptr`), and its lifetime is automatically managed by AHK's reference counter. Passing a Buffer directly as a `"Ptr"`-typed DllCall argument is idiomatic — AHK auto-dereferences it to `.Ptr` at the call site, so the explicit `.Ptr` suffix is never required when calling DllCall.
+`Buffer` is the AHK v2 replacement for the removed `VarSetCapacity`. A Buffer object tracks both the allocation size (`.Size`) and the raw memory address (`.Ptr`), and its lifetime is automatically managed by AHK's reference counter. Passing a Buffer directly as a `"Ptr"`-typed DllCall argument is idiomatic — AHK auto-dereferences it to `.Ptr` at the call site. The explicit `.Ptr` suffix is optional for most APIs but **required for BCrypt\* functions** (bcrypt.dll), which throw `STATUS_INVALID_PARAMETER` on auto-deref'd Buffer pointers — use `buf.Ptr` explicitly for those calls.
 ```ahk
 ; ── Basic allocation ─────────────────────────────────────────────────────────────
 ; ✓ Buffer(size, fillByte) is the canonical v2 form — VarSetCapacity does not exist in v2
@@ -267,10 +267,14 @@ MsgBox(buf1.Ptr)               ; → raw memory address as an integer
 buf2 := Buffer(32)             ; FillByte omitted — contents undefined; write before read
 
 ; ── Passing Buffer to DllCall — auto-dereference via "Ptr" type ──────────────────
-; ✓ Buffer passed directly — AHK auto-dereferences to .Ptr; explicit .Ptr suffix is redundant
+; ✓ Buffer passed directly — AHK auto-dereferences to .Ptr; .Ptr suffix is optional for most APIs
 pt := Buffer(8, 0)             ; POINT struct placeholder (8 bytes)
 DllCall("User32\GetCursorPos", "Ptr", pt)
-; DllCall("User32\GetCursorPos", "Ptr", pt.Ptr)   ; valid but redundant
+; DllCall("User32\GetCursorPos", "Ptr", pt.Ptr)   ; also valid; .Ptr is redundant for most APIs
+
+; ⚠ BCrypt* exception — explicit .Ptr REQUIRED; auto-deref triggers STATUS_INVALID_PARAMETER
+; DllCall("BCrypt\BCryptHashData", "Ptr", hHash, "Ptr", chunkBuf.Ptr, ...)  ; ✓ explicit .Ptr for BCrypt
+; DllCall("BCrypt\BCryptHashData", "Ptr", hHash, "Ptr", chunkBuf, ...)       ; ✗ auto-deref fails for BCrypt
 
 ; ── Querying address and size after allocation ───────────────────────────────────
 ShowBufInfo(buf) {

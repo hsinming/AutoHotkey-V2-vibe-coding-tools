@@ -126,7 +126,7 @@
 - Use `SplitPath()` for all path decomposition — never split by `\`, `StrSplit`, or `RegExMatch`; `SplitPath` correctly handles UNC paths, drive-only paths, and extension-less files.
 - ✗ `if FileExist(path)` — truthy for any non-empty attribute string, including `"D"` (directory); passes silently when path resolves to a directory.
 - ✓ `if FileExist(path) != ""` — explicit string comparison; combine with `InStr(FileExist(path), "D") = 0` when the check must distinguish files from directories.
-- Binary files require `FileOpen(path, mode)` without an encoding argument — AHK v2 has no `"b"` flag; binary access is achieved by omitting the encoding parameter. `FileRead()` without the `"RAW"` option applies text decoding that corrupts raw binary data irrecoverably. Use `FileRead(path, "RAW")` to get a Buffer object, or `FileOpen` + `RawRead/RawWrite`.
+- Binary files require `FileOpen(path, mode)` without an encoding argument — AHK v2 has no `"b"` flag; binary access is achieved by omitting the encoding parameter. `"RAW"` is a `FileRead()` option, not a valid encoding string for `FileOpen()` — passing `"RAW"` as the Encoding parameter throws `ValueError: Invalid parameter(s)`. For whole-file binary reads, use `FileRead(path, "RAW")` which returns a Buffer object. For streaming binary reads, use `FileOpen` + `RawRead`/`RawWrite`.
 - Always anchor paths via `A_WorkingDir` or use absolute paths — relative paths resolve from the current working directory at runtime, which may shift if the script spawns external processes.
 - Call `FileGetSize()` before `FileRead()` on potentially large files — `FileRead()` loads the entire file into a single string in RAM; loading a multi-gigabyte file without a size check will exhaust available memory.
 
@@ -145,7 +145,7 @@ Resource lifecycle: every `FileOpen()` call must have a corresponding `f.Close()
 - [ ] Did I wrap every `FileOpen()` call in `try/catch OSError` instead of checking `if !f` after the call?
 - [ ] Did I specify an explicit encoding parameter on every `FileRead()`, `FileAppend()`, and text-mode `FileOpen()` call?
 - [ ] Did I call `file.Close()` in a `finally` block for every `FileOpen()` call, not relying on `__Delete`?
-- [ ] Am I using `FileOpen()` without an encoding argument (plus `RawRead`/`RawWrite`) for binary files, rather than `FileRead()` without the `"RAW"` option?
+- [ ] Am I using `FileOpen()` without an encoding argument (plus `RawRead`/`RawWrite`) for binary files, rather than `FileRead()` without the `"RAW"` option? Also: `"RAW"` is a `FileRead()` option — never pass it as the Encoding parameter to `FileOpen()`.
 
 ## RUNTIME ERROR MAPPING
 
