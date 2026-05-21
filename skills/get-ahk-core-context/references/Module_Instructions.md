@@ -90,8 +90,7 @@
     </step>
 
     <step id="3" name="knowledge_retrieval">
-      Consult <module_references> to identify which .md files to retrieve for this request.
-      Apply the routing_table keyword map and implicit_patterns.
+      Consult the Section Navigator and Module Index in SKILL.md to identify which .md files or specific sections to retrieve for this request.
     </step>
 
     <step id="4" name="solution_design">
@@ -141,8 +140,8 @@
   <PLAN>
     <analysis>
       1. Parse Request    : Restate the user's goal in precise technical terms.
-      2. Context Strategy : Match request keywords to <module_references> routing_table.
-                            Identify which .md files must be retrieved.
+      2. Context Strategy : Match request keywords to the Section Navigator in SKILL.md.
+                            Identify which .md files or sections must be retrieved.
       3. Complexity       : Estimate Big-O notation for any critical algorithms.
     </analysis>
 
@@ -279,87 +278,20 @@
       are not permitted.
     - Use OutputDebug for debugging. Never MsgBox.
   </error_handling_rules>
+
+  <common_traps_and_gotchas>
+    - Stored-callable context injection: Calling a function or closure stored in an object property
+      or Map element directly using obj.prop(args) treats prop as a method and automatically
+      injects obj as the first argument. To call it without injection, extract it to a local
+      variable: local fn := obj.prop; fn(args) or use obj.prop.Call(args).
+    - FileOpen Encoding "RAW" error: NEVER pass "RAW" as the encoding parameter to FileOpen() —
+      it throws a runtime ValueError. To read raw binary, omit the parameter entirely.
+      To write BOM-free files, use "UTF-8-RAW". To write standard UTF-8 files with BOM, use "UTF-8".
+    - UTF-8 with BOM requirement: AHK v2 source files (*.ahk) must be written as UTF-8 with BOM.
+      If written BOM-free, non-ASCII characters in comments or literals will cause silent
+      syntax/parse errors during compilation/execution.
+  </common_traps_and_gotchas>
 </ahk_syntax_standards>
-
-<module_references>
-  Retrieve Module_Instructions.md first via the platform's knowledge/context system before
-  generating any AHK v2 code. Then consult the routing_table below to identify and retrieve
-  only the relevant module .md files for the current request. Do not load all files at once.
-
-  <routing_table>
-    Arrays           : "array", "list", "collection", "filter", "map", "reduce", "sort",
-                       "unique", "flatten", "iterate", "batch"             → Module_Arrays.md
-    Async & Timers   : "timer", "sleep", "wait", "loop", "interval",
-                       "background", "async", "SetTimer"                  → Module_AsyncAndTimers.md
-    Classes          : "class", "inheritance", "extends", "super", "__New", "__Delete",
-                       "static", "nested class", "factory"                 → Module_Classes.md
-    Class Prototyping: "prototyping", "class generator", "runtime class",
-                       "property descriptor", "CreateClass"               → Module_ClassPrototyping.md
-    Data Structures  : "map", "key-value", "dictionary", "storage", "settings",
-                       "configuration", "cache"                           → Module_DataStructures.md
-    DllCall & Memory : "dllcall", "buffer", "numput", "numget", "struct",
-                       "pointer", "memory", "c++", "winapi"               → Module_DllCallAndMemory.md
-    Dyn. Properties  : "=>", "fat arrow", "lambda", "closure", "dynamic property",
-                       "__Get", "__Set", "__Call"                          → Module_DynamicProperties.md
-    Errors           : "error", "wrong", "broken", "fail", "syntax error", "runtime error",
-                       "undefined", "not working", "v1 to v2"             → Module_Errors.md
-    File System      : "file", "folder", "directory", "read", "write",
-                       "save", "load", "path", "txt", "ini"               → Module_FileSystem.md
-    Formatting       : "format", "indent", "style", "comment", "brace",
-                       "crlf", "convention", "lint"                       → ahk_formatting_spec.md
-    Functions        : "function", "return", "parameter", "optional", "byref",
-                       "scope", "global", "local", "static var"           → Module_Functions.md
-    Graphics & Screen: "imagesearch", "pixelsearch", "pixelgetcolor", "screen",
-                       "monitor", "dpi", "coordinates"                    → Module_GraphicsAndScreen.md
-    GUI              : "gui", "window", "form", "dialog", "button", "control", "layout",
-                       "position", "xm", "section", "OnEvent"             → Module_GUI.md
-    Input & Hotkeys  : "hotkey", "send", "click", "mouse", "keyboard",
-                       "bind key", "hotstring", "#HotIf"                  → Module_InputAndHotkeys.md
-    Network & HTTP   : "http", "download", "request", "api", "json",
-                       "rest", "winhttp", "post", "get"                   → Module_NetworkAndHTTP.md
-    Objects          : "object", "property", "descriptor", "DefineProp", "HasProp",
-                       "HasMethod", "bound", "bind", "callback"            → Module_Objects.md
-    Script Env       : "#requires", "#singleinstance", "#include", "admin",
-                       "uac", "tray", "compile", "ahk2exe"                → Module_ScriptEnvironment.md
-    System & COM     : "run", "cmd", "clipboard", "registry", "com", "excel",
-                       "wmi", "system", "process", "WinActivate"          → Module_SystemAndCOM.md
-    Text & Strings   : "string", "text", "escape", "quote", "regex", "pattern",
-                       "match", "replace", "split", "join", "`n"          → Module_TextProcessing.md
-    Validation       : "validate", "type check", "isset", "typeerror",
-                       "duck typing", "assert", "defensive", "??"         → Module_Validation.md
-    Window & Control : "winexist", "winactivate", "controlclick", "controlsend",
-                       "hwnd", "groupadd", "hook", "focus"                → Module_WindowAndControl.md
-  </routing_table>
-
-  <implicit_patterns>
-    "for each item"                      → Module_Arrays.md
-    "store multiple values"              → Module_Arrays.md or Module_DataStructures.md
-    "validate input"                     → Module_TextProcessing.md or Module_Validation.md
-    "window with controls"               → Module_GUI.md
-    "handle events"                      → Module_GUI.md or Module_Objects.md
-    "automate tasks" / "simulate input"  → Module_InputAndHotkeys.md
-    "run periodically"                   → Module_AsyncAndTimers.md
-    "interact with windows API"          → Module_DllCallAndMemory.md
-    "make web requests" / "parse json"   → Module_NetworkAndHTTP.md
-    "read or write files"                → Module_FileSystem.md
-    "search on screen" / "get color"     → Module_GraphicsAndScreen.md
-    "manage script lifecycle"            → Module_ScriptEnvironment.md
-    "interact with other apps via COM"   → Module_SystemAndCOM.md
-    "format code" / "check syntax"       → ahk_formatting_spec.md
-    "automate background windows"        → Module_WindowAndControl.md
-    "custom object behaviors"            → Module_ClassPrototyping.md or Module_DynamicProperties.md
-    "reusable logic blocks"              → Module_Functions.md
-    GUI context + any other keyword      → prioritize Module_GUI.md
-    Code not working                     → prioritize Module_Errors.md
-  </implicit_patterns>
-
-  <selection_rules>
-    1. Check explicit keywords first.
-    2. Consider context for module priority.
-    3. Reference multiple modules if the request spans concerns.
-    4. Use analyze_code tool only when necessary.
-  </selection_rules>
-</module_references>
 
 <diagnostic_checklist>
   Before finalizing any code output, verify all of the following:
@@ -380,6 +312,13 @@
      - No patterns from other languages (const, let, ===, addEventListener, etc.).
      - All event handlers use .Bind(this) — not inline arrow functions with blocks.
      - Multi-line callbacks are separate named methods.
+
+  2.6. ESCAPE CHARACTERS & PATHS
+     - AHK v2 uses backtick (`` ` ``) as its escape character — NEVER use backslash (`\`) for escaping.
+     - Newline must be written as `` `n `` (never `\n`).
+     - Tab must be written as `` `t `` (never `t` or `\t`).
+     - Double quotes inside double-quoted string are `` `" `` or doubled `""` (never `\"`).
+     - Backslash `\` is a literal character. Ensure Windows paths (e.g., "Folder\File.ahk") do not contain accidental double-escapes.
 
   3. CLASS STRUCTURE
      - Classes initialized at the top of the script.
@@ -408,6 +347,16 @@
      - When calling ClassName.MethodName or this.MethodName, confirm the method is defined
        in that class before calling it.
      - Do not assume methods from other languages exist — AHK v2 has its own unique API.
+
+  6.5. COMMON TRAPS & GOTCHAS
+     - Stored-callable context injection: Calling a function/closure stored in an object property or Map element directly via obj.prop(args) treats prop as a method and automatically injects obj as the first argument. To call it without injection, extract it to a local variable: local fn := obj.prop; fn(args) or call explicitly with obj.prop.Call(args).
+     - FileOpen Encoding "RAW" error: NEVER pass "RAW" as the encoding parameter to FileOpen() — it throws a runtime ValueError. To read raw binary, omit the parameter entirely. To write BOM-free files, use "UTF-8-RAW". To write standard UTF-8 files with BOM, use "UTF-8".
+     - UTF-8 with BOM requirement: AHK v2 source files (*.ahk) must be written as UTF-8 with BOM. If written BOM-free, non-ASCII characters in comments or literals will cause silent syntax/parse errors during compilation/execution.
+
+  7. PLATFORM TOOL CONSTRAINTS (CRITICAL BUGS)
+     - NEVER use the built-in `edit` tool on `*.ahk` files. It has known bugs with backslash escaping, CRLF -> LF conversion, and Unicode characters.
+     - To modify `*.ahk` files, use PowerShell (`[System.IO.File]::WriteAllText` with a `System.Text.UTF8Encoding $true`) or Python (with `encoding='utf-8-sig'`) to perform literal replacements via the `bash` tool, or write the full file content using `write`.
+     - NEVER use LSP query tools (`lsp_symbols`, `lsp_find_references`, `lsp_goto_definition`, `lsp_prepare_rename`, `lsp_rename`) on `*.ahk` files as they crash the AHK v2 LSP server. Use `grep` and `read` instead.
 </diagnostic_checklist>
 
 <edge_cases_and_fallbacks>

@@ -1,4 +1,4 @@
----
+﻿---
 name: get-ahk-core-context
 description: >
   Use when writing, modifying, or reviewing any AutoHotkey v2 code. Triggers:
@@ -291,6 +291,15 @@ cross-skill dependencies.
 - Use `Map()` for key-value storage — never `{key: value}` object literals for data
 - Curly braces `{}` are for function/class/control-flow bodies only
 - Arrays are 1-based: first element is `array[1]`, not `array[0]`
+- AHK v2 escape character is backtick (`` ` ``), NOT backslash (`\`):
+  - Newline is `` `n `` (never `\n`)
+  - Tab is `` `t `` (never `\t`)
+  - Double quotes in double-quoted strings are `` `" `` or `""` (never `\"`)
+  - Backslash `\` is a literal and does not escape anything
+
+### Platform Tool Constraints
+- **NEVER use the built-in `edit` tool on `*.ahk` files**: It has escape, CRLF, and Unicode bugs on AHK files. Use PowerShell/Python `.Replace()` via `bash` or full rewrite via `write` instead.
+- **NEVER use LSP query tools on `*.ahk` files** (`lsp_symbols`, `lsp_find_references`, `lsp_goto_definition`, `lsp_prepare_rename`, `lsp_rename`): They crash the LSP server. Use `grep` and `read` instead.
 
 ### Formatting (always enforced)
 - 4 spaces per indent level — never tabs
@@ -302,7 +311,12 @@ cross-skill dependencies.
 - Instance members: `this.property` — Static members: `ClassName.property`
 - Event handlers and callbacks must use `.Bind(this)` for correct object context
 - Resource cleanup goes in `__Delete()` meta-function
-- `super.Method()` for base class access in derived classes
+- super.Method() for base class access in derived classes
+
+### Common Traps & Gotchas
+- **Stored-callable context injection**: Calling a function or closure stored in an object property or Map element directly using obj.prop(args) treats prop as a method and automatically injects obj as the first argument. To call it without injection, extract it to a local variable: local fn := obj.prop; fn(args) or use obj.prop.Call(args).
+- **FileOpen Encoding "RAW" error**: NEVER pass "RAW" as the encoding parameter to FileOpen() — it throws a runtime ValueError. To read raw binary, omit the parameter entirely. To write BOM-free files, use "UTF-8-RAW". To write standard UTF-8 files with BOM, use "UTF-8".
+- **UTF-8 with BOM requirement**: AHK v2 source files (*.ahk) **must** be encoded as UTF-8 with BOM. If written BOM-free, non-ASCII characters in comments or literals will cause silent syntax/parse errors during compilation/execution.
 
 ---
 
